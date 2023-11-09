@@ -1,0 +1,221 @@
+import numpy as np
+import numba
+from tqdm import tqdm
+
+from ..utils.design import x2fx
+from ..utils.init import full_factorial
+
+def greedy_cost_minimization(Y, params):
+    """
+    Greedily minimizes the cost of the design Y.
+
+    Parameters
+    ----------
+    Y : np.array(2d)
+        The design to cost minimize.
+    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    Y : np.array(2d)
+        The greedily cost minimized design.
+    """
+    # Initialization (force prior)
+    nprior = len(params.prior)
+    Yn = np.zeros_like(Y)
+    Yn[:nprior] = params.prior
+    chosen = np.zeros(len(Y), dtype=np.bool_)
+    chosen[:nprior] = True
+
+    # Determine number of cost objectives
+    nbcost = len(params.max_cost)
+
+    # Iteratively use greedy cost minimization
+    for i in range(nprior, len(Y)):
+        # Find parameters that are not chosen
+        non_chosen = np.where(~chosen)[0]
+
+        # Initialize all costs
+        costs = np.zeros((non_chosen.size, nbcost, i+1))
+        
+        # Compute all costs
+        for k in range(non_chosen.size):
+            Yn[i] = Y[non_chosen[k]]
+            costs[k] = params.fn.cost(Yn[:i+1])
+
+        # Compute the total cost of each operation
+        costs_Y = np.sum(np.sum(costs, axis=-1) / params.max_cost, axis=-1)
+        min_cost_idx = non_chosen[np.argmin(costs_Y)]
+
+        # Chose the index
+        Yn[i] = Y[min_cost_idx]
+        chosen[min_cost_idx] = True
+
+    return Yn
+
+################################################
+
+@numba.njit
+def _init(colstart, coords, run, effect_types):
+    """
+    Initialize a run at random. There are three possibilities:
+    'continuous' which is random between (-1, 1), categorical which is
+    a random level, or from coords which selects a random coordinate from
+    `coords`
+
+    Parameters
+    ----------
+    colstart : np.array(1d)
+        The starting column of each factor.
+    coords : list(np.array(2d) or None)
+        The coordinates to sample from.
+    run : np.array(1d)
+        Output buffer of the function. Also returned at the end.
+    effect_types : np.array(1d)
+        The type of each effect in case no coordinates are specified.
+    
+    Returns
+    -------
+    run : np.array(1d)
+        The randomly sampled run.
+    """
+    # Check if complete sampling
+    if coords is None:
+        for i in range(colstart.size - 1):
+            if effect_types[i] == 1:
+                # Sample continuous function
+                for j in range(run.shape[0]):
+                    run[:, colstart[i]] = np.random.rand(run.shape[0]) * 2 - 1
+            else:
+                # Sample categorical variable
+                coords_ = np.concatenate((np.eye(effect_types[i]-1), -np.ones((1, effect_types[i]-1))))
+                for j in range(run.shape[0]):
+                    run[j, colstart[i]:colstart[i+1]] = coords_[np.random.randint(effect_types[i])]
+    else:
+        # Coords based sampling
+        for i in range(colstart.size - 1):
+            for j in range(run.shape[0]):
+                run[j, colstart[i]:colstart[i+1]] = coords[i][np.random.randint(len(coords[i]))]
+    return run
+
+def init(params, n=1, complete=False):
+    """
+    Initialize a design with `n` randomly sampled runs. They must
+    be within the constraints.
+
+    Parameters
+    ----------
+    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+        The simulation parameters.
+    n : int
+        The number of runs
+    complete : bool
+        False means use the coordinates and prior specified in params, otherwise, no
+        coords or prior are used. Can be used to perform a complete sample of the design space.
+    
+    Returns
+    -------
+    run : np.array(2d)
+        The resulting design.
+    """
+    # Initialize
+    run = np.zeros((n, params.colstart[-1]), dtype=np.float64)
+    invalid = np.ones(n, dtype=np.bool_)
+
+    # Adjust for completeness
+    if not complete:
+        nprior = len(params.prior)
+        run[:nprior] = params.prior
+        invalid[:nprior] = False
+        coords = params.coords
+    else:
+        coords = None
+
+    # Loop until all are valid
+    while np.any(invalid):
+        run[invalid] = _init(params.colstart, coords, run[invalid], params.effect_types)
+        invalid[invalid] = params.fn.constraints(run[invalid])
+
+    return run
+
+def init_feasible(params, max_tries=3, max_size=None):
+    """
+    Generate a random initial and feasible design. From a random
+    permutation of a full factorial design, the runs are dropped one-by-one
+    as long as they still provide a feasible design. Finally, the design
+    is greedily reordered for minimal cost.
+
+    Parameters
+    ----------
+    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+        The simulation parameters.
+    max_tries : int
+        The maximum number of tries before throwing an error no initial design can be found.
+    max_size : int
+        The maximum number of runs before iteratively removing them.
+
+    Returns
+    -------
+    Y : np.array(2d)
+        The initial design.
+    """
+    # Initialize the tries for randomization
+    tries = -1
+
+    # Check if prior is estimeable
+    Xprior = params.Y2X(params.prior)
+    if Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) == Xprior.shape[1]:
+        return params.prior 
+    nprior = len(Xprior)
+
+    feasible = False
+    while not feasible:
+        # Add one try
+        tries += 1
+
+        # Create a full factorial design
+        Y = full_factorial(params.colstart, params.coords)
+
+        # Permute to randomize
+        if tries < max_tries:
+            Y = np.random.permutation(Y)
+
+        # Drop impossible combinations
+        Y = Y[~params.fn.constraints(Y)]
+
+        # Define a maximum size (for feasibility)
+        if max_size is not None:
+            Y = Y[:max_size]
+
+        # Compute X
+        X = params.Y2X(Y)
+
+        # Augmentation
+        Y = np.concatenate((params.prior, Y), axis=0)
+        X = np.concatenate((Xprior, X), axis=0)
+
+        # Drop runs
+        keep = np.ones(len(Y), dtype=np.bool_)
+        keep[:nprior] = True
+        for i in tqdm(range(nprior, len(Y))):
+            keep[i] = False
+            Xk = X[keep]
+            if np.linalg.matrix_rank(Xk) != X.shape[1]:
+                keep[i] = True
+        Y = Y[keep]
+
+        # Reorder for cost optimization (greedy)
+        Y = greedy_cost_minimization(Y, params)
+
+        # Fill it up
+        X = params.Y2X(Y)
+        cost_Y = np.sum(params.fn.cost(Y), axis=1)
+        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and np.all(cost_Y <= params.max_cost)
+
+        # Raise an error if no feasible design can be found
+        if tries >= max_tries and not feasible:
+            raise ValueError('Unable to find a feasible design within the cost constraints')
+
+    return Y
+
