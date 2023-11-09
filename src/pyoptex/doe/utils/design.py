@@ -3,6 +3,29 @@ import numpy as np
 
 from ...utils.numba import numba_take_advanced, numba_all_axis2
 
+def create_default_coords(effect_type):
+    """
+    Defines the default possible coordinates per effect type. A continuous variable
+    has [-1, 0, 1], a categorical variable has all possible effect encoded coordinates.
+
+    Parameters
+    ----------
+    effect_types : np.array(1d)
+        The type of each effect. 1 indicates continuous, higher indicates categorical with
+        that number of levels.
+    
+    Returns
+    -------
+    coords : np.array(2d)
+        The default possible coordinates for the factor.
+    """
+    if effect_type == 1:
+        return np.array([-1, 0, 1]).reshape(-1, 1)
+    else:
+        return np.arange(effect_type).reshape(-1, 1)
+
+################################################
+
 @numba.njit
 def x2fx(Yenc, modelenc):
     """

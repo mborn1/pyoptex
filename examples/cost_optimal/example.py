@@ -8,7 +8,7 @@ import os
 import time
 
 # Library imports
-from pyoptex.doe.cost_optimal import simulate_wrapper, default_fn
+from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 from pyoptex.doe.cost_optimal.cov import cov_block_cost
@@ -59,7 +59,7 @@ fn = default_fn(nsims, cost_fn, metric)
 
 # Create design
 start_time = time.time()
-Y, state = simulate_wrapper(
+Y, state = create_cost_optimal_design(
     effect_types, max_cost, fn, model=model, 
     nsims=nsims, nreps=nreps, grouped_cols=grouped_cols, 
     prior=prior, ratios=ratios,

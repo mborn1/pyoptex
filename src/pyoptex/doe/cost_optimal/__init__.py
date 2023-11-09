@@ -1,4 +1,4 @@
-from .wrapper import default_fn, create_parameters, simulate_wrapper
+from .wrapper import default_fn, create_parameters, create_cost_optimal_design
 
 from . import accept
 from . import cost

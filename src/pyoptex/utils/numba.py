@@ -22,6 +22,27 @@ def numba_any_axis1(x):
         res = np.logical_or(res, x[:, i])
     return res
 
+@numba.njit(cache=True)
+def numba_all_axis1(x):
+    """
+    Numba compatible implementation of np.all(..., axis=1) for
+    2d arrays
+
+    Parameters
+    ----------
+    x : np.array(2d)
+        The input array
+
+    Returns
+    -------
+    out : np.array(1d, bool)
+        The results of np.all(..., axis=1)
+    """
+    out = np.ones(x.shape[0], dtype=np.bool_)
+    for i in range(x.shape[0]):
+        out[i] = np.all(x[i, :])
+    return out
+
 @numba.njit
 def numba_all_axis2(x):
     """Numba version of np.all along axis 2"""

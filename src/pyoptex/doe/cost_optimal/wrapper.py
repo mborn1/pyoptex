@@ -12,29 +12,8 @@ from .insert import insert_optimal
 from .remove import remove_optimal_onebyone
 from .utils import Parameters, FunctionSet
 from ..utils.model import encode_model
-from ..utils.design import x2fx, encode_design, decode_design
+from ..utils.design import x2fx, encode_design, decode_design, create_default_coords
 from ..constraints import no_constraints
-
-def _default_coords(effect_type):
-    """
-    Defines the default possible coordinates per effect type. A continuous variable
-    has [-1, 0, 1], a categorical variable has all possible effect encoded coordinates.
-
-    Parameters
-    ----------
-    effect_types : np.array(1d)
-        The type of each effect. 1 indicates continuous, higher indicates categorical with
-        that number of levels.
-    
-    Returns
-    -------
-    coords : np.array(2d)
-        The default possible coordinates for the factor.
-    """
-    if effect_type == 1:
-        return np.array([-1, 0, 1]).reshape(-1, 1)
-    else:
-        return np.arange(effect_type).reshape(-1, 1)
 
 def default_fn(
     nsims, cost, metric, 
@@ -117,7 +96,7 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
         notation (e.g. [0, ..., 0] for the intercept, [1, 0, ..., 0] for the first main effect, etc.).
         The parameter is ignored if a Y2X function is provided.
     coords : None or list(np.array(2d) or None)
-        If None or one element is None, the :py:func:`_default_coords` are used.
+        If None or one element is None, the :py:func:`create_default_coords` are used.
     ratios : None or np.array(1d) or np.array(2d)
         The array of ratios vs. epsilon for each factors random effect variance. Set to all ones by default.
         Multi-dimensional ratios permit the computation of multiple Vinv simultaneously.
@@ -134,8 +113,6 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
     -------
     params : :py:func:`Parameters`
         The parameters object required for :py:func:`simulate`
-    effect_types : np.array(1d)
-        Converted effect types if it was presented as a dictionary
     col_names : list(str) or None
         A list of column names initially presented. None if no information was found.
     """
@@ -157,7 +134,7 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
 
     # Set default coords
     coords = coords if coords is not None else [None]*effect_types.size
-    coords = [_default_coords(et) if coord is None else coord for coord, et in zip(coords, effect_types)]
+    coords = [create_default_coords(et) if coord is None else coord for coord, et in zip(coords, effect_types)]
 
     # Map ratios to grouped columns if necessary
     if ratios.shape[1] != grouped_cols.size:
@@ -170,7 +147,7 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
     coords_enc = List([
         encode_design(coord, np.array([et]))
-            if et > 1 and coord.shape[1] == 1 and np.all(np.sort(coord) == _default_coords(et))
+            if et > 1 and coord.shape[1] == 1 and np.all(np.sort(coord) == create_default_coords(et))
             else coord.astype(np.float64)
         for coord, et in zip(coords, effect_types)
     ])
@@ -204,9 +181,9 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
     # Create the parameters
     params = Parameters(fn, max_cost, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X)
 
-    return params, effect_types, col_names
+    return params, col_names
 
-def simulate_wrapper(effect_types, max_cost, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
+def create_cost_optimal_design(effect_types, max_cost, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
                      Y2X=None, nreps=1, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
@@ -262,7 +239,7 @@ def simulate_wrapper(effect_types, max_cost, fn, model=None, coords=None, ratios
     assert nreps > 0
 
     # Extract the parameters
-    params, effect_types, col_names = create_parameters(
+    params, col_names = create_parameters(
         effect_types, max_cost, fn, model, coords, ratios, grouped_cols, prior, Y2X
     )
 
@@ -277,7 +254,7 @@ def simulate_wrapper(effect_types, max_cost, fn, model=None, coords=None, ratios
             print(e)
 
     # Decode the design
-    Y = decode_design(best_state.Y, effect_types, coords=params.coords)
+    Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
     Y = pd.DataFrame(Y, columns=col_names)
     return Y, best_state
 
