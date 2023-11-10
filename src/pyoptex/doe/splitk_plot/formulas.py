@@ -3,7 +3,7 @@ import numpy as np
 
 # TODO: transform update formulas to 3d
 
-# @numba.njit
+@numba.njit
 def compute_update_UD(
         level, grp, Xi_star, X, 
         plot_sizes, c, thetas, thetas_inv
@@ -19,7 +19,7 @@ def compute_update_UD(
     
     """
     # Append 1 again
-    c = np.concatenate(([1], c))
+    c = np.concatenate((np.array([1], dtype=np.float64), c))
 
     # First runs
     jmp = thetas[level]
