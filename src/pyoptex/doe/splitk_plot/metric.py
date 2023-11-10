@@ -1,18 +1,18 @@
 import numpy as np
+import numba
+from numba.experimental import jitclass
+from numba import types
 
 from .utils import obs_var
 from .formulas import det_update_UD, inv_update_UD_no_P
 
 # TODO: covariances
 # TODO: multiple ratios (bayesian)
-# TODO: remove first ratio
 # TODO: priors and augmentation
-
 # TODO: plot_sizes = lowest first: note in documentation!
 
 # TODO: more metrics
 # TODO: validation
-
 
 class Dopt:
     """
@@ -20,17 +20,12 @@ class Dopt:
     Computes the geometric mean in case multiple Vinv are provided.
     """
     def __init__(self):
-        self.Y2X = None
         self.c = None
         self.Vinv = None
         self.Minv = None
 
     def init(self, params, Y, X):
-        # Store link to the Y2X function
-        self.Y2X = params.Y2X
-
         # Compute information matrix
-        # self.Vinv = np.array([obs_var(params.plot_sizes, ratios=c) for c in params.c])
         self.Vinv = params.Vinv
         M = X.T @ params.Vinv @ X
         self.Minv = np.linalg.inv(M)
@@ -41,6 +36,7 @@ class Dopt:
         for i in range(len(self.Minv)):
             _du, _ = det_update(update.U[i], update.D[i], self.Minv[i])
             du *= _du
+        du = np.power(du, 1/(X.shape[1] * len(self.Vinv)))
 
         if du > 1:
             # Update inv(M)

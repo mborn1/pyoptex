@@ -6,7 +6,7 @@ import numpy as np
 @numba.njit
 def compute_update_UD(
         level, grp, Xi_star, X, 
-        plot_sizes, c, betas=None, betas_inv=None
+        plot_sizes, c, thetas=None, thetas_inv=None
     ):
     """
     Compute the update to the information matrix after making
@@ -18,21 +18,21 @@ def compute_update_UD(
     ----------
     
     """
-    # betas and betas inv
-    if betas is None:
-        betas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    if betas_inv is None:
-        betas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/betas[1:])))
+    # thetas and thetas inv
+    if thetas is None:
+        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    if thetas_inv is None:
+        thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/thetas[1:])))
 
     # First runs
-    jmp = betas[level]
+    jmp = thetas[level]
     runs = slice(grp*jmp, (grp+1)*jmp)
     
     # Extract level-section
     Xi = X[runs]
 
     # Initialize U and D
-    star_offset = int(Xi.shape[0] * (1 + betas_inv[level])) + (plot_sizes.size - level - 1)
+    star_offset = int(Xi.shape[0] * (1 + thetas_inv[level])) + (plot_sizes.size - level - 1)
     U = np.zeros((2*star_offset, Xi.shape[1]))
     D = np.zeros(2*star_offset)
 

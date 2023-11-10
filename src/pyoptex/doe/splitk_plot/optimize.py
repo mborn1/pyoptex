@@ -1,8 +1,10 @@
+import numba
+import numpy as np
+
 from .utils import Update
 from .formulas import compute_update_UD
 from .init import initialize_feasible
 
-@numba.njit
 def optimize(params, max_it=10000):
     """
     Optimize a model iteratively using the coordinate exchange algorithm.
@@ -31,7 +33,7 @@ def optimize(params, max_it=10000):
             # Extract factor level parameters
             level = params.effect_levels[i]
             cat_lvl = params.effect_types[i]
-            jmp = params.betas[level]
+            jmp = params.thetas[level]
 
             # Loop over all run-groups
             for grp in params.grps[i]:
@@ -56,14 +58,14 @@ def optimize(params, max_it=10000):
                         Y[runs, cols] = new_coord
 
                         # Validate whether to check the coordinate
-                        if np.any(constraint(Y[runs])):
+                        if np.any(params.fn.constraints(Y[runs])):
                             # Compute new X
                             Xi_star = params.Y2X(Y[runs])
 
                             # Compute updates
                             UD = [compute_update_UD(
                                 level, grp, Xi_star, X, 
-                                params.plot_sizes, params.c, params.betas, params.betas_inv
+                                params.plot_sizes, params.c, params.thetas, params.thetas_inv
                             ) for c in params.c]
                             U = np.array([UD[i][0] for i in range(len(UD))])
                             D = np.array([UD[i][1] for i in range(len(UD))])

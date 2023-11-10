@@ -1,13 +1,14 @@
 import numpy as np
+import numba
 import pandas as pd
 from numba.typed import List
 from tqdm import tqdm
 
-from .utils import Parameters
-from ..utils.design import create_default_coords, encode_design, x2fx, obs_var, decode_design
+from .optimize import optimize
+from .utils import Parameters, FunctionSet, level_grps, obs_var
+from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
 from ..utils.model import encode_model
-
-# level_grps function: TODO
+from ..constraints import no_constraints
 
 def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     # Compute c-coefficients for all ratios
@@ -15,12 +16,15 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     for j, ratios in enumerate(ratios):
         c[j, 0] = 1
         for i in range(1, c.shape[1]):
-            c[j, i] = -ratios[i] * np.sum(thetas[:i] * c[j, :i]) / np.sum(ratios[:i+1] * thetas[:i+1])
+            c[j, i] = -ratios[i-1] * np.sum(thetas[:i] * c[j, :i]) / np.sum(ratios[:i+1-1] * thetas[:i+1])
     c = c[:, 1:]
 
     return c
 
-def create_parameters(fn, effect_types, effect_levels, plot_sizes, ratios=None, coords=None, model=None, Y2X=None):
+def default_fn(metric, constraints=no_constraints):
+    return FunctionSet(metric, constraints)
+
+def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ratios=None, coords=None, model=None, Y2X=None):
     """
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
@@ -78,7 +82,7 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, ratios=None, 
     # Set all groups
     if grps is None:
         grps = level_grps(np.zeros_like(plot_sizes), plot_sizes)
-        grps = List([grps[lvl] for lvl, _ in factors])
+        grps = List([grps[lvl] for lvl in effect_levels])
 
     # Set the Y2X function
     if Y2X is None:
@@ -94,25 +98,26 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, ratios=None, 
         modelenc = encode_model(model, effect_types)
 
         # Create transformation function for polynomial models
-        Y2X = lambda Y: x2fx(Y, modelenc)
+        Y2X = numba.njit(lambda Y: x2fx(Y, modelenc))
 
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X
+        coords_enc, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X
     )
+    
 
     return params, col_names
 
 def create_splitk_plot_design(
-        fn, effect_types, effect_levels, plot_sizes, ratios=None, coords=None, model=None, Y2X=None,
+        fn, effect_types, effect_levels, plot_sizes, grps=None, ratios=None, coords=None, model=None, Y2X=None,
         n_tries=10, max_it=10000
     ):
     assert n_tries > 0
 
     # Extract the parameters
     params, col_names = create_parameters(
-        fn, effect_types, effect_levels, plot_sizes, ratios, coords, model, Y2X
+        fn, effect_types, effect_levels, plot_sizes, grps, ratios, coords, model, Y2X
     )
 
     # Main loop

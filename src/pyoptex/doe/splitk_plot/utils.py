@@ -1,9 +1,11 @@
 import numpy as np
 import numba
+from numba.typed import List
 from collections import namedtuple
 from ..constraints import no_constraints
 
-FunctionSet = namedtuple('FunctionSet', 'metric constraints', defaults=(None,)*1 + (no_constraints,))
+FunctionSet = namedtuple('FunctionSet', 'metric constraints')
+# Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords colstart c alphas thetas thetas_inv Vinv Y2X')
 Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords colstart c alphas thetas thetas_inv Vinv Y2X')
 Update = namedtuple('Update', 'level grp runs cols new_coord U D')
 
@@ -48,16 +50,16 @@ def obs_var(plot_sizes, ratios=None):
     V : np.array(2d)
         The observation covaraince matrix.
     """
-    # Initialize alphas and betas
+    # Initialize alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
-    betas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
     if ratios is None:
         ratios = np.ones_like(plot_sizes[1:], dtype=np.float64)
 
     # Compute variance-covariance of observations
     V = np.eye(alphas[0])
     for i in range(ratios.size):
-        Zi = ratios[i] * np.kron(np.eye(alphas[i+1]), np.ones((betas[i+1], 1)))
+        Zi = ratios[i] * np.kron(np.eye(alphas[i+1]), np.ones((thetas[i+1], 1)))
         V += Zi @ Zi.T
 
     return V
@@ -135,24 +137,24 @@ def extend_design(Y, plot_sizes, new_plot_sizes, factors):
 
     # Difference in plot sizes
     plot_sizes_diff = new_plot_sizes - plot_sizes
-    betas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
 
     # Add new runs in the correct places
     new_runs = list()
     for i in range(new_plot_sizes.size):
-        g = np.repeat(np.arange(betas[i+1], betas[-1] + betas[i+1], betas[i+1]), np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i])
+        g = np.repeat(np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]), np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i])
         new_runs.extend(g)
     Y = np.insert(Y, new_runs, 0, axis=0)
 
-    # Compute new alphas and betas
-    nbetas = np.cumprod(np.concatenate((np.array([1]), new_plot_sizes)))
+    # Compute new alphas and thetas
+    nthetas = np.cumprod(np.concatenate((np.array([1]), new_plot_sizes)))
     nalphas = np.cumprod(new_plot_sizes[::-1])[::-1]
 
     # Fix the levels 
     for col in range(factors.shape[0]):
         level = factors[col, 0]
         if level != 0:
-            size = nbetas[level]
+            size = nthetas[level]
             for grp in range(nalphas[level]):
                 Y[grp*size:(grp+1)*size, col] = Y[grp*size, col]
     
