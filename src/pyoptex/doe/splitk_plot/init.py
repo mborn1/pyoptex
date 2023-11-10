@@ -134,7 +134,9 @@ def initialize_feasible(params, complete=False, max_tries=10):
     ncol = params.effect_types.shape[0]
 
     # Initiate design matrix
-    Y = np.zeros((n, ncol), dtype=np.float64)
+    Y = params.prior
+    if Y is None:
+        Y = np.zeros((n, ncol), dtype=np.float64)
 
     feasible = False
     tries = 0

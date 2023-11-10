@@ -5,7 +5,7 @@ from numba.typed import List
 from tqdm import tqdm
 
 from .optimize import optimize
-from .utils import Parameters, FunctionSet, State, level_grps, obs_var
+from .utils import Parameters, FunctionSet, State, level_grps, obs_var, extend_design
 from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
 from ..utils.model import encode_model
 from ..constraints import no_constraints
@@ -23,7 +23,7 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
 def default_fn(metric, constraints=no_constraints):
     return FunctionSet(metric, constraints)
 
-def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ratios=None, coords=None, model=None, Y2X=None):
+def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None):
     """
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
@@ -78,11 +78,6 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ra
     # Compute Vinv
     Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])  
 
-    # Set all groups
-    if grps is None:
-        grps = level_grps(np.zeros_like(plot_sizes), plot_sizes)
-        grps = List([grps[lvl] for lvl in effect_levels])
-
     # Set the Y2X function
     if Y2X is None:
         # Detect model in correct order
@@ -99,27 +94,50 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ra
         # Create transformation function for polynomial models
         Y2X = numba.njit(lambda Y: x2fx(Y, modelenc))
 
+    # Determine a prior
+    if prior is not None:
+        # Expand prior information
+        prior, old_plot_sizes = prior
+
+        # Convert prior to numpy
+        if isinstance(prior, pd.DataFrame):
+            if col_names is not None:
+                prior = prior[col_names]
+            prior = prior.to_numpy()
+
+        # Make sure it's not encoded
+        assert prior.shape[1] == effect_types.size, 'The prior must not be encoded'
+
+        # Augment the design
+        prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
+    else:
+        # Nothing to start from
+        old_plot_sizes = np.zeros_like(plot_sizes) 
+
+    # Define which groups to optimize
+    grps = level_grps(old_plot_sizes, plot_sizes)
+    grps = List([grps[lvl] for lvl in effect_levels])
+
     # Force types
     plot_sizes = plot_sizes.astype(np.int64)
 
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords_enc, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X
+        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X
     )
     
-
     return params, col_names
 
 def create_splitk_plot_design(
-        fn, effect_types, effect_levels, plot_sizes, grps=None, ratios=None, coords=None, model=None, Y2X=None,
+        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None,
         n_tries=10, max_it=10000, validate=False
     ):
     assert n_tries > 0
 
     # Extract the parameters
     params, col_names = create_parameters(
-        fn, effect_types, effect_levels, plot_sizes, grps, ratios, coords, model, Y2X
+        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X
     )
 
     # Main loop

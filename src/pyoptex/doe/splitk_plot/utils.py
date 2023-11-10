@@ -1,11 +1,10 @@
 import numpy as np
 import numba
-from numba.typed import List
 from collections import namedtuple
 from ..constraints import no_constraints
 
 FunctionSet = namedtuple('FunctionSet', 'metric constraints')
-Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords colstart c alphas thetas thetas_inv Vinv Y2X')
+Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv Y2X')
 Update = namedtuple('Update', 'level grp runs cols new_coord old_coord old_metric U D')
 State = namedtuple('State', 'Y X metric')
 
@@ -66,7 +65,6 @@ def obs_var(plot_sizes, ratios=None):
 
 ################################################
 
-# TODO
 def level_grps(s0, s1):
     """
     Determine which groups should be updated per level
@@ -87,7 +85,7 @@ def level_grps(s0, s1):
         groups that should be updated.
     """
     # Initialize groups
-    grps = List()
+    grps = []
     grps.append(np.arange(s0[-1], s1[-1]))
 
     for k, i in enumerate(range(s1.size - 2, -1, -1)):
@@ -106,7 +104,7 @@ def level_grps(s0, s1):
     # Return reverse of groups
     return grps[::-1]
 
-def extend_design(Y, plot_sizes, new_plot_sizes, factors):
+def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     """
     Extend an existing design Y with initial plot sizes (`plot_sizes`) to
     a new design. This function only extends the existing design by adding new
@@ -133,7 +131,7 @@ def extend_design(Y, plot_sizes, new_plot_sizes, factors):
     """
     # Return full matrix if all zeros
     if np.all(plot_sizes) == 0:
-        return np.zeros((np.prod(new_plot_sizes), factors.shape[0]), dtype=np.float64)
+        return np.zeros((np.prod(new_plot_sizes), effect_levels.size), dtype=np.float64)
 
     # Difference in plot sizes
     plot_sizes_diff = new_plot_sizes - plot_sizes
@@ -151,14 +149,16 @@ def extend_design(Y, plot_sizes, new_plot_sizes, factors):
     nalphas = np.cumprod(new_plot_sizes[::-1])[::-1]
 
     # Fix the levels 
-    for col in range(factors.shape[0]):
-        level = factors[col, 0]
+    for col in range(effect_levels.size):
+        level = effect_levels[col]
         if level != 0:
             size = nthetas[level]
             for grp in range(nalphas[level]):
                 Y[grp*size:(grp+1)*size, col] = Y[grp*size, col]
     
     return Y
+
+# TODO
 
 def terms_per_level(factors, model):
     """

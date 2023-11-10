@@ -42,7 +42,7 @@ cost_fn = discount_effect_trans_cost(costs, effect_types, base_cost)
 metric = Iopt()
 
 # Define prior
-# prior = pd.read_csv('example_design.csv')[list(effects.keys())].to_numpy()[:5]
+# prior = pd.read_csv('example_design.csv').iloc[:5]
 prior = None
 
 # Define multiple ratios

@@ -152,11 +152,6 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
         for coord, et in zip(coords, effect_types)
     ])
 
-    # Create the prior
-    prior = prior if prior is not None else np.empty((0, colstart[-1]))
-    if prior.shape[1] == effect_types.size:
-        prior = encode_design(prior, effect_types)
-
     # Fix the max cost
     if isinstance(max_cost, float):
         max_cost = np.array([max_cost], dtype=np.float64)
@@ -178,6 +173,20 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
         # Create transformation function for polynomial models
         Y2X = lambda Y: x2fx(Y, modelenc)
         
+    # Create the prior
+    if prior is not None:
+        # Convert from pandas to numpy
+        if isinstance(prior, pd.DataFrame):
+            if col_names is not None:
+                prior = prior[col_names]
+            prior = prior.to_numpy()
+        
+        # Possibly encode the design
+        if prior.shape[1] == effect_types.size:
+            prior = encode_design(prior, effect_types)
+    else:
+        prior = np.empty((0, colstart[-1]))
+    
     # Create the parameters
     params = Parameters(fn, max_cost, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X)
 
