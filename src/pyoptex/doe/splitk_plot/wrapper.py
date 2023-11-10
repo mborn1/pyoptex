@@ -5,7 +5,7 @@ from numba.typed import List
 from tqdm import tqdm
 
 from .optimize import optimize
-from .utils import Parameters, FunctionSet, level_grps, obs_var
+from .utils import Parameters, FunctionSet, State, level_grps, obs_var
 from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
 from ..utils.model import encode_model
 from ..constraints import no_constraints
@@ -13,12 +13,11 @@ from ..constraints import no_constraints
 def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     # Compute c-coefficients for all ratios
     c = np.zeros((ratios.shape[0], plot_sizes.size))
-    for j, ratios in enumerate(ratios):
+    for j, ratio in enumerate(ratios):
         c[j, 0] = 1
         for i in range(1, c.shape[1]):
-            c[j, i] = -ratios[i-1] * np.sum(thetas[:i] * c[j, :i]) / np.sum(ratios[:i+1-1] * thetas[:i+1])
+            c[j, i] = -ratio[i-1] * np.sum(thetas[:i] * c[j, :i]) / (thetas[0] + np.sum(ratio[:i] * thetas[1:i+1]))
     c = c[:, 1:]
-
     return c
 
 def default_fn(metric, constraints=no_constraints):
@@ -100,6 +99,9 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ra
         # Create transformation function for polynomial models
         Y2X = numba.njit(lambda Y: x2fx(Y, modelenc))
 
+    # Force types
+    plot_sizes = plot_sizes.astype(np.int64)
+
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
@@ -111,7 +113,7 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, grps=None, ra
 
 def create_splitk_plot_design(
         fn, effect_types, effect_levels, plot_sizes, grps=None, ratios=None, coords=None, model=None, Y2X=None,
-        n_tries=10, max_it=10000
+        n_tries=10, max_it=10000, validate=False
     ):
     assert n_tries > 0
 
@@ -122,22 +124,19 @@ def create_splitk_plot_design(
 
     # Main loop
     best_metric = -np.inf
-    best_Y = np.zeros((params.alphas[0], params.effect_types.size))
+    best_state = None
     for i in tqdm(range(n_tries)):
 
         # Optimize the design
-        Y, X = optimize(params, max_it)
-
-        # Compute metric
-        metric = params.fn.metric.call(Y, X)
+        Y, state = optimize(params, max_it, validate=validate)
 
         # Store the results
-        if metric > best_metric:
-            best_metric = metric
-            best_Y = np.copy(Y)
+        if state.metric > best_metric:
+            best_metric = state.metric
+            best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
 
     # Decode the final design
-    Y = decode_design(best_Y, params.effect_types, coords=params.coords)
+    Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
     Y = pd.DataFrame(Y, columns=col_names)
 
-    return Y, metric
+    return Y, best_state

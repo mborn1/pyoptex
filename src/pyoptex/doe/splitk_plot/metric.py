@@ -11,9 +11,6 @@ from .formulas import det_update_UD, inv_update_UD_no_P
 # TODO: priors and augmentation
 # TODO: plot_sizes = lowest first: note in documentation!
 
-# TODO: more metrics
-# TODO: validation
-
 class Dopt:
     """
     The D-optimality criterion.
@@ -24,7 +21,7 @@ class Dopt:
         self.Vinv = None
         self.Minv = None
 
-    def init(self, params, Y, X):
+    def init(self, Y, X, params):
         # Compute information matrix
         self.Vinv = params.Vinv
         M = X.T @ params.Vinv @ X
@@ -34,18 +31,17 @@ class Dopt:
         # Compute change in determinant
         du = 1
         for i in range(len(self.Minv)):
-            _du, _ = det_update(update.U[i], update.D[i], self.Minv[i])
+            _du, _ = det_update_UD(update.U[i], update.D[i], self.Minv[i])
             du *= _du
         du = np.power(du, 1/(X.shape[1] * len(self.Vinv)))
 
-        if du > 1:
-            # Update inv(M)
-            for i in range(len(self.Minv)):
-                self.Minv[i] -= inv_update_UD_no_P(U[i], D[i], self.Minv[i])
-            return True
-        
-        # Return no update
-        return False
+        # Return update as addition
+        return (du - 1) * update.old_metric
+
+    def accepted(self, Y, X, update):
+        # Update inv(M)
+        for i in range(len(self.Minv)):
+            self.Minv[i] -= inv_update_UD_no_P(update.U[i], update.D[i], self.Minv[i])
 
     def call(self, Y, X):
         M = X.T @ self.Vinv @ X

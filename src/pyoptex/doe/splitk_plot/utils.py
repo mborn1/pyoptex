@@ -5,9 +5,9 @@ from collections import namedtuple
 from ..constraints import no_constraints
 
 FunctionSet = namedtuple('FunctionSet', 'metric constraints')
-# Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords colstart c alphas thetas thetas_inv Vinv Y2X')
 Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords colstart c alphas thetas thetas_inv Vinv Y2X')
-Update = namedtuple('Update', 'level grp runs cols new_coord U D')
+Update = namedtuple('Update', 'level grp runs cols new_coord old_coord old_metric U D')
+State = namedtuple('State', 'Y X metric')
 
 def obs_var_Zs(plot_sizes):
     """
@@ -59,8 +59,8 @@ def obs_var(plot_sizes, ratios=None):
     # Compute variance-covariance of observations
     V = np.eye(alphas[0])
     for i in range(ratios.size):
-        Zi = ratios[i] * np.kron(np.eye(alphas[i+1]), np.ones((thetas[i+1], 1)))
-        V += Zi @ Zi.T
+        Zi = np.kron(np.eye(alphas[i+1]), np.ones((thetas[i+1], 1)))
+        V += ratios[i] * Zi @ Zi.T
 
     return V
 

@@ -3,10 +3,10 @@ import numpy as np
 
 # TODO: transform update formulas to 3d
 
-@numba.njit
+# @numba.njit
 def compute_update_UD(
         level, grp, Xi_star, X, 
-        plot_sizes, c, thetas=None, thetas_inv=None
+        plot_sizes, c, thetas, thetas_inv
     ):
     """
     Compute the update to the information matrix after making
@@ -18,11 +18,8 @@ def compute_update_UD(
     ----------
     
     """
-    # thetas and thetas inv
-    if thetas is None:
-        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    if thetas_inv is None:
-        thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/thetas[1:])))
+    # Append 1 again
+    c = np.concatenate(([1], c))
 
     # First runs
     jmp = thetas[level]

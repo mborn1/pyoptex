@@ -39,7 +39,7 @@ metric = Dopt()
 prior = None
 
 # Define multiple ratios
-ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
+ratios = np.stack((np.ones(1) * 10,))
 
 #########################################################################
 
@@ -51,9 +51,9 @@ fn = default_fn(metric)
 
 # Create design
 start_time = time.time()
-Y, metric = create_splitk_plot_design(
+Y, state = create_splitk_plot_design(
     fn, effect_types, effect_levels, plot_sizes, ratios=ratios,
-    model=model, n_tries=n_tries
+    model=model, n_tries=n_tries, validate=True
 )
 end_time = time.time()
 
@@ -63,6 +63,6 @@ end_time = time.time()
 Y.to_csv(f'example_design.csv', index=False)
 
 print('Completed optimization')
-print(f'Metric: {metric:.3f}')
+print(f'Metric: {state.metric:.3f}')
 print(f'Execution time: {end_time - start_time:.3f}')
 
