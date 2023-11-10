@@ -3,6 +3,7 @@ import numba
 from numba.typed import List
 
 from ..utils.design import encode_design
+from ..utils.init import init_single_unconstrained
 from ...utils.numba import numba_all_axis1
 
 @numba.njit
@@ -168,3 +169,39 @@ def initialize_feasible(params, complete=False, max_tries=10):
                     
     return Y, (Yenc, Xenc)
 
+def init_random(params, n=1, complete=False):
+    """
+    Initialize a design with `n` randomly sampled runs. They must
+    be within the constraints.
+
+    Parameters
+    ----------
+    params : :py:class:`Parameters <splitk_plot.utils.Parameters>`
+        The simulation parameters.
+    n : int
+        The number of runs
+    complete : bool
+        False means use the coordinates and prior specified in params, otherwise, no
+        coords or prior are used. Can be used to perform a complete sample of the design space.
+    
+    Returns
+    -------
+    run : np.array(2d)
+        The resulting design.
+    """
+    # Initialize
+    run = np.zeros((n, params.colstart[-1]), dtype=np.float64)
+    invalid = np.ones(n, dtype=np.bool_)
+
+    # Adjust for completeness
+    if not complete:
+        coords = params.coords
+    else:
+        coords = None
+
+    # Loop until all are valid
+    while np.any(invalid):
+        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
+        invalid[invalid] = params.fn.constraints(run[invalid])
+
+    return run

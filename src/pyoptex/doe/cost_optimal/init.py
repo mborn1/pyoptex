@@ -1,9 +1,8 @@
 import numpy as np
-import numba
 from tqdm import tqdm
 
 from ..utils.design import x2fx
-from ..utils.init import full_factorial
+from ..utils.init import full_factorial, init_single_unconstrained
 
 def greedy_cost_minimization(Y, params):
     """
@@ -56,49 +55,6 @@ def greedy_cost_minimization(Y, params):
 
 ################################################
 
-@numba.njit
-def _init(colstart, coords, run, effect_types):
-    """
-    Initialize a run at random. There are three possibilities:
-    'continuous' which is random between (-1, 1), categorical which is
-    a random level, or from coords which selects a random coordinate from
-    `coords`
-
-    Parameters
-    ----------
-    colstart : np.array(1d)
-        The starting column of each factor.
-    coords : list(np.array(2d) or None)
-        The coordinates to sample from.
-    run : np.array(1d)
-        Output buffer of the function. Also returned at the end.
-    effect_types : np.array(1d)
-        The type of each effect in case no coordinates are specified.
-    
-    Returns
-    -------
-    run : np.array(1d)
-        The randomly sampled run.
-    """
-    # Check if complete sampling
-    if coords is None:
-        for i in range(colstart.size - 1):
-            if effect_types[i] == 1:
-                # Sample continuous function
-                for j in range(run.shape[0]):
-                    run[:, colstart[i]] = np.random.rand(run.shape[0]) * 2 - 1
-            else:
-                # Sample categorical variable
-                coords_ = np.concatenate((np.eye(effect_types[i]-1), -np.ones((1, effect_types[i]-1))))
-                for j in range(run.shape[0]):
-                    run[j, colstart[i]:colstart[i+1]] = coords_[np.random.randint(effect_types[i])]
-    else:
-        # Coords based sampling
-        for i in range(colstart.size - 1):
-            for j in range(run.shape[0]):
-                run[j, colstart[i]:colstart[i+1]] = coords[i][np.random.randint(len(coords[i]))]
-    return run
-
 def init(params, n=1, complete=False):
     """
     Initialize a design with `n` randomly sampled runs. They must
@@ -134,7 +90,7 @@ def init(params, n=1, complete=False):
 
     # Loop until all are valid
     while np.any(invalid):
-        run[invalid] = _init(params.colstart, coords, run[invalid], params.effect_types)
+        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
         invalid[invalid] = params.fn.constraints(run[invalid])
 
     return run

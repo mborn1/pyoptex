@@ -27,5 +27,5 @@ def validate_state(state, params):
     assert np.all(state.X == params.Y2X(state.Y)), 'X does not match Y2X(Y)'
 
     # Validate metric
-    new_metric = params.fn.metric.call(state.Y, state.X)
+    new_metric = params.fn.metric.call(state.Y, state.X, params)
     assert (state.metric - new_metric) / new_metric < 1e-6, f'The metric does not match: {state.metric} -- {new_metric}'

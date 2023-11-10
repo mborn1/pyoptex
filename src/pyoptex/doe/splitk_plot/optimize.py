@@ -22,7 +22,8 @@ def optimize(params, max_it=10000, validate=False):
 
     # Initialization
     params.fn.metric.init(Y, X, params)
-    state = State(Y, X, params.fn.metric.call(Y, X))
+    metric = params.fn.metric.call(Y, X, params)
+    state = State(Y, X, metric)
 
     # Make sure we are not stuck in finite loop
     for it in range(max_it):

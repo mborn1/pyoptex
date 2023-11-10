@@ -9,7 +9,7 @@ import time
 
 # Library imports
 from pyoptex.doe.splitk_plot import create_splitk_plot_design, default_fn
-from pyoptex.doe.splitk_plot.metric import Dopt
+from pyoptex.doe.splitk_plot.metric import Dopt, Iopt, Aopt
 from pyoptex.doe.utils.model import partial_rsm_names
 
 np.random.seed(42)
@@ -32,7 +32,7 @@ model = partial_rsm_names({key: value[1] for key, value in effects.items()})
 #########################################################################
 
 # Define the metric
-metric = Dopt()
+metric = Aopt()
 
 # Define prior
 prior = (pd.read_csv('example_design.csv'), np.array([4, 6]))

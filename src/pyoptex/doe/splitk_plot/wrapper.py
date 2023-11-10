@@ -140,6 +140,9 @@ def create_splitk_plot_design(
         fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X
     )
 
+    # Pre initialize metric
+    params.fn.metric.preinit(params)
+
     # Main loop
     best_metric = -np.inf
     best_state = None
