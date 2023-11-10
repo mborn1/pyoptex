@@ -19,7 +19,7 @@ def validate_UD(U, D, Xi_star, runs, unstable_state, params):
 
     # Validate updates with new M
     for i in range(len(M)):
-        Mstar = M[i] + U[i].T @ np.diag(D[i]) @ U[i]
+        Mstar = M[i] + U.T @ np.diag(D[i]) @ U
         assert np.linalg.norm(Mstar - X.T @ Vinv[i] @ X) < 1e-6
     
 def validate_state(state, params):

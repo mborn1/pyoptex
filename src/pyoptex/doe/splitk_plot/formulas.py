@@ -1,8 +1,6 @@
 import numba
 import numpy as np
 
-# TODO: transform update formulas to 3d
-
 @numba.njit
 def compute_update_UD(
         level, grp, Xi_star, X, 
@@ -18,9 +16,6 @@ def compute_update_UD(
     ----------
     
     """
-    # Append 1 again
-    c = np.concatenate((np.array([1], dtype=np.float64), c))
-
     # First runs
     jmp = thetas[level]
     runs = slice(grp*jmp, (grp+1)*jmp)
@@ -31,13 +26,13 @@ def compute_update_UD(
     # Initialize U and D
     star_offset = int(Xi.shape[0] * (1 + thetas_inv[level])) + (plot_sizes.size - level - 1)
     U = np.zeros((2*star_offset, Xi.shape[1]))
-    D = np.zeros(2*star_offset)
+    D = np.zeros((len(c), 2*star_offset))
 
     # Store level-0 results
     U[:Xi.shape[0]] = Xi
     U[star_offset: star_offset + Xi.shape[0]] = Xi_star
-    D[:Xi.shape[0]] = -np.ones(Xi.shape[0])
-    D[star_offset: star_offset + Xi.shape[0]] = np.ones(Xi.shape[0])
+    D[:, :Xi.shape[0]] = -np.ones(Xi.shape[0])
+    D[:, star_offset: star_offset + Xi.shape[0]] = np.ones(Xi.shape[0])
     co = Xi.shape[0]
 
     # Loop before (= summations)
@@ -54,8 +49,8 @@ def compute_update_UD(
             coe = co + Xi_sum.shape[0]
             U[co:coe] = Xi_sum
             U[star_offset+co: star_offset+coe] = Xi_star_sum
-            D[co:coe] = -c[i]
-            D[star_offset+co: star_offset+coe] = c[i]
+            D[:, co:coe] = -c[:, i-1]
+            D[:, star_offset+co: star_offset+coe] = c[:, i-1]
             co = coe
 
             # Reshape for next iteration
@@ -69,8 +64,8 @@ def compute_update_UD(
         # Store results
         U[co] = Xi
         U[star_offset+co] = Xi_star
-        D[co] = -c[level]
-        D[star_offset+co] = c[level]
+        D[:, co] = -c[:, level-1]
+        D[:, star_offset+co] = c[:, level-1]
         co += 1
 
     # Flatten the arrays for the next step
@@ -90,8 +85,8 @@ def compute_update_UD(
         # Store the results
         U[co] = r
         U[star_offset+co] = r_star
-        D[co] = -c[j+1]
-        D[star_offset+co] = c[j+1]
+        D[:, co] = -c[:, j]
+        D[:, star_offset+co] = c[:, j]
         co += 1
 
         # Set variables for next iteration
@@ -132,13 +127,21 @@ def det_update_UD(U, D, Minv):
     P : np.array
         The P matrix of the update
     """
-    # Compute P
-    P = U @ Minv @ U.T
-    for i in range(P.shape[0]):
-        P[i, i] += 1/D[i]
+    # Create updates
+    P = np.zeros((len(D), D.shape[1], D.shape[1]))
+    updates = np.zeros(len(D), dtype=np.float64)
+
+    for j in range(len(D)):
+        # Compute P
+        P[j] = U @ Minv[j] @ U.T
+        for i in range(P.shape[1]):
+            P[j, i, i] += 1/D[j, i]
+
+        # Compute update
+        updates[j] = np.linalg.det(P[j]) * np.prod(D[j])
 
     # Compute determinant update
-    return np.linalg.det(P) * np.prod(D), P
+    return updates, P
 
 @numba.njit
 def inv_update_UD(U, D, Minv, P):
@@ -174,11 +177,19 @@ def inv_update_UD(U, D, Minv, P):
     Mup : np.array
         The update to the inverse matrix.
     """
-    return (Minv @ U.T) @ np.linalg.solve(P, U @ Minv)
+    Mup = np.zeros_like(Minv)
+    for i in range(len(Minv)):
+        MU = Minv[i] @ U.T
+        Mup[i] = (MU) @ np.linalg.solve(P[i], MU.T)
+    return Mup
 
 @numba.njit
 def inv_update_UD_no_P(U, D, Minv):
-    P = U @ Minv @ U.T
-    for i in range(P.shape[0]):
-        P[i, i] += 1/D[i]
+    # Compute P
+    P = np.zeros((len(D), D.shape[1], D.shape[1]))
+    for j in range(len(D)):
+        P[j] = U @ Minv[j] @ U.T
+        for i in range(P.shape[1]):
+            P[j, i, i] += 1/D[j, i]
+    
     return inv_update_UD(U, D, Minv, P)

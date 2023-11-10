@@ -65,12 +65,10 @@ def optimize(params, max_it=10000, validate=False):
                             Xi_star = params.Y2X(state.Y[runs])
 
                             # Compute updates
-                            UD = [compute_update_UD(
-                                level, grp, Xi_star, state.X, 
-                                params.plot_sizes, c, params.thetas, params.thetas_inv
-                            ) for c in params.c]
-                            U = np.array([UD[i][0] for i in range(len(UD))])
-                            D = np.array([UD[i][1] for i in range(len(UD))])
+                            U, D = compute_update_UD(
+                                level, grp, Xi_star, state.X,
+                                params.plot_sizes, params.c, params.thetas, params.thetas_inv
+                            )
 
                             # Check for validation
                             if validate:

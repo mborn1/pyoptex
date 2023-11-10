@@ -39,7 +39,7 @@ metric = Dopt()
 prior = None
 
 # Define multiple ratios
-ratios = np.stack((np.ones(1) * 10,))
+ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
 
 #########################################################################
 
