@@ -8,10 +8,6 @@ from .init import init_random
 from .formulas import det_update_UD, inv_update_UD, inv_update_UD_no_P
 from ..utils.comp import outer_integral
 
-# TODO: covariates
-# TODO: blocking
-# TODO: plot_sizes = lowest first: note in documentation!
-
 class Dopt:
     """
     The D-optimality criterion.
