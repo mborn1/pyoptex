@@ -10,6 +10,7 @@ import time
 # Library imports
 from pyoptex.doe.splitk_plot import create_splitk_plot_design, default_fn
 from pyoptex.doe.splitk_plot.metric import Dopt, Iopt, Aopt
+from pyoptex.doe.splitk_plot.cov import cov_time_trend, cov_double_time_trend
 from pyoptex.doe.utils.model import partial_rsm_names
 
 np.random.seed(42)
@@ -42,6 +43,11 @@ prior = None
 # Define multiple ratios
 ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
 
+# Covariate
+# cov = cov_time_trend(plot_sizes[1], np.prod(plot_sizes), model)
+# cov = cov_double_time_trend(plot_sizes[1], plot_sizes[0], np.prod(plot_sizes), model)
+cov = None
+
 #########################################################################
 
 # Parameter initialization
@@ -53,7 +59,7 @@ fn = default_fn(metric)
 # Create design
 start_time = time.time()
 Y, state = create_splitk_plot_design(
-    fn, effect_types, effect_levels, plot_sizes, ratios=ratios,
+    fn, effect_types, effect_levels, plot_sizes, ratios=ratios, cov=cov,
     model=model, prior=prior, n_tries=n_tries, validate=False
 )
 end_time = time.time()

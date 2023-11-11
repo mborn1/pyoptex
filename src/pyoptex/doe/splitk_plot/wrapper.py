@@ -23,11 +23,13 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
 def default_fn(metric, constraints=no_constraints):
     return FunctionSet(metric, constraints)
 
-def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None):
+def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None):
     """
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
         a continuous factor, anything higher is a categorical factor with that many levels.
+    Y2X : func
+        Function to transform Y (with any covariates) to X
     """
     assert model is not None or Y2X is not None, 'Either a polynomial model or Y2X function must be provided'
 
@@ -88,11 +90,49 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
                 col_names = model.columns
                 model = model.to_numpy()
 
+        # Add covariates
+        if cov is not None:
+            # Expand covariates
+            cov, model_cov, effect_types_cov = cov
+
+            # Extend effect types
+            cov_col_names = None
+            if isinstance(effect_types_cov, dict):
+                cov_col_names = list(effect_types_cov.keys())
+                effect_types_cov = np.array(list(effect_types_cov.values()))
+            
+            # Parse covariates model
+            if isinstance(model_cov, pd.DataFrame):
+                # Sort the column names
+                if col_names is not None:
+                    if cov_col_names is not None:
+                        cov_col_names = [col for col in model_cov.columns if col not in col_names]
+                    model_cov = model_cov[[*col_names, *cov_col_names]]
+                model_cov = model_cov.to_numpy()
+
+            # Possibly encode cov
+            cov = encode_design(cov, effect_types_cov)
+            
+            # Extend parameters
+            et = np.concatenate((effect_types, effect_types_cov))
+            model = np.concatenate((model, np.zeros((model.shape[0], model_cov.shape[1] - model.shape[1]))), axis=1)
+            model = np.concatenate((model, model_cov), axis=0)
+        else:
+            # Default effect types
+            et = effect_types
+
         # Encode model
-        modelenc = encode_model(model, effect_types)
+        modelenc = encode_model(model, et)
 
         # Create transformation function for polynomial models
         Y2X = numba.njit(lambda Y: x2fx(Y, modelenc))
+    else:
+        # Make sure cov only specifies the ndarray
+        if not isinstance(cov, np.ndarray):
+            raise ValueEror(
+                'When Y2X is specified, the model must already include covariates and '
+                'cov is the array of elements to prepend to Y'
+            )
 
     # Determine a prior
     if prior is not None:
@@ -124,20 +164,20 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X
+        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X, cov
     )
     
     return params, col_names
 
 def create_splitk_plot_design(
-        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None,
+        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None,
         n_tries=10, max_it=10000, validate=False
     ):
     assert n_tries > 0
 
     # Extract the parameters
     params, col_names = create_parameters(
-        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X
+        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X, cov
     )
 
     # Pre initialize metric

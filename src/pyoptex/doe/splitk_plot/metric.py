@@ -78,6 +78,10 @@ class Aopt:
         # Compute update to metric (double negation with update)
         metric_update = np.mean(np.trace(self.Mup, axis1=-2, axis2=-1))
 
+        # Numerical instability (negative trace of variances)
+        if metric_update > -update.old_metric:
+            metric_update = -np.inf
+
         return metric_update
 
     def accepted(self, Y, X, update):
