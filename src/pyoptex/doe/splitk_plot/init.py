@@ -5,8 +5,9 @@ from numba.typed import List
 from ..utils.design import encode_design
 from ..utils.init import init_single_unconstrained
 from ...utils.numba import numba_all_axis1
+from ..._profile import profile
 
-@numba.njit
+@numba.njit(cache=True)
 def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, complete=False):
     """
     This function is created to avoid possible recursion. Numba has issues with it.
@@ -65,7 +66,7 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
 
     return Y
 
-@numba.njit
+@numba.njit(cache=True)
 def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plot_sizes, constraints, Y, complete=False):
     # Check which runs are invalid
     invalid_run = constraints(Y)
@@ -117,6 +118,7 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
 
     return Y
 
+@profile
 def initialize_feasible(params, complete=False, max_tries=10):
     """
     Generate a random initial design for split^k plot problem.

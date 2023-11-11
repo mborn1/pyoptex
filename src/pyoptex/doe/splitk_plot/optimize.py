@@ -5,7 +5,9 @@ from .utils import Update, State
 from .formulas import compute_update_UD
 from .init import initialize_feasible
 from .validation import validate_state, validate_UD
+from ..._profile import profile
 
+@profile
 def optimize(params, max_it=10000, validate=False):
     """
     Optimize a model iteratively using the coordinate exchange algorithm.

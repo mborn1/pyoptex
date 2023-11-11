@@ -8,7 +8,8 @@ from .init import init_random
 from .formulas import det_update_UD, inv_update_UD, inv_update_UD_no_P
 from ..utils.comp import outer_integral
 
-# TODO: covariances
+# TODO: covariates
+# TODO: blocking
 # TODO: plot_sizes = lowest first: note in documentation!
 
 class Dopt:
@@ -68,7 +69,11 @@ class Aopt:
 
     def update(self, Y, X, update):
         # Compute update to Minv
-        self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+        try:
+            self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+        except np.linalg.LinAlgError as e:
+            # Infeasible design
+            return -np.inf
 
         # Compute update to metric (double negation with update)
         metric_update = np.mean(np.trace(self.Mup, axis1=-2, axis2=-1))
@@ -132,10 +137,18 @@ class Iopt:
 
     def update(self, Y, X, update):
         # Compute update to Minv
-        self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+        try:
+            self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+        except np.linalg.LinAlgError as e:
+            # Infeasible design
+            return -np.inf
 
         # Compute update to metric (double negation with update)
         metric_update = np.mean(np.sum(self.Mup * self.moments.T, axis=(1, 2))) / self.intdx
+
+        # Numerical instability (negative variance)
+        if metric_update > -update.old_metric:
+            metric_update = -np.inf
 
         return metric_update
 

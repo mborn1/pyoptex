@@ -35,9 +35,9 @@ model = partial_rsm_names({key: value[1] for key, value in effects.items()})
 metric = Aopt()
 
 # Define prior
-prior = (pd.read_csv('example_design.csv'), np.array([4, 6]))
-plot_sizes = np.array([5, 6])
-# prior = None
+# prior = (pd.read_csv('example_design.csv'), np.array([4, 6]))
+# plot_sizes = np.array([5, 6])
+prior = None
 
 # Define multiple ratios
 ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
@@ -45,7 +45,7 @@ ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
 #########################################################################
 
 # Parameter initialization
-n_tries = 100
+n_tries = 1000
 
 # Create the set of operators
 fn = default_fn(metric)
@@ -54,7 +54,7 @@ fn = default_fn(metric)
 start_time = time.time()
 Y, state = create_splitk_plot_design(
     fn, effect_types, effect_levels, plot_sizes, ratios=ratios,
-    model=model, prior=prior, n_tries=n_tries, validate=True
+    model=model, prior=prior, n_tries=n_tries, validate=False
 )
 end_time = time.time()
 
