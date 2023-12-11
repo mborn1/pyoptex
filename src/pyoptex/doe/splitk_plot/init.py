@@ -7,7 +7,7 @@ from ..utils.init import init_single_unconstrained
 from ...utils.numba import numba_all_axis1
 from ..._profile import profile
 
-@numba.njit(cache=True)
+@numba.njit
 def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, complete=False):
     """
     This function is created to avoid possible recursion. Numba has issues with it.
@@ -66,7 +66,7 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
 
     return Y
 
-@numba.njit(cache=True)
+@numba.njit
 def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plot_sizes, constraints, Y, complete=False):
     # Check which runs are invalid
     invalid_run = constraints(Y)
