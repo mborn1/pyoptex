@@ -14,7 +14,33 @@ def compute_update_UD(
 
     Parameters
     ----------
-    
+    level: int
+        The stratum at which the update occurs (0 for the lowest).
+    grp : int
+        The group within this stratum for which the update occurs.
+    Xi_star : np.array(2d)
+        The new runs after the update.
+    X : np.array(2d)
+        The total design matrix X.
+    plot_sizes : np.array(1d)
+        The size of each stratum b_i.
+    c : np.array(2d)
+        The coefficients c (every row specifies one set of a priori variance ratios). The second dimension
+        is added for Bayesian approaches.
+    thetas : np.array(1d)
+        The array of thetas.
+        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    thetas_inv : np.array(1d)
+        The array of 1/thetas.
+        thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/thetas[1:])))
+
+    Returns
+    -------
+    U : np.array(2d)
+        The U-matrix of the update
+    D : np.array(2d)
+        The set of diagonal matrices corresponding to the c parameter. To first row of
+        D specifies a diagonal matrix corresponding to the first row of c.
     """
     # First runs
     jmp = thetas[level]
