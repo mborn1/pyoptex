@@ -45,7 +45,8 @@ def validate_state(state, params, eps=1e-6):
     metric = params.fn.metric.call(state.Y, state.X, state.Zs, state.Vinv, state.costs)
     if (metric == 0 and state.metric == 0) \
         or (np.isnan(metric) and np.isnan(state.metric))\
-        or (np.isinf(metric) and np.isinf(state.metric)):
+        or (np.isinf(metric) and np.isinf(state.metric))\
+        or (np.any(cost_Y > params.max_cost) and np.isinf(state.metric)):
         warnings.warn(f'Metric is {state.metric}')
     else:
         assert np.abs((state.metric - metric) / metric) < eps, f'{state.metric} -- {metric}'

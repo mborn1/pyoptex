@@ -95,7 +95,7 @@ def init(params, n=1, complete=False):
 
     return run
 
-def init_feasible(params, max_tries=3, max_size=None):
+def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     """
     Generate a random initial and feasible design. From a random
     permutation of a full factorial design, the runs are dropped one-by-one
@@ -110,6 +110,8 @@ def init_feasible(params, max_tries=3, max_size=None):
         The maximum number of tries before throwing an error no initial design can be found.
     max_size : int
         The maximum number of runs before iteratively removing them.
+    force_cost_feasible : bool
+        Force a final cost feasibility check
 
     Returns
     -------
@@ -167,7 +169,7 @@ def init_feasible(params, max_tries=3, max_size=None):
         # Fill it up
         X = params.Y2X(Y)
         cost_Y = np.sum(params.fn.cost(Y), axis=1)
-        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and np.all(cost_Y <= params.max_cost)
+        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and (np.all(cost_Y <= params.max_cost) or not force_cost_feasible)
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:

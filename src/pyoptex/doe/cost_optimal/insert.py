@@ -166,12 +166,6 @@ def insert_optimal(new_run, state, params):
     best_metric = 0
     best_state = state
 
-    # Create the metric function (edge case for nan and inf)
-    if np.isinf(state.metric) or np.isnan(state.metric):
-        fn_metric_temp = lambda staten: 1 / (1 + np.mean((staten.cost_Y - state.cost_Y) / params.max_cost))
-    else:
-        fn_metric_temp = lambda staten: (1 + (staten.metric - state.metric) / state.metric) / (1 + np.mean((staten.cost_Y - state.cost_Y) / params.max_cost))
-
     # Loop over all possible positions
     for k in range(state.Y.shape[0], nprior-1, -1):
         # Insert run
@@ -199,7 +193,7 @@ def insert_optimal(new_run, state, params):
         staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn)
 
         # Target
-        metric_temp = fn_metric_temp(staten)
+        metric_temp = (staten.metric - state.metric) / np.mean((staten.cost_Y - state.cost_Y) / params.max_cost)
 
         # Maximize
         if metric_temp > best_metric:

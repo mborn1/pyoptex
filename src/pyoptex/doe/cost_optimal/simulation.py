@@ -85,7 +85,8 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
 
     # Initialize best solution
     best_state = State(np.copy(Y), np.copy(X), tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs), 
-                       np.copy(Vinv), metric, np.copy(cost_Y), np.copy(costs))
+                       np.copy(Vinv), metric if not np.any(cost_Y > params.max_cost) else -np.inf,
+                       np.copy(cost_Y), np.copy(costs))
     validate and validate_state(best_state, params)
 
     #######################################################################
@@ -111,7 +112,8 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
             validate and validate_state(new_state, params)
 
         # Accept
-        accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand()
+        cost_transition = (np.all(new_state.cost_Y <= params.max_cost) and np.any(state.cost_Y > params.max_cost))
+        accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() or cost_transition
         if accept:
             # Update the state and temperature
             state = new_state
@@ -125,8 +127,9 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
                 state.metric, state.cost_Y, state.costs
             )
 
-            if state.metric > best_state.metric:
-                # Set the best state
+            # Set the best state
+            cost_transition = (np.all(state.cost_Y <= params.max_cost) and np.any(best_state.cost_Y > params.max_cost))
+            if state.metric > best_state.metric or cost_transition:
                 best_state = state
         else:
             params.fn.temp.rejected()

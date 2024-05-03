@@ -81,12 +81,6 @@ def remove_optimal_onebyone(state, params):
         best_metric = np.inf
         best_state = state
 
-        # Create the metric function (edge case for nan and inf)
-        if np.isinf(state.metric) or np.isnan(state.metric):
-            fn_metric_temp = lambda staten: 1 / (1 + np.mean((state.cost_Y - staten.cost_Y) / params.max_cost))
-        else:
-            fn_metric_temp = lambda staten: (1 + (state.metric - staten.metric) / state.metric) / (1 + np.mean((state.cost_Y - staten.cost_Y) / params.max_cost))
-            
         # Loop over all available runs
         for k in range(nprior, len(state.Y)):
             # Set keep to false
@@ -117,7 +111,7 @@ def remove_optimal_onebyone(state, params):
             staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn)
                 
             # Compute metric loss per cost
-            metric_temp = fn_metric_temp(staten)
+            metric_temp = (state.metric - staten.metric) / np.mean((state.cost_Y - staten.cost_Y) / params.max_cost)
 
             # Minimize
             if metric_temp < best_metric or np.isinf(best_metric):
