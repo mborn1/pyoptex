@@ -184,16 +184,19 @@ def insert_optimal(new_run, state, params):
 
         # Compute cost increase
         costsn = params.fn.cost(Yn)
-        cost_Yn = np.sum(costsn, axis=1)
+        cost_Yn = np.array([np.sum(c) for c, _, _ in costsn])
+        max_cost = np.array([m for _, m, _ in costsn])
 
         # Compute metric
         metricn = params.fn.metric.call(Yn, Xn, Zsn, Vinvn, costsn)
 
         # Create the new state
-        staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn)
+        staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn, max_cost)
 
         # Target
-        metric_temp = (staten.metric - state.metric) / np.mean((staten.cost_Y - state.cost_Y) / params.max_cost)
+        mt = np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y) \
+                - np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y)
+        metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))
 
         # Maximize
         if metric_temp > best_metric:

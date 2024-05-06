@@ -68,7 +68,7 @@ def default_fn(
     # Return the function set
     return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints)
 
-def create_parameters(effect_types, max_cost, fn, model=None, coords=None, 
+def create_parameters(effect_types, fn, model=None, coords=None, 
                         ratios=None, grouped_cols=None, prior=None, Y2X=None):
     """
     Creates the parameters object by preprocessing some elements. This is a simple utility function
@@ -86,8 +86,6 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
         a continuous factor, anything higher is a categorical factor with that many levels.
-    max_cost : float or np.array(1d)
-        The maximum cost(s).
     fn : :py:class:`FunctionSet`
         A set of operators for the algorithm. Must be specified up front.
     model : pd.DataFrame or np.array(2d)
@@ -152,10 +150,6 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
         for coord, et in zip(coords, effect_types)
     ])
 
-    # Fix the max cost
-    if isinstance(max_cost, float):
-        max_cost = np.array([max_cost], dtype=np.float64)
-
     # Set the Y2X function
     if Y2X is None:
 
@@ -188,11 +182,11 @@ def create_parameters(effect_types, max_cost, fn, model=None, coords=None,
         prior = np.empty((0, colstart[-1]))
     
     # Create the parameters
-    params = Parameters(fn, max_cost, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X)
+    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X)
 
     return params, col_names
 
-def create_cost_optimal_design(effect_types, max_cost, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
+def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
                      Y2X=None, nreps=1, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
@@ -212,8 +206,6 @@ def create_cost_optimal_design(effect_types, max_cost, fn, model=None, coords=No
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
         a continuous factor, anything higher is a categorical factor with that many levels.
-    max_cost : float or np.array(1d)
-        The maximum cost(s).
     fn : :py:class:`FunctionSet`
         A set of operators for the algorithm. Must be specified up front.
     model : pd.DataFrame or np.array(2d)
@@ -249,7 +241,7 @@ def create_cost_optimal_design(effect_types, max_cost, fn, model=None, coords=No
 
     # Extract the parameters
     params, col_names = create_parameters(
-        effect_types, max_cost, fn, model, coords, ratios, grouped_cols, prior, Y2X
+        effect_types, fn, model, coords, ratios, grouped_cols, prior, Y2X
     )
 
     # Simulation

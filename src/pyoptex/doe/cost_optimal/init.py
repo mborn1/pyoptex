@@ -27,16 +27,13 @@ def greedy_cost_minimization(Y, params):
     chosen = np.zeros(len(Y), dtype=np.bool_)
     chosen[:nprior] = True
 
-    # Determine number of cost objectives
-    nbcost = len(params.max_cost)
-
     # Iteratively use greedy cost minimization
     for i in range(nprior, len(Y)):
         # Find parameters that are not chosen
         non_chosen = np.where(~chosen)[0]
 
-        # Initialize all costs
-        costs = np.zeros((non_chosen.size, nbcost, i+1))
+        # # Initialize all costs
+        costs = [None] * non_chosen.size
         
         # Compute all costs
         for k in range(non_chosen.size):
@@ -44,7 +41,7 @@ def greedy_cost_minimization(Y, params):
             costs[k] = params.fn.cost(Yn[:i+1])
 
         # Compute the total cost of each operation
-        costs_Y = np.sum(np.sum(costs, axis=-1) / params.max_cost, axis=-1)
+        costs_Y = np.array([np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost]) for cost in costs])
         min_cost_idx = non_chosen[np.argmin(costs_Y)]
 
         # Chose the index
@@ -164,12 +161,15 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         Y = Y[keep]
 
         # Reorder for cost optimization (greedy)
-        Y = greedy_cost_minimization(Y, params)
+        if tries < max_tries:
+            Y = greedy_cost_minimization(Y, params)
 
         # Fill it up
         X = params.Y2X(Y)
-        cost_Y = np.sum(params.fn.cost(Y), axis=1)
-        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and (np.all(cost_Y <= params.max_cost) or not force_cost_feasible)
+        costs = params.fn.cost(Y)
+        cost_Y = np.array([np.sum(c) for c, _, _ in costs])
+        max_cost = np.array([m for _, m, _ in costs])
+        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:

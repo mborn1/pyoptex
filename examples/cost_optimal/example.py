@@ -36,7 +36,7 @@ costs = np.array([c for (_, _, _, c) in effects.values()])
 # Cost function
 max_cost = np.array([3*4*60])
 base_cost = 5
-cost_fn = discount_effect_trans_cost(costs, effect_types, base_cost)
+cost_fn = discount_effect_trans_cost(costs, effect_types, max_cost, base_cost)
 
 # Define the metric
 metric = Iopt()
@@ -60,7 +60,7 @@ fn = default_fn(nsims, cost_fn, metric)
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    effect_types, max_cost, fn, model=model, 
+    effect_types, fn, model=model, 
     nsims=nsims, nreps=nreps, grouped_cols=grouped_cols, 
     prior=prior, ratios=ratios,
     validate=True

@@ -117,10 +117,11 @@ def ce_metric(state, params):
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y)
-                        new_cost = np.sum(new_costs, axis=1)
+                        new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
+                        max_cost = np.array([m for _, m, _ in new_costs])
 
                         # Check constraints
-                        if np.all(new_cost <= params.max_cost):
+                        if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(state.Zs[col], state.Y[:, params.colstart[col]:params.colstart[col+1]], row, row+1)
                             if len(b) == 0:
@@ -146,7 +147,7 @@ def ce_metric(state, params):
                         Xrow = np.copy(state.X[row])
 
                         # Update the state
-                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs)
+                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
 
                     else:
                         # Reset values
@@ -246,9 +247,10 @@ def ce_struct_metric(state, params):
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y)
-                        new_cost = np.sum(new_costs, axis=1)
+                        new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
+                        max_cost = np.array([m for _, m, _ in new_costs])
                         
-                        if np.all(new_cost <= params.max_cost):
+                        if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(state.Zs[col], state.Y[:, params.colstart[col]:params.colstart[col+1]], rows[0], rows[-1]+1)
                             if len(b) == 0:
@@ -274,7 +276,7 @@ def ce_struct_metric(state, params):
                         Xrows = np.copy(state.X[rows])
 
                         # Update the state
-                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs)
+                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
                     else:
                         # Reset values
                         state.Y[rows, params.colstart[col]:params.colstart[col+1]] = Ycoord

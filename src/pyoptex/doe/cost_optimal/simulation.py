@@ -20,7 +20,10 @@ def _validate_prior(params):
     """
     assert params.prior.shape[1] == params.colstart[-1], 'Prior does not have the correct shape'
     assert not np.any(params.fn.constraints(params.prior)), 'Prior contains constraint violating runs'
-    assert np.all(np.sum(params.fn.cost(params.prior), axis=-1) < params.max_cost), 'Prior exceeds maximum cost'
+    costs = params.fn.cost(params.prior)
+    cost_Y = np.array([np.sum(c) for c, _, _ in costs])
+    max_cost = np.array([m for _, m, _ in costs])
+    assert np.all(cost_Y < max_cost), 'Prior exceeds maximum cost'
 
 @profile
 def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
@@ -78,15 +81,16 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
     Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y)
-    cost_Y = np.sum(costs, axis=1)
+    cost_Y = np.array([np.sum(c) for c, _, _ in costs])
+    max_cost = np.array([m for _, m, _ in costs])
     metric = params.fn.metric.call(Y, X, Zs, Vinv, costs)
-    state = State(Y, X, Zs, Vinv, metric, cost_Y, costs)
+    state = State(Y, X, Zs, Vinv, metric, cost_Y, costs, max_cost)
     validate and validate_state(state, params)
 
     # Initialize best solution
     best_state = State(np.copy(Y), np.copy(X), tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs), 
-                       np.copy(Vinv), metric if not np.any(cost_Y > params.max_cost) else -np.inf,
-                       np.copy(cost_Y), np.copy(costs))
+                       np.copy(Vinv), metric if not np.any(cost_Y > max_cost) else -np.inf,
+                       np.copy(cost_Y), [(np.copy(c), m, np.copy(idx)) for c, m, idx in costs], np.copy(max_cost))
     validate and validate_state(best_state, params)
 
     #######################################################################
@@ -112,7 +116,7 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
             validate and validate_state(new_state, params)
 
         # Accept
-        cost_transition = (np.all(new_state.cost_Y <= params.max_cost) and np.any(state.cost_Y > params.max_cost))
+        cost_transition = (np.all(new_state.cost_Y <= new_state.max_cost) and np.any(state.cost_Y > state.max_cost))
         accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() or cost_transition
         if accept:
             # Update the state and temperature
@@ -124,11 +128,11 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
             state = State(
                 state.Y, state.X, state.Zs, 
                 np.array([np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) for ratios in params.ratios]),
-                state.metric, state.cost_Y, state.costs
+                state.metric, state.cost_Y, state.costs, state.max_cost
             )
 
             # Set the best state
-            cost_transition = (np.all(state.cost_Y <= params.max_cost) and np.any(best_state.cost_Y > params.max_cost))
+            cost_transition = (np.all(state.cost_Y <= state.max_cost) and np.any(best_state.cost_Y > best_state.max_cost))
             if state.metric > best_state.metric or cost_transition:
                 best_state = state
         else:

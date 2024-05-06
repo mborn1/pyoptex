@@ -35,18 +35,24 @@ def validate_state(state, params, eps=1e-6):
 
     # Validate costs
     costs = params.fn.cost(state.Y)
-    assert np.all(state.costs == costs), f'{state.costs - costs}'
 
     # Validate cost_Y
-    cost_Y = np.sum(state.costs, axis=1)
+    cost_Y = np.array([np.sum(c) for c, _, _ in costs])
     assert np.all(state.cost_Y == cost_Y), f'{state.cost_Y} -- {cost_Y}'
+
+    # Validate max costs
+    max_cost = np.array([m for _, m, _ in costs])
+    assert np.all(state.max_cost == max_cost), f'{state.max_cost} -- {max_cost}'
+
+    # Validate cost indices
+    assert all(np.all(costs[i][2] == state.costs[i][2]) for i in range(len(costs))), f'{[idx for _, _, idx in state.costs]} -- {[idx for _, _, idx in costs]}'
 
     # Validate metric
     metric = params.fn.metric.call(state.Y, state.X, state.Zs, state.Vinv, state.costs)
     if (metric == 0 and state.metric == 0) \
         or (np.isnan(metric) and np.isnan(state.metric))\
         or (np.isinf(metric) and np.isinf(state.metric))\
-        or (np.any(cost_Y > params.max_cost) and np.isinf(state.metric)):
+        or (np.any(cost_Y > max_cost) and np.isinf(state.metric)):
         warnings.warn(f'Metric is {state.metric}')
     else:
         assert np.abs((state.metric - metric) / metric) < eps, f'{state.metric} -- {metric}'

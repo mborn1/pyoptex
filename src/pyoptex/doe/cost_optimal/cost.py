@@ -16,11 +16,11 @@ def combine_costs(cost_fn):
         The combined cost function for the simulation algorithm.
     """
     def _cost(Y):
-        return np.concatenate([cf(Y) for cf in cost_fn], axis=0)
+        return [c for cf in cost_fn for c in cf(Y)]
 
     return _cost
 
-def discount_effect_trans_cost(costs, effect_types, base_cost=1):
+def discount_effect_trans_cost(costs, effect_types, max_cost, base_cost=1):
     """
     Create a transition cost function according to the formula C = max(c1, c2, ..., base). 
     This means that if a harder to vary factor changes, the easier factors comes for free.
@@ -78,11 +78,11 @@ def discount_effect_trans_cost(costs, effect_types, base_cost=1):
             # Set the cost
             cc[i] = c
         
-        return np.expand_dims(cc, 0)
+        return [(cc, max_cost, np.arange(len(Y)))]
 
     return _cost
 
-def additive_effect_trans_cost(costs, effect_types, base_cost=1):
+def additive_effect_trans_cost(costs, effect_types, max_cost, base_cost=1):
     """
     Create a transition cost function according to the formula C = c1 + c2 + ... + base. 
     This means that every factor is independently, and sequentially changed.
@@ -133,11 +133,11 @@ def additive_effect_trans_cost(costs, effect_types, base_cost=1):
             cc[i] = tc
 
         # Return the costs
-        return np.expand_dims(cc, 0)
+        return [(cc, max_cost, np.arange(len(Y)))]
 
     return _cost
 
-def fixed_runs_cost():
+def fixed_runs_cost(max_cost):
     """
     Cost function to deal with a fixed maximum number of experiments.
     The maximum cost is supposed to be the number of runs, and this cost function
@@ -149,11 +149,11 @@ def fixed_runs_cost():
         The cost function for the simulation algorithm.
     """
     def cost_fn(Y):
-        return np.ones((1, len(Y)))
+        return [(np.ones(len(Y)), max_cost, np.arange(len(Y)))]
 
     return cost_fn
 
-def max_changes_cost(factor, effect_types):
+def max_changes_cost(factor, effect_types, max_cost):
     """
     Cost function to deal with a fixed maximum number of changes in a specific factor.
     The maximum cost is supposed to be the number of changes, and this cost function
@@ -184,8 +184,8 @@ def max_changes_cost(factor, effect_types):
 
     # Create cost function
     def cost_fn(Y):
-        changes = np.zeros((1, len(Y)))
-        changes[0, 1:] = np.any(np.diff(Y[:, factor], axis=0), axis=1).astype(int)
-        return changes
+        changes = np.zeros(len(Y))
+        changes[1:] = np.any(np.diff(Y[:, factor], axis=0), axis=1).astype(int)
+        return [(changes, max_cost, np.arange(len(Y)))]
 
     return cost_fn

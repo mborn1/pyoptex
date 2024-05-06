@@ -75,7 +75,7 @@ def remove_optimal_onebyone(state, params):
     keep = np.ones(len(state.Y), dtype=np.bool_)
 
     # Find which to drop
-    while np.any(state.cost_Y > params.max_cost):
+    while np.any(state.cost_Y > state.max_cost):
 
         # Loop initialization
         best_metric = np.inf
@@ -102,16 +102,19 @@ def remove_optimal_onebyone(state, params):
 
             # Compute cost reduction
             costsn = params.fn.cost(Yn)
-            cost_Yn = np.sum(costsn, axis=1)
+            cost_Yn = np.array([np.sum(c) for c, _, _ in costsn])
+            max_cost = np.array([m for _, m, _ in costsn])
 
             # Compute new metric
             metricn = params.fn.metric.call(Yn, Xn, Zsn, Vinvn, costsn)
 
             # Create new state
-            staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn)
+            staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn, max_cost)
                 
             # Compute metric loss per cost
-            metric_temp = (state.metric - staten.metric) / np.mean((state.cost_Y - staten.cost_Y) / params.max_cost)
+            mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y) \
+                - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
+            metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
             if metric_temp < best_metric or np.isinf(best_metric):
