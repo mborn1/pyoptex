@@ -10,10 +10,8 @@ import time
 # Library imports
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.utils.model import partial_rsm_names
+from pyoptex.doe.utils.design import obs_var_from_Zs
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
-from pyoptex.doe.cost_optimal.cov import cov_block_cost
-from pyoptex.doe.cost_optimal.cost import discount_effect_trans_cost
-from pyoptex.doe.cost_optimal.init import init_feasible, full_factorial
 
 np.random.seed(42)
 
@@ -22,14 +20,7 @@ effects = {
     # Define effect type, model type, is_grouped
     'A': (1, 'tfi', False),
     'B': (1, 'tfi', False),
-    # 'C': (1, 'tfi', False),
-    # 'E': (1, 'tfi', False),
-    # 'F': (1, 'tfi', False),
-    # 'G': (1, 'tfi', False),
     'H': (1, 'tfi', False),
-    'J': (1, 'tfi', False),
-    'K': (1, 'tfi', False),
-    'L': (1, 'tfi', False),
 }
 
 # Derived parameters
@@ -40,37 +31,42 @@ grouped_cols = np.array([v[2] for v in effects.values()])
 #########################################################################
 
 # Cost function
-max_cost = np.array([8] + [4]*8)
+nb_plots = 8
+runs_per_plot = 4
 def cost_fn(Y):
     # Short-circuit
     if len(Y) == 0:
-        return np.zeros(len(max_cost))
+        return []
 
-    # HTV factors
-    htv = np.concatenate([[False], np.any(np.diff(Y[:, :2], axis=0) != 0, axis=1)])
-    htv[::4] = True  # Every 4th is always a reset
-    htx = htv.astype(np.int64)
+    # Determine the number of resets
+    resets = np.zeros(len(Y))
+    resets[1:] = (np.diff(Y[:, 0]) != 0).astype(np.int64)
+    for i in range(runs_per_plot, len(resets)):
+        if np.all(resets[i-(runs_per_plot-1):i] == 0):
+            resets[i] = 1
 
-    # Count ETV
-    etv = np.zeros((len(Y), 8))
-    htx_i = np.concatenate([np.flatnonzero(htv), [len(Y)]])
-    for i in range(min(8, len(htx_i) - 1)):
-        etv[htx_i[i]:htx_i[i+1], i] = 1
-
-    # Combine costs
-    costs = np.concatenate((htv[:, np.newaxis], etv), axis=1).T
+    # Determine number of runs per plot
+    idx = np.concatenate([[0], np.flatnonzero(resets), [len(Y)]])
+    plot_costs = [None] * (len(idx) - 1)
+    for i in range(len(idx)-1):
+        plot_costs[i] = (np.ones(idx[i+1] - idx[i]), runs_per_plot, np.arange(idx[i], idx[i+1]))
     
-    return costs
+    return [
+        (resets, nb_plots - 1, np.arange(len(Y))),
+        *plot_costs
+    ]
 
 # Split plot covariance matrix
 def cov(Y, X, Zs, Vinv, costs, random=False):
-    Z1 = np.cumsum(np.any((np.diff(Y[:, :2], axis=0) > 0), axis=1))
+    resets = costs[0][0].astype(np.int64)
+    Z1 = np.cumsum(resets)
     Zs = [Z1]
-    V = obs_var_from_Zs(Zs, len(Y), ratios=np.array([[1.]]))
-    return Y, X, Zs, Vinv, costs
+    V = obs_var_from_Zs(Zs, len(Y), ratios=np.array([1.]))
+    Vinv = np.expand_dims(np.linalg.inv(V), 0)
+    return Y, X, Zs, Vinv
 
 # Define the metric
-metric = Iopt()
+metric = Dopt(cov=cov)
 
 # Define prior
 prior = None
@@ -81,33 +77,16 @@ ratios = None
 #########################################################################
 
 # Parameter initialization
-nsims = 100
+nsims = 500
 nreps = 1
-
-def init(params):
-    # Generate full factorial design
-    Y = full_factorial(params.colstart, params.coords)
-    X = params.Y2X(Y)
-
-    # Drop blocks
-    keep = np.ones(len(Y), dtype=np.bool_)
-    for i in range((len(Y) // 4) - 1):
-        keep[i*4:(i+1)*4] = False
-        Xk = X[keep]
-        if np.linalg.matrix_rank(Xk) != X.shape[1]:
-            keep[i*4:(i+1)*4] = True
-    Y = Y[keep]
-    
-    return Y
 
 # Create the set of operators
 fn = default_fn(nsims, cost_fn, metric)
-fn = fn._replace(init=init)
 
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    effect_types, max_cost, fn, model=model, 
+    effect_types, fn, model=model, 
     nsims=nsims, nreps=nreps, grouped_cols=grouped_cols, 
     prior=prior, ratios=ratios,
     validate=True
