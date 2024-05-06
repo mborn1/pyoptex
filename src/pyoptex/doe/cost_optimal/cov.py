@@ -83,7 +83,7 @@ def cov_augment_time(time=1, cost_index=0):
         if random:
             t = np.random.rand(Y.shape[0]) * 2 - 1
         else:
-            cum_cost = np.cumsum(costs[cost_index])
+            cum_cost = np.cumsum(costs[cost_index][0])
             t = np.floor_divide(cum_cost, time)
             t = t / t[-1] * 2 - 1
 
@@ -131,7 +131,7 @@ def cov_augment_time_double(time_outer=1, time_inner=1, cost_index=0):
             t_inner = np.random.rand(Y.shape[0]) * 2 - 1
         else:
             # Define outer time array
-            cum_cost = np.cumsum(costs[cost_index])
+            cum_cost = np.cumsum(costs[cost_index][0])
             t_outer = np.floor_divide(cum_cost, time_outer)
             t_outer = t_outer / t_outer[-1] * 2 - 1
 
@@ -187,7 +187,7 @@ def cov_block_cost(cost=1, ratios=1., cost_index=0):
             pass
         else:
             # Define blocks and ratios
-            cum_cost = np.cumsum(costs[cost_index])
+            cum_cost = np.cumsum(costs[cost_index][0])
             blocks = np.floor_divide(cum_cost, cost).astype(np.int64)
             
             # Update Zs, Vinv
