@@ -125,10 +125,10 @@ class Iopt:
             return -trace 
         return -np.inf
 
-class SumSquares:
+class Aliasing:
     """
     The sum of squares criterion.
-    Computes the geometric mean in case multiple Vinv are provided.
+    Computes the mean in case multiple Vinv are provided.
 
     Attributes:
     cov : func
@@ -136,10 +136,11 @@ class SumSquares:
     W : np.array
         A potential weighting matrix for the elements in M.
     """
-    def __init__(self, cov=None, W=None, inv=True):
+    def __init__(self, effects, alias, cov=None, W=None):
         self.cov = cov or no_cov
         self.W = W
-        self.inv = inv
+        self.effects = effects
+        self.alias = alias
 
     def init(self, params):
         pass
@@ -147,18 +148,18 @@ class SumSquares:
     def call(self, Y, X, Zs, Vinv, costs):
         # Compute covariates
         _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
-        M = X.T @ Vinv @ X
 
-        # Invert M
-        if self.inv:
-            M = np.linalg.inv(M)
+        # Compute aliasing matrix
+        Xeff = X[:, self.effects]
+        Xa = X[:, self.alias]
+        A = np.linalg.solve(Xeff.T @ Vinv @ Xeff, Xeff.T @ Vinv) @ Xa
 
         # Multiply by weights
         if self.W is not None:
-            M *= W
+            A *= self.W
 
-        # Compute geometric mean of determinants
-        return np.power(
-            np.product(np.sum(np.square(M), axis=[-1, -2])), 
+        # Compute mean of SS
+        return -np.power(
+            np.mean(np.sum(np.square(A), axis=(-1, -2))), 
             1/(X.shape[1] * len(Vinv))
         )

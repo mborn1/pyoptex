@@ -11,7 +11,8 @@ import time
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import obs_var_from_Zs
-from pyoptex.doe.cost_optimal.metric import SumSquares
+from pyoptex.doe.cost_optimal.metric import Aliasing
+from pyoptex.doe.cost_optimal.init import init
 
 np.random.seed(42)
 
@@ -24,8 +25,8 @@ effects = {
     'D': (1, 'quad'),
     'E': (1, 'quad'),
     'F': (1, 'quad'),
-    'G': (1, 'quad'),
-    'H': (1, 'quad'),
+    # 'G': (1, 'quad'),
+    # 'H': (1, 'quad'),
 }
 
 # Derived parameters
@@ -36,31 +37,41 @@ grouped_cols = np.zeros(len(effects))
 #########################################################################
 
 # Cost function
+nruns = 30
 def cost_fn(Y):
-    return [(np.ones(len(Y)), 27, np.arange(len(Y)))]
+    return [(np.ones(len(Y)), nruns, np.arange(len(Y)))]
+
+# # Define the weights
+# n1, n2 = len(effects), len(model)-2*len(effects)-1
+# W = np.block([
+#     [ np.ones(( 1, 1)), np.ones(( 1, n1)),  np.ones(( 1, n2)), np.zeros(( 1, n1))], # Intercept
+#     [ np.ones((n1, 1)), np.ones((n1, n1)),  np.ones((n1, n2)),  np.ones((n1, n1))], # Main effects
+#     [ np.ones((n2, 1)), np.ones((n2, n1)), np.zeros((n2, n2)), np.zeros((n2, n1))], # TFI effects
+#     [np.zeros((n1, 1)), np.ones((n1, n1)), np.zeros((n1, n2)), np.zeros((n1, n1))], # Quad effects
+# ])
+# W[np.arange(len(W)), np.arange(len(W))] = 0
+# assert np.all(W == W.T)
 
 # Define the weights
 n1, n2 = len(effects), len(model)-2*len(effects)-1
+w1, w2 = 1/((n1+1)*(n1+1)), 1/((n2+n1)*(n1+1))
 W = np.block([
-    [ np.ones(( 1, 1)), np.ones(( 1, n1)),  np.ones(( 1, n2)), np.zeros(( 1, n1))], # Intercept
-    [ np.ones((n1, 1)), np.ones((n1, n1)),  np.ones((n1, n2)),  np.ones((n1, n1))], # Main effects
-    [ np.ones((n2, 1)), np.ones((n2, n1)), np.zeros((n2, n2)), np.zeros((n2, n1))], # TFI effects
-    [np.zeros((n1, 1)), np.ones((n1, n1)), np.zeros((n1, n2)), np.zeros((n1, n1))], # Quad effects
+    [ w1 * np.ones(( 1, 1)), w1 * np.ones(( 1, n1)), w2 * np.ones(( 1, n2)), w2 * np.zeros(( 1, n1))], # Intercept
+    [ w1 * np.ones((n1, 1)), w1 * np.ones((n1, n1)), w2 * np.ones((n1, n2)), w2 *  np.ones((n1, n1))], # Main effects
 ])
 W[np.arange(len(W)), np.arange(len(W))] = 0
-assert np.all(W == W.T)
 
 # Define the metric
-metric = SumSquares(W=None, inv=True)
+metric = Aliasing(np.arange(len(effects)+1), np.arange(len(model)), W=W)
 
 #########################################################################
 
 # Parameter initialization
-nsims = 500
+nsims = 2500
 nreps = 1
 
 # Create the set of operators
-fn = default_fn(nsims, cost_fn, metric)
+fn = default_fn(nsims, cost_fn, metric, init=lambda p: init(p, nruns))
 
 # Create design
 start_time = time.time()
