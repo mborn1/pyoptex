@@ -60,8 +60,8 @@ end_time = time.time()
 #########################################################################
 
 # Write design to storage
-if prior is None:
-    Y.to_csv(f'example_design_split_plot.csv', index=False)
+root = os.path.split(__file__)[0]
+Y.to_csv(os.path.join(root, 'results', 'example_split_plot.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

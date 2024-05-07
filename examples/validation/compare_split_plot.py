@@ -1,9 +1,13 @@
 import numpy as np
 import pandas as pd
+import os
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.splitk_plot.metric import Dopt
 from pyoptex.doe.splitk_plot.wrapper import create_parameters, default_fn
 from pyoptex.doe.utils.design import x2fx
+
+# Get root folder
+root = os.path.split(__file__)[0]
 
 effects = {
     # Define effect type, model type, stratum
@@ -50,13 +54,13 @@ params, _ = create_parameters(fn, effect_types, effect_levels, plot_sizes, model
 params.fn.metric.preinit(params)
 
 # Evaluate the ref model
-Y = pd.read_csv('example_design_split_plot.csv')
+Y = pd.read_csv(f'{root}/../splitk_plot/results/example_split_plot.csv')
 X = params.Y2X(Y.to_numpy())
 params.fn.metric.init(Y, X, params)
 metric_ref = params.fn.metric.call(Y, X, params)
 
 # Evaluate the cost model
-Y = pd.read_csv('example_design.csv')
+Y = pd.read_csv(f'{root}/../cost_optimal/results/example_split_plot.csv')
 X = params.Y2X(Y.to_numpy())
 params.fn.metric.init(Y, X, params)
 metric = params.fn.metric.call(Y, X, params)

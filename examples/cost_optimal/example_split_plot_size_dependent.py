@@ -17,22 +17,29 @@ np.random.seed(42)
 
 # Define parameters
 effects = {
-    # Define effect type, model type, is_grouped
-    'A': (1, 'tfi', False),
-    'B': (1, 'tfi', False),
-    'H': (1, 'tfi', False),
+    # Define effect type, model type
+    'A': (1, 'tfi'),
+    'B': (1, 'tfi'),
+    'C': (1, 'quad'),
+    'D': (1, 'quad'),
+    'E': (1, 'quad'),
+    'F': (1, 'quad'),
+    'G': (1, 'quad'),
+    'H': (1, 'tfi'),
+    'I': (1, 'tfi'),
 }
 
 # Derived parameters
 effect_types = {key: value[0] for key, value in effects.items()}
 model = partial_rsm_names({key: value[1] for key, value in effects.items()})
-grouped_cols = np.array([v[2] for v in effects.values()])
+grouped_cols = np.zeros(len(effects))
 
 #########################################################################
 
 # Cost function
-nb_plots = 8
-runs_per_plot = 4
+nb_plots = 6
+runs_per_plot_low = 7
+runs_per_plot_high = 14
 def cost_fn(Y):
     # Short-circuit
     if len(Y) == 0:
@@ -40,16 +47,23 @@ def cost_fn(Y):
 
     # Determine the number of resets
     resets = np.zeros(len(Y))
-    resets[1:] = (np.diff(Y[:, 0]) != 0).astype(np.int64)
-    for i in range(runs_per_plot, len(resets)):
-        if np.all(resets[i-(runs_per_plot-1):i] == 0):
+    resets[1:] = np.any(np.diff(Y[:, :2], axis=0) != 0, axis=1).astype(np.int64)
+    for i in range(0, len(resets)):
+        # Reset when factor does not change for a period depending on the first factor
+        if (Y[i-1, 0] == -1 and i >= runs_per_plot_low and np.all(resets[i-(runs_per_plot_low-1):i] == 0))\
+                or (Y[i-1, 0] == 1 and i >= runs_per_plot_high and np.all(resets[i-(runs_per_plot_high-1):i] == 0)):
             resets[i] = 1
 
     # Determine number of runs per plot
     idx = np.concatenate([[0], np.flatnonzero(resets), [len(Y)]])
     plot_costs = [None] * (len(idx) - 1)
     for i in range(len(idx)-1):
-        plot_costs[i] = (np.ones(idx[i+1] - idx[i]), runs_per_plot, np.arange(idx[i], idx[i+1]))
+        if Y[i, 0] == -1:
+            rp = runs_per_plot_low
+        else:
+            rp = runs_per_plot_high
+
+        plot_costs[i] = (np.ones(idx[i+1] - idx[i]), rp, np.arange(idx[i], idx[i+1]))
     
     return [
         (resets, nb_plots - 1, np.arange(len(Y))),
@@ -68,11 +82,12 @@ def cov(Y, X, Zs, Vinv, costs, random=False):
 # Define the metric
 metric = Dopt(cov=cov)
 
-# Define prior
-prior = None
-
-# Define global ratios (not useful)
-ratios = None
+coords = [
+    np.array([-1, 1]).reshape(-1, 1),
+    np.array([-1, 1]).reshape(-1, 1),
+    np.array([-1, -1/3, 1/3, 1]).reshape(-1, 1),
+    None, None, None, None, None, None
+]
 
 #########################################################################
 
@@ -86,9 +101,8 @@ fn = default_fn(nsims, cost_fn, metric)
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    effect_types, fn, model=model, 
+    effect_types, fn, model=model, coords=coords,
     nsims=nsims, nreps=nreps, grouped_cols=grouped_cols, 
-    prior=prior, ratios=ratios,
     validate=True
 )
 end_time = time.time()
@@ -97,7 +111,7 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'results', 'example_split_plot.csv'), index=False)
+Y.to_csv(os.path.join(root, 'results', 'example_split_plot_size_dependent.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
