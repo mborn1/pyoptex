@@ -41,17 +41,6 @@ nruns = 30
 def cost_fn(Y):
     return [(np.ones(len(Y)), nruns, np.arange(len(Y)))]
 
-# # Define the weights
-# n1, n2 = len(effects), len(model)-2*len(effects)-1
-# W = np.block([
-#     [ np.ones(( 1, 1)), np.ones(( 1, n1)),  np.ones(( 1, n2)), np.zeros(( 1, n1))], # Intercept
-#     [ np.ones((n1, 1)), np.ones((n1, n1)),  np.ones((n1, n2)),  np.ones((n1, n1))], # Main effects
-#     [ np.ones((n2, 1)), np.ones((n2, n1)), np.zeros((n2, n2)), np.zeros((n2, n1))], # TFI effects
-#     [np.zeros((n1, 1)), np.ones((n1, n1)), np.zeros((n1, n2)), np.zeros((n1, n1))], # Quad effects
-# ])
-# W[np.arange(len(W)), np.arange(len(W))] = 0
-# assert np.all(W == W.T)
-
 # Define the weights
 n1, n2 = len(effects), len(model)-2*len(effects)-1
 w1, w2 = 1/((n1+1)*(n1+1)), 1/((n2+n1)*(n1+1))

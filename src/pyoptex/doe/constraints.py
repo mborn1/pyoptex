@@ -39,7 +39,7 @@ def parse_script(script, effect_types):
     # Create the script
     script = re.sub(r'`(.*?)`', lambda m: f'Col({columns.index(m.group(1))}, (effect_types, col_start))', script)
     script = script.replace('^', '**')
-    script = re.sub(r'(?<!Col\()([-\.\d]+)', lambda m: f'Col({m.group(1)}, (effect_types, col_start), is_constant=True)', script)
+    script = re.sub(r'(?<!Col\()(-*(?=[\.\d]+)[\.\d]+)', lambda m: f'Col({m.group(1)}, (effect_types, col_start), is_constant=True)', script)
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 'CompCol': CompCol, 
                          'effect_types': effect_types, 'col_start': colstart})
     return tree

@@ -63,6 +63,7 @@ A = pd.DataFrame(X[1:, 1:]).corr().to_numpy()
 
 max_idx = np.argmax(A[:len(effects), :] * np.where(W[1:, 1:] != 0, 1, 0))
 print(max_idx, A.flatten()[max_idx])
+print(np.linalg.matrix_rank(X), X.shape)
 
 # Visualize the variances
 px.imshow(np.abs(A)).show()

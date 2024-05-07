@@ -8,60 +8,68 @@ import os
 import time
 
 # Library imports
-from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
+from pyoptex.doe.constraints import parse_script
 from pyoptex.doe.utils.model import partial_rsm_names
+from pyoptex.doe.utils.design import obs_var_from_Zs
+from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
-from pyoptex.doe.cost_optimal.cov import cov_block_cost
-from pyoptex.doe.cost_optimal.cost import discount_effect_trans_cost
 
 np.random.seed(42)
 
+# X2 <= X3
+# coords: (-1, 0, 1), range(6, 36+1, 3), range(12, 36+1, 3)
+# 200 units: X1: 2 (-1); 8 (0); 14 (1) (discrete options)
+# ?? 45 days: X2: 2-8 (-1 -> 1) (continuous option)
+# D-optimal
+
 # Define parameters
 effects = {
-    # Define effect type, model type, is_grouped, cost
-    'A': (3, 'tfi', True, 2*60),
-    'E': (1, 'quad', False, 5),
-    'F': (1, 'quad', False, 5),
-    'G': (1, 'quad', False, 5),
+    # Define effect type, model type, is_grouped
+    'A': (1, 'quad'),
+    'B': (1, 'quad'),
+    'C': (1, 'quad'),
 }
 
 # Derived parameters
 effect_types = {key: value[0] for key, value in effects.items()}
 model = partial_rsm_names({key: value[1] for key, value in effects.items()})
-grouped_cols = np.array([v[2] for v in effects.values()])
-costs = np.array([c for (_, _, _, c) in effects.values()])
+grouped_cols = np.zeros(len(effects))
 
 #########################################################################
 
 # Cost function
-max_cost = np.array([3*4*60])
-base_cost = 5
-cost_fn = discount_effect_trans_cost(costs, effect_types, max_cost, base_cost)
+max_units = 200
+def cost_fn(Y):
+    units = 2 + (Y[:, 0] + 1) * 6
+    return [(units, max_units, np.arange(len(Y)))]
 
 # Define the metric
-metric = Iopt()
+metric = Dopt()
 
-# Define prior
-prior = None
+# Define constraints
+constraints = parse_script(f'(`B` > `C`)', effect_types).encode()
 
-# Define multiple ratios
-ratios = np.stack((np.ones(len(effects)) * 10, np.ones(len(effects)) * 0.1))
+# Define coordinates
+coords = [
+    np.linspace(-1, 1, 3)[:, np.newaxis],
+    np.linspace(-1, 1, 11)[:, np.newaxis],
+    np.linspace(-1, 1, 9)[:, np.newaxis],
+]
 
 #########################################################################
 
 # Parameter initialization
-nsims = 100
+nsims = 500
 nreps = 1
 
 # Create the set of operators
-fn = default_fn(nsims, cost_fn, metric)
+fn = default_fn(nsims, cost_fn, metric, constraints=constraints)
 
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    effect_types, fn, model=model, 
+    effect_types, fn, model=model, coords=coords,
     nsims=nsims, nreps=nreps, grouped_cols=grouped_cols, 
-    prior=prior, ratios=ratios,
     validate=True
 )
 end_time = time.time()
@@ -69,7 +77,8 @@ end_time = time.time()
 #########################################################################
 
 # Write design to storage
-Y.to_csv(f'example_design.csv', index=False)
+root = os.path.split(__file__)[0]
+Y.to_csv(os.path.join(root, 'results', 'example_micro_pharma.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
