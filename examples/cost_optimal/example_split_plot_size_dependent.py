@@ -14,7 +14,11 @@ from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import obs_var_from_Zs
 
-np.random.seed(42)
+# Parse arguments
+import argparse
+parser = argparse.ArgumentParser(description="Perform a simulation")
+parser.add_argument('--proc', type=int, help='The current process', default=0)
+args = parser.parse_args()
 
 # Define parameters
 effects = {
@@ -96,7 +100,7 @@ coords = [
 #########################################################################
 
 # Parameter initialization
-nsims = 2500
+nsims = 7500
 nreps = 1
 
 # Create the set of operators
@@ -120,7 +124,7 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'results', 'example_split_plot_size_dependent.csv'), index=False)
+Y.to_csv(os.path.join(root, 'results', f'example_split_plot_size_dependent_{args.proc}.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
