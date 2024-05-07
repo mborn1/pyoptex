@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+import plotly.express as px
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import obs_var_from_Zs
 from pyoptex.doe.cost_optimal.metric import Dopt
@@ -50,7 +51,7 @@ def cost_fn(Y):
     idx = np.concatenate([[0], np.flatnonzero(resets), [len(Y)]])
     plot_costs = [None] * (len(idx) - 1)
     for i in range(len(idx)-1):
-        if Y[i, 0] == -1:
+        if Y[idx[i], 0] == -1:
             rp = runs_per_plot_low
         else:
             rp = runs_per_plot_high
@@ -67,8 +68,6 @@ def cov(Y, X, Zs, Vinv, costs, random=False):
     resets = costs[0][0].astype(np.int64)
     Z1 = np.cumsum(resets)
     Zs = [Z1]
-    print(Y[:, 0])
-    print(Zs)
     V = obs_var_from_Zs(Zs, len(Y), ratios=np.array([1.]))
     Vinv = np.expand_dims(np.linalg.inv(V), 0)
     return Y, X, Zs, Vinv
@@ -88,9 +87,10 @@ params, _ = create_parameters(effect_types, fn, model=model, grouped_cols=groupe
 params.fn.metric.init(params)
 
 # Evaluate the ref model
-Y = pd.read_csv(f'{root}/../cost_optimal/data/ref_split_plot_size_dependent.csv').to_numpy()
-X = params.Y2X(Y)
-metric_ref = params.fn.metric.call(Y, X, None, None, params.fn.cost(Y))
+Yref = pd.read_csv(f'{root}/../cost_optimal/data/ref_split_plot_size_dependent_70.csv').to_numpy()
+Xref = params.Y2X(Yref)
+metric_ref = params.fn.metric.call(Yref, Xref, None, None, params.fn.cost(Yref))
+# px.imshow(Yref, aspect='auto').show()
 
 # Evaluate the cost model
 Y = pd.read_csv(f'{root}/../cost_optimal/results/example_split_plot_size_dependent.csv').to_numpy()
@@ -98,4 +98,5 @@ X = params.Y2X(Y)
 metric = params.fn.metric.call(Y, X, None, None, params.fn.cost(Y))
 
 print(metric, metric_ref)
-
+print(len(Y), len(Yref))
+# px.imshow(Y, aspect='auto').show()

@@ -40,8 +40,9 @@ class Aopt:
     cov : func
         A function computing the covariate parameters and potential extra random effects.
     """
-    def __init__(self, cov=None):
+    def __init__(self, cov=None, W=None):
         self.cov = cov or no_cov
+        self.W = W
 
     def init(self, params):
         pass
@@ -53,8 +54,15 @@ class Aopt:
 
         # Check if invertible (more stable than relying on inverse)
         if np.linalg.matrix_rank(X) == X.shape[1]:
-            # Compute average trace
-            trace = np.mean(np.trace(np.linalg.inv(M), axis1=-2, axis2=-1))
+            # Extrace variances
+            diag = np.diag(np.linalg.inv(M), axis1=-2, axis2=-1)
+
+            # Weight
+            if self.W is not None:
+                diag *= self.W
+
+            # Compute average
+            trace = np.mean(np.sum(diag, axis=-1))
 
             # Invert for minimization
             return -trace
@@ -116,3 +124,41 @@ class Iopt:
             # Invert for minimization
             return -trace 
         return -np.inf
+
+class SumSquares:
+    """
+    The sum of squares criterion.
+    Computes the geometric mean in case multiple Vinv are provided.
+
+    Attributes:
+    cov : func
+        A function computing the covariate parameters and potential extra random effects.
+    W : np.array
+        A potential weighting matrix for the elements in M.
+    """
+    def __init__(self, cov=None, W=None, inv=True):
+        self.cov = cov or no_cov
+        self.W = W
+        self.inv = inv
+
+    def init(self, params):
+        pass
+
+    def call(self, Y, X, Zs, Vinv, costs):
+        # Compute covariates
+        _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
+        M = X.T @ Vinv @ X
+
+        # Invert M
+        if self.inv:
+            M = np.linalg.inv(M)
+
+        # Multiply by weights
+        if self.W is not None:
+            M *= W
+
+        # Compute geometric mean of determinants
+        return np.power(
+            np.product(np.sum(np.square(M), axis=[-1, -2])), 
+            1/(X.shape[1] * len(Vinv))
+        )

@@ -8,10 +8,11 @@ import os
 import time
 
 # Library imports
+from pyoptex.doe.constraints import parse_script
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
+from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import obs_var_from_Zs
-from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 
 np.random.seed(42)
 
@@ -33,6 +34,9 @@ effects = {
 effect_types = {key: value[0] for key, value in effects.items()}
 model = partial_rsm_names({key: value[1] for key, value in effects.items()})
 grouped_cols = np.zeros(len(effects))
+
+# Constraints
+constraints = parse_script(f'((`B` > 0) & (`C` < -0.4)) | ((`B` < 0) & (`C` > 0.4))', effect_types).encode()
 
 #########################################################################
 
@@ -58,7 +62,7 @@ def cost_fn(Y):
     idx = np.concatenate([[0], np.flatnonzero(resets), [len(Y)]])
     plot_costs = [None] * (len(idx) - 1)
     for i in range(len(idx)-1):
-        if Y[i, 0] == -1:
+        if Y[idx[i], 0] == -1:
             rp = runs_per_plot_low
         else:
             rp = runs_per_plot_high
@@ -92,11 +96,16 @@ coords = [
 #########################################################################
 
 # Parameter initialization
-nsims = 500
+nsims = 2500
 nreps = 1
 
 # Create the set of operators
-fn = default_fn(nsims, cost_fn, metric)
+from pyoptex.doe.cost_optimal.init import init_feasible
+fn = default_fn(
+    nsims, cost_fn, metric, 
+    init=lambda p: init_feasible(p, max_tries=0, force_cost_feasible=False), 
+    constraints=constraints
+)
 
 # Create design
 start_time = time.time()
