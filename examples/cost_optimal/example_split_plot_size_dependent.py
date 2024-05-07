@@ -18,6 +18,7 @@ from pyoptex.doe.utils.design import obs_var_from_Zs
 import argparse
 parser = argparse.ArgumentParser(description="Perform a simulation")
 parser.add_argument('--proc', type=int, help='The current process', default=0)
+parser.add_argument('--py-name', type=str, help='The Python file name')
 args = parser.parse_args()
 
 # Define parameters
@@ -123,8 +124,9 @@ end_time = time.time()
 #########################################################################
 
 # Write design to storage
-root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'results', f'example_split_plot_size_dependent_{args.proc}.csv'), index=False)
+filename = __file__ if args.py_name is None else args.py_name
+root, filename = os.path.split(filename)
+Y.to_csv(os.path.join(root, 'results', f'{filename[:-3]}_{args.proc}.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
