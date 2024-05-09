@@ -164,7 +164,7 @@ def insert_optimal(new_run, state, params):
 
     # Find ideal insert position
     best_metric = 0
-    # exceeds_budget = True
+    exceeds_budget = True
     best_state = state
 
     # Loop over all possible positions
@@ -200,15 +200,14 @@ def insert_optimal(new_run, state, params):
         metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))
 
         # Exceeds budget
-        # exceeds_budget_temp = np.any(cost_Yn > max_cost)
+        exceeds_budget_temp = np.any(cost_Yn > max_cost)
 
         # Maximize
-        # if (metric_temp > best_metric and exceeds_budget == exceeds_budget_temp) \
-        #         or (exceeds_budget and not exceeds_budget_temp):
-        if metric_temp > best_metric:
+        if (metric_temp > best_metric and exceeds_budget == exceeds_budget_temp) \
+                or (exceeds_budget and not exceeds_budget_temp):
             best_metric = metric_temp
             best_state = staten
-            # exceeds_budget = exceeds_budget_temp
+            exceeds_budget = exceeds_budget_temp
 
     ############################################################
 
