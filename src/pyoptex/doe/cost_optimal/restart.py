@@ -26,6 +26,7 @@ class RestartEveryNFailed:
     def call(self, state, best_state):
         if self.i > self.max_it:
             self.i = 0
+            print('Restarted the optimization from optimum')
             return best_state
         else:
             return state

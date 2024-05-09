@@ -21,7 +21,7 @@ effects = {
 
 # Derived parameters
 effect_types = {key: value[0] for key, value in effects.items()}
-model = partial_rsm_names({key: value[1] for key, value in effects.items()})
+model = partial_rsm_names({key: value[1] for key, value in effects.items()}).iloc[1:]
 grouped_cols = np.zeros(len(effects))
 
 # Define new (augmented) sheffe model
@@ -85,5 +85,5 @@ assert not np.any(params.fn.constraints(Y))
 metric = params.fn.metric.call(Y, X, [], np.expand_dims(np.eye(len(Y)), 0), params.fn.cost(Y))
 print([np.sum(c) for c, _, _ in params.fn.cost(Y)])
 
-print(metric, metric_ref)
+print(metric, metric_ref, metric / metric_ref)
 

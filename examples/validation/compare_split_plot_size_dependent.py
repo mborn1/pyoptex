@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 import os
 import plotly.express as px
+from pyoptex.doe.constraints import parse_script
 from pyoptex.doe.utils.model import partial_rsm_names
-from pyoptex.doe.utils.design import obs_var_from_Zs
+from pyoptex.doe.utils.design import x2fx, obs_var_from_Zs
 from pyoptex.doe.cost_optimal.metric import Dopt
 from pyoptex.doe.cost_optimal.wrapper import create_parameters, default_fn
-from pyoptex.doe.utils.design import x2fx
 
 # Get root folder
 root = os.path.split(__file__)[0]
@@ -81,8 +81,11 @@ coords = [
     None, None, None, None, None, None
 ]
 
+# Define constraints
+constraints = parse_script(f'((`B` > 0) & (`C` < -0.4)) | ((`B` < 0) & (`C` > 0.4))', effect_types).encode()
+
 # Create parameters
-fn = default_fn(1, cost_fn, metric)
+fn = default_fn(1, cost_fn, metric, constraints=constraints)
 params, _ = create_parameters(effect_types, fn, model=model, grouped_cols=grouped_cols, coords=coords)
 params.fn.metric.init(params)
 
@@ -90,7 +93,7 @@ params.fn.metric.init(params)
 Yref = pd.read_csv(f'{root}/../cost_optimal/data/ref_split_plot_size_dependent_70.csv').to_numpy()
 Xref = params.Y2X(Yref)
 metric_ref = params.fn.metric.call(Yref, Xref, None, None, params.fn.cost(Yref))
-# px.imshow(Yref, aspect='auto').show()
+px.imshow(Yref, aspect='auto').show()
 
 # Evaluate the cost model
 r = f'{root}/../cost_optimal/results/example_split_plot_size_dependent'
@@ -99,5 +102,6 @@ for ex in os.listdir(r):
     X = params.Y2X(Y)
     metric = params.fn.metric.call(Y, X, None, None, params.fn.cost(Y))
 
-    print(metric, metric_ref, '--', len(Y), len(Yref), '--', [np.sum(c) for c, _, _ in params.fn.cost(Y)])
-    # px.imshow(Y, aspect='auto').show()
+    print(metric, metric_ref, metric/metric_ref, '--', len(Y), len(Yref), '--', [np.sum(c) for c, _, _ in params.fn.cost(Y)])
+    if '0' in ex:
+        px.imshow(Y, aspect='auto').show()

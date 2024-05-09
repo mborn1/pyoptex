@@ -72,8 +72,8 @@ constraints = parse_script(
 ).encode()
 
 # Parameter initialization
-nsims = 5000
-nreps = 10
+nsims = 500
+nreps = 50
 
 # Create the set of operators
 fn = default_fn(nsims, cost_fn, metric, constraints=constraints)
