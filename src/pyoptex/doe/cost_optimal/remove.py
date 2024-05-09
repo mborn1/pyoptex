@@ -81,8 +81,13 @@ def remove_optimal_onebyone(state, params):
         best_metric = np.inf
         best_state = state
 
+        # Compute bottleneck indices
+        idx = np.unique(np.concatenate([idx for _, _, idx in state.costs]))
+        idx = idx[idx >= nprior]
+
         # Loop over all available runs
-        for k in range(nprior, len(state.Y)):
+        for k in idx:
+        # for k in range(nprior, len(state.Y)):
             # Set keep to false
             keep[k] = False
 
