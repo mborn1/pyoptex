@@ -62,7 +62,7 @@ metric = Iopt(cov=cov)
 
 # Define constraints
 constraints = parse_script(
-    f'(`A` + `B` > 1) | (`A` < 0.1) | (`B` < 0.2) | (`A` > 0.4) | (`B` > 0.5) | ((1 - `A` - `B`) < 0.1) | ((1 - `A` - `B`) > 0.7)', 
+    f'(`A` + `B` > 1) | (`A` < 0.1) | (`B` < 0.2) | (`A` > 0.4) | (`B` > 0.5)', 
     effect_types
 ).encode()
 

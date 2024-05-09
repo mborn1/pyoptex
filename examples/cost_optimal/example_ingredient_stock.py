@@ -13,8 +13,6 @@ from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import x2fx
 from pyoptex.doe.cost_optimal.metric import Iopt
 
-np.random.seed(23)
-
 # Define parameters
 effects = {
     # Define effect type, model type
@@ -67,13 +65,13 @@ metric = Iopt(cov=cov)
 
 # Define constraints
 constraints = parse_script(
-    f'(`A` + `B` > 1) | (`A` < 0.1) | (`B` < 0.2) | (`A` > 0.4) | (`B` > 0.5) | ((1 - `A` - `B`) < 0.1) | ((1 - `A` - `B`) > 0.7)', 
+    f'(`A` + `B` > 1) | (`A` < 0.1) | (`B` < 0.2) | (`A` > 0.4) | (`B` > 0.5)', 
     effect_types
 ).encode()
 
 # Parameter initialization
-nsims = 500
-nreps = 50
+nsims = 5000
+nreps = 10
 
 # Create the set of operators
 fn = default_fn(nsims, cost_fn, metric, constraints=constraints)
