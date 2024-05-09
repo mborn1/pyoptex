@@ -56,8 +56,8 @@ metric = Aliasing(np.arange(len(effects)+1), np.arange(len(model)), W=W)
 #########################################################################
 
 # Parameter initialization
-nsims = 2500
-nreps = 1
+nsims = 5000
+nreps = 5
 
 # Create the set of operators
 fn = default_fn(nsims, cost_fn, metric, init=lambda p: init(p, nruns))

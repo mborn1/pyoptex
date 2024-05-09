@@ -101,7 +101,7 @@ coords = [
 #########################################################################
 
 # Parameter initialization
-nsims = 15000
+nsims = 7500
 nreps = 1
 
 # Create the set of operators
