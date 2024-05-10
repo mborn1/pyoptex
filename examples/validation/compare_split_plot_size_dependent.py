@@ -96,12 +96,10 @@ metric_ref = params.fn.metric.call(Yref, Xref, None, None, params.fn.cost(Yref))
 px.imshow(Yref, aspect='auto').show()
 
 # Evaluate the cost model
-r = f'{root}/../cost_optimal/results/example_split_plot_size_dependent'
-for ex in os.listdir(r):
-    Y = pd.read_csv(f'{r}/{ex}').to_numpy()
-    X = params.Y2X(Y)
-    metric = params.fn.metric.call(Y, X, None, None, params.fn.cost(Y))
+Y = pd.read_csv(f'{root}/../cost_optimal/results/example_split_plot_size_dependent.csv').to_numpy()
+X = params.Y2X(Y)
+metric = params.fn.metric.call(Y, X, None, None, params.fn.cost(Y))
+px.imshow(Y, aspect='auto').show()
 
-    print(metric, metric_ref, metric/metric_ref, '--', len(Y), len(Yref), '--', [np.sum(c) for c, _, _ in params.fn.cost(Y)])
-    if '0' in ex:
-        px.imshow(Y, aspect='auto').show()
+print(metric, metric_ref, metric/metric_ref, '--', len(Y), len(Yref), '--', [np.sum(c) for c, _, _ in params.fn.cost(Y)])
+
