@@ -37,6 +37,8 @@ def discount_effect_trans_cost(costs, effect_types, max_cost, base_cost=1):
         The cost of each factor in effect_types.
     effect_types : dict or np.array(1d)
         The type of each effect. If a dictionary, the values are taken as the array.
+    max_cost : float
+        The maximum cost of this function.
     base_cost : float
         The base cost when nothing is altered.
     
@@ -95,6 +97,8 @@ def additive_effect_trans_cost(costs, effect_types, max_cost, base_cost=1):
         The cost of each factor in effect_types.
     effect_types : dict or np.array(1d)
         The type of each effect. If a dictionary, the values are taken as the array.
+    max_cost : float
+        The max cost of this function.
     base_cost : float
         The base cost when nothing is altered.
     
@@ -143,6 +147,11 @@ def fixed_runs_cost(max_cost):
     The maximum cost is supposed to be the number of runs, and this cost function
     simply returns 1 for each run.
 
+    Parameters
+    ----------
+    max_cost : float
+        The maximum number of runs.
+
     Returns
     -------
     cost_fn : func
@@ -168,6 +177,8 @@ def max_changes_cost(factor, effect_types, max_cost):
         The index of the factor (in effect_types)
     effect_types : dict or np.array(1d)
         The type of each effect. If a dictionary, the values are taken as the array.
+    max_cost : float
+        The maximum number of changes in the specified factor.
 
     Returns
     -------

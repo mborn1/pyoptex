@@ -15,9 +15,20 @@ def optimize(params, max_it=10000, validate=False):
 
     Parameters
     ----------
+    params : `pyoptex.doe.splitk_plot.utils.Parameters`
+        The parameters of the design generation.
+    max_it : int
+        The maximum number of iterations to prevent potential infinite loops.
+    validate : bool
+        Whether to validate the update formulas at each step. This is used
+        to debug.
 
     Returns
     -------
+    Y : np.array(2d)
+        The generated design
+    state : `pyoptex.doe.splitk_plot.utils.State`
+        The state according to the generated design.
     """
     # Initialize a design
     _, (Y, X) = initialize_feasible(params)

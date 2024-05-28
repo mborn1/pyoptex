@@ -10,7 +10,7 @@ from ..._profile import profile
 @numba.njit
 def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, complete=False):
     """
-    This function is created to avoid possible recursion. Numba has issues with it.
+    This function generated a random design without considering any design constraints.
 
     .. note::
         See :py:func:`initialize_single` for more information
@@ -68,6 +68,11 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
 
 @numba.njit
 def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plot_sizes, constraints, Y, complete=False):
+    """
+    Corrects an unconstrained design randomly to be within the provided constraints
+    It alters the factors starting from the most hard to change factors to the most easy to change
+    until all constraints are met.
+    """
     # Check which runs are invalid
     invalid_run = constraints(Y)
 
@@ -127,10 +132,21 @@ def initialize_feasible(params, complete=False, max_tries=10):
 
     Parameters
     ----------
+    params : `pyoptex.doe.splitk_plot.utils.Parameters`
+        The parameters of the design generation.
+    complete : bool
+        Whether to initialize based on the discrete coordinates provided
+        in the `params`, or to initiliaze continuous variables based on the entire
+        range between -1 and 1.
+    max_tries : int
+        The maximum number of tries to generate a feasible design.
 
     Returns
     -------
-
+    Y : np.array(2d)
+        The generated design.
+    enc : tuple(np.array(2d), np.array(2d))
+        The categorical factor encoded Y and X respectively.
     """
     # Compute design sizes
     n = np.prod(params.plot_sizes)

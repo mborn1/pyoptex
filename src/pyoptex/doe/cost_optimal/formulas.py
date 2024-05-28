@@ -203,8 +203,8 @@ def add_update_vinv(Vinv, Zs, a, pos, ratios):
     # Compute inner products Zi and ai
     Zs_valid = np.array([i for i in range(len(Zs)) if Zs[i] is not None])
     B = np.zeros((Vinv.shape[0], Vinv.shape[-1], len(Zs_valid)))
-    for i in Zs_valid:
-        B[:, Zs[i] == a[i], :] = ratios[:, np.newaxis, Zs_valid]
+    for j, i in enumerate(Zs_valid):
+        B[:, Zs[i] == a[i], j] = ratios[:, np.newaxis, i]
     B = np.sum(B, axis=-1)
 
     # Initialize matrix

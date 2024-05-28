@@ -12,9 +12,15 @@ class Dopt:
     """
     The D-optimality criterion.
     Computes the geometric mean in case multiple Vinv are provided.
+
+    Attributes
+    ----------
+    Minv : np.array(3d)
+        The inverse of the information matrix. This is used as a cache.
+    P : np.array(2d)
+        The P-matrix in the update formula. This is used as a cache.
     """
     def __init__(self):
-        self.c = None
         self.Minv = None
         self.P = None
 
@@ -50,6 +56,13 @@ class Aopt:
     """
     The A-optimality criterion.
     Computes the average trace if multiple Vinv are provided.
+
+    Attributes
+    ----------
+    Minv : np.array(3d)
+        The inverse of the information matrix. This is used as a cache.
+    Mup : np.array(3d)
+        The update to the inverse of the information matrix. This is used as a cache.
     """
     def __init__(self):
         self.Minv = None
@@ -102,7 +115,8 @@ class Iopt:
     The I-optimality criterion.
     Computes the average (average) prediction variance if multiple Vinv are provided.
 
-    Attributes:
+    Attributes
+    ----------
     moments : np.array(2d)
         The moments matrix.
     samples : np.array(2d)
@@ -111,6 +125,10 @@ class Iopt:
         The integral over the input space for normalization.
     n : int
         The number of samples.
+    Minv : np.array(3d)
+        The inverse of the information matrix. Used as a cache.
+    Mup : np.array(3d)
+        The update to the inverse of the information matrix. Used as a cache.
     """
     def __init__(self, n=10000):
         self.moments = None

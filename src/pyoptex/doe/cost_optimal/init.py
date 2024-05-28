@@ -104,11 +104,12 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
         The simulation parameters.
     max_tries : int
-        The maximum number of tries before throwing an error no initial design can be found.
+        The maximum number of random tries. If all random tries fail, a 
+        final non-randomized design is created. If this also fails, a ValueError is thrown.
     max_size : int
         The maximum number of runs before iteratively removing them.
     force_cost_feasible : bool
-        Force a final cost feasibility check
+        Force a final cost feasibility check.
 
     Returns
     -------

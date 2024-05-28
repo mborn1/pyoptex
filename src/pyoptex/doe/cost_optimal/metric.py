@@ -39,6 +39,8 @@ class Aopt:
     Attributes:
     cov : func
         A function computing the covariate parameters and potential extra random effects.
+    W : np.array(1d)
+        A weights matrix for the trace of the inverse of the information matrix.
     """
     def __init__(self, cov=None, W=None):
         self.cov = cov or no_cov
@@ -53,7 +55,7 @@ class Aopt:
         M = X.T @ Vinv @ X
 
         # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(X) == X.shape[1]:
+        if np.linalg.matrix_rank(M[0]) == M.shape[1]:
             # Extrace variances
             diag = np.diag(np.linalg.inv(M), axis1=-2, axis2=-1)
 
@@ -92,6 +94,7 @@ class Iopt:
     def __init__(self, n=10000, cov=None):
         self.cov = cov or no_cov
         self.moments = None
+        self.samples = None
         self.intdx = None
         self.n = n
 
@@ -114,7 +117,7 @@ class Iopt:
         M = X.T @ Vinv @ X
 
         # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(X) == X.shape[1]:
+        if np.linalg.matrix_rank(M[0]) == M.shape[1]:
             # Compute average trace (normalized)
             trace = np.mean(np.trace(np.linalg.solve(
                 M, 
@@ -133,8 +136,12 @@ class Aliasing:
     Attributes:
     cov : func
         A function computing the covariate parameters and potential extra random effects.
-    W : np.array
-        A potential weighting matrix for the elements in M.
+    W : np.array(2d)
+        A potential weighting matrix for the elements in aliasing matrix A.
+    effects : np.array(1d)
+        An array of indices indicating the effects (=rows in aliasing matrix).
+    alias : np.array(1d)
+        An array of indices indicating the terms to which we alias (=cols in aliasing matrix).
     """
     def __init__(self, effects, alias, cov=None, W=None):
         self.cov = cov or no_cov

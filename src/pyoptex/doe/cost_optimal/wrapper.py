@@ -227,6 +227,8 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
         the provided polynomial model. This parameter can be used to create non-polynomial models.
     nreps : int
         The number of random start repetitions. Must be larger than zero.
+    kwargs : 
+        Any other named parameters directly passed to simulate.
 
     Returns
     -------
