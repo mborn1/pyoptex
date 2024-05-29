@@ -90,17 +90,20 @@ class Iopt:
         The integral over the input space for normalization.
     n : int
         The number of samples.
+    complete : bool
+        Whether to initialize the samples between -1 and 1, or from the given coordinates.
     """
-    def __init__(self, n=10000, cov=None):
+    def __init__(self, n=10000, cov=None, complete=True):
         self.cov = cov or no_cov
         self.moments = None
         self.samples = None
         self.intdx = None
         self.n = n
+        self.complete = complete
 
     def init(self, params):
         # Create the random samples
-        samples = init(params, self.n, complete=True)
+        samples = init(params, self.n, complete=self.complete)
         self.samples = params.Y2X(samples)
 
         # Add random covariates

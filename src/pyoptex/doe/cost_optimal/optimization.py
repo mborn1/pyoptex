@@ -113,7 +113,7 @@ def ce_metric(state, params):
 
                     # Check the constraints
                     if not params.fn.constraints(state.Y[row:row+1])[0]:
-                        state.X[row] = params.Y2X(state.Y[row])
+                        state.X[row] = params.Y2X(state.Y[row:row+1])
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y)

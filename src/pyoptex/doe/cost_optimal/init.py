@@ -118,6 +118,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     """
     # Initialize the tries for randomization
     tries = -1
+    reverse = False
 
     # Check if prior is estimeable
     Xprior = params.Y2X(params.prior)
@@ -154,7 +155,8 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         # Drop runs
         keep = np.ones(len(Y), dtype=np.bool_)
         keep[:nprior] = True
-        for i in tqdm(range(nprior, len(Y))):
+        r = range(nprior, len(Y)) if not reverse else range(len(Y)-1, nprior-1, -1)
+        for i in tqdm(r):
             keep[i] = False
             Xk = X[keep]
             if np.linalg.matrix_rank(Xk) != X.shape[1]:
@@ -174,7 +176,10 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
-            raise ValueError('Unable to find a feasible design within the cost constraints')
+            if reverse:
+                raise ValueError('Unable to find a feasible design within the cost constraints')
+            else:
+                reverse = True 
 
     return Y
 
