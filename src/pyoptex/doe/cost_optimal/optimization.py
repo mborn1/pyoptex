@@ -308,3 +308,119 @@ class CEStructMetric:
         if self.i % self.n == 0:
             state = ce_struct_metric(state, params)
         return state
+
+#########################################################
+
+@profile
+def pe_metric(state, params):
+    """
+    Optimizes the design by applying a single coordinate exchange pass
+    over the design.
+
+    Parameters
+    ----------
+    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+        The state from which to sample.
+    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+        The new state after optimization.
+    """
+    nprior = len(params.prior)
+
+    # Create set of all feasible points
+    points = full_factorial(params.colstart, params.coords)
+    points = points[~params.fn.constraints(points)]
+
+    # Loop over all coordinates
+    for row in range(state.Y.shape[0] - 1, nprior-1, -1):
+        # Store original values
+        Yrow = np.copy(state.Y[row])
+        Xrow = np.copy(state.X[row])
+
+        # Store original coordinate
+        co = Yrow
+
+        for p in points:
+            # Skip original coordinate
+            if np.any(co != p):
+                # Initialize accept
+                accept = False
+
+                # Set coordinate
+                state.Y[row] = p
+
+                # Check the constraints
+                if not params.fn.constraints(state.Y[row:row+1])[0]:
+                    state.X[row] = params.Y2X(state.Y[row:row+1])
+
+                    # Compute costs
+                    new_costs = params.fn.cost(state.Y)
+                    new_cost = np.sum(new_costs, axis=1)
+
+                    # Check constraints
+                    if np.all(new_cost <= params.max_cost):
+                        # Update Zsn, Vinv
+                        bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row+1)
+
+                        # Sequential update of the groups
+                        for col, b in enumerate(bs):
+                            if len(b) == 0:
+                                Zsn = state.Zs
+                                Vinvn = state.Vinv
+                            else:
+                                Zin, Vinvn = ce_update_vinv(
+                                    np.copy(state.Vinv), 
+                                    np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                )
+                                Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+
+                        # Check metric
+                        new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
+
+                        # Compute accept
+                        accept = new_metric > state.metric
+                
+                # Accept the update
+                if accept:
+                    # Store metric and design
+                    Yrow = p
+                    Xrow = np.copy(state.X[row])
+
+                    # Update the state
+                    state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs)
+
+                else:
+                    # Reset values
+                    state.Y[row] = Yrow
+                    state.X[row] = Xrow
+
+    return state
+
+class PEMetric:
+    """
+    Applies the structured coordinate exchange function on the design every
+    n iterations.
+
+    Attributes
+    ----------
+    i : int
+        The current iteration
+    n : int
+        Every nth iteration, the optimization is applied.
+    """
+    def __init__(self, n=1):
+        self.i = 0
+        self.n = n
+
+    def reset(self):
+        self.i = 0
+
+    def call(self, state, params):
+        self.i += 1
+        if self.i % self.n == 0:
+            state = pe_metric(state, params)
+        return state
