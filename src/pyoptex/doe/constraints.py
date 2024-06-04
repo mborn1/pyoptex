@@ -9,7 +9,7 @@ def no_constraints(Y):
     """
     return np.zeros(Y.shape[:-1], dtype=np.bool8)
 
-def parse_script(script, effect_types):
+def parse_script(script, effect_types, eps=1e-6):
     """
     Parse a script of constraints using the factor names. It creates a constraint evaluation
     function capable which returns True if any constraints are violated.
@@ -24,6 +24,8 @@ def parse_script(script, effect_types):
     effect_types : dict
         The type of each effect mapping the effect name to 1 for continuous or higher for categorical
         with that many levels.
+    eps : float
+        The epsilon parameter to be used in the parsing
 
     Returns
     -------
@@ -41,7 +43,7 @@ def parse_script(script, effect_types):
     script = script.replace('^', '**')
     script = re.sub(r'(?<!Col\()(-*(?=[\.\d]+)[\.\d]+)', lambda m: f'Col({m.group(1)}, (effect_types, col_start), is_constant=True)', script)
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 'CompCol': CompCol, 
-                         'effect_types': effect_types, 'col_start': colstart})
+                         'effect_types': effect_types, 'col_start': colstart, 'eps': Col(eps, (effect_types, colstart), is_constant=True)})
     return tree
 
 
