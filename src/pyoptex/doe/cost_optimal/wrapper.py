@@ -182,7 +182,7 @@ def create_parameters(effect_types, fn, model=None, coords=None,
         prior = np.empty((0, colstart[-1]))
     
     # Create the parameters
-    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X)
+    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X, {})
 
     return params, col_names
 

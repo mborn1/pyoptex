@@ -111,6 +111,9 @@ def _insert_position(new_run, pos, state, params, new_X=None):
     # Compute the new metric
     metric = params.fn.metric.call(Y, X, Zs, Vinv, costs)
 
+    # Collect stats
+    params.stats['insert_loc'][params.stats['it']] = pos
+
     return State(Y, X, Zs, Vinv, metric, cost_Y, costs)
 
 ###################################################
@@ -208,6 +211,7 @@ def insert_optimal(new_run, state, params):
             best_metric = metric_temp
             best_state = staten
             exceeds_budget = exceeds_budget_temp
+            params.stats['insert_loc'][params.stats['it']] = k
 
     ############################################################
 

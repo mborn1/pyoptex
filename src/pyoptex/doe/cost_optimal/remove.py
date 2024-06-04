@@ -50,7 +50,7 @@ def groups_remove(Yn, Zs, pos, colstart):
 ###################################################
 
 @profile
-def remove_optimal_onebyone(state, params):
+def remove_optimal_onebyone(state, params, prevent_insert=False):
     """
     Removes runs from the design until within the cost constraints. Runs
     are selected and removed one-by-one for minimal metric loss and 
@@ -62,6 +62,8 @@ def remove_optimal_onebyone(state, params):
         The state from which to remove.
     params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
         The simulation parameters.
+    prevent_insert : bool
+        Whether to prevent the removal of the recently inserted run.
 
     Returns
     -------
@@ -74,12 +76,16 @@ def remove_optimal_onebyone(state, params):
     metrics = np.zeros(len(state.Y), dtype=np.float64)
     keep = np.ones(len(state.Y), dtype=np.bool_)
 
+    # Stats
+    insert_loc = params.stats.get['insert_loc'][params.stats['it']]
+
     # Find which to drop
     while np.any(state.cost_Y > state.max_cost):
 
         # Loop initialization
         best_metric = np.inf
         best_state = state
+        best_k = -1
 
         # Compute bottleneck indices
         idx = np.unique(np.concatenate([idx for _, _, idx in state.costs]))
@@ -122,16 +128,38 @@ def remove_optimal_onebyone(state, params):
             metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
-            if metric_temp < best_metric or np.isinf(best_metric):
+            if (metric_temp < best_metric or np.isinf(best_metric)) and (k != insert_loc or not prevent_insert or insert_loc < 0):
                 best_metric = metric_temp
                 best_state = staten
+                best_k = k
             
             # Set keep to true
             keep[k] = True
 
         # Drop the run
         state = best_state
+        if best_k == insert_loc:
+            params.stats['removed_insert'][params.stats['it']] = True
+        elif best_k < insert_loc:
+            insert_loc -= 1
 
     return state
 
+def remove_optimal_onebyone_prevent(state, params):
+    """
+    Similar to `remove_optimal_onebyone`, but with prevent_insert = True.
+
+    Parameters
+    ----------
+    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+        The state from which to remove.
+    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+        The new state with runs removed.
     
+    """
+    return remove_optimal_onebyone(state, params, prevent_insert=True)

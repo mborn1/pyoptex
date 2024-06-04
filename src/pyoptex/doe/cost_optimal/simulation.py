@@ -57,6 +57,13 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
     # Validate the prior
     _validate_prior(params)
 
+    # Initialize stats
+    params.stats['it'] = 0
+    params.stats['rejections'] = 0
+    params.stats['insert_loc'] = -1 * np.ones(nsims, dtype=np.int64)
+    params.stats['removed_insert'] = np.zeros(nsims, dtype=np.bool_)
+    params.stats['metrics'] = np.zeros(nsims, dtype=np.float64)
+
     # Default optimizers
     if optimizers is None:
         optimizers = [CEMetric(), CEStructMetric()]
@@ -115,6 +122,9 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
             new_state = opt.call(new_state, params)
             validate and validate_state(new_state, params)
 
+        # Collect stats
+        params.stats['metrics'][i] = new_state.metric
+
         # Accept
         cost_transition = (np.all(new_state.cost_Y <= new_state.max_cost) and np.any(state.cost_Y > state.max_cost))
         accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() or cost_transition
@@ -138,6 +148,7 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
         else:
             params.fn.temp.rejected()
             params.fn.restart.rejected()
+            params.stats['rejections'] += 1
 
         # Restart policy
         state = params.fn.restart.call(state, best_state)
