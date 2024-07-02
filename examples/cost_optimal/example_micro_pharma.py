@@ -14,9 +14,10 @@ from pyoptex.doe.utils.design import obs_var_from_Zs
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 
-np.random.seed(42)
+# np.random.seed(42)
 
 # X2 <= X3
+# encoded : 12 * X3 - 15 * X2 + 3 >= 0
 # coords: (-1, 0, 1), range(6, 36+1, 3), range(12, 36+1, 3)
 # 200 units: X1: 2 (-1); 8 (0); 14 (1) (discrete options)
 # ?? 45 days: X2: 2-8 (-1 -> 1) (continuous option)
@@ -38,7 +39,7 @@ grouped_cols = np.zeros(len(effects))
 #########################################################################
 
 # Cost function
-max_units = 200
+max_units = 150
 def cost_fn(Y):
     units = 2 + (Y[:, 0] + 1) * 6
     return [(units, max_units, np.arange(len(Y)))]
@@ -46,8 +47,8 @@ def cost_fn(Y):
 # Define the metric
 metric = Dopt()
 
-# Define constraints
-constraints = parse_script(f'(`B` > `C`)', effect_types).encode()
+# Define constraints  12 * X3 - 15 * X2 + 3 >= 0
+constraints = parse_script(f'(12 * `C` - 15 * `B` + 3 < 0)', effect_types).encode()
 
 # Define coordinates
 coords = [
@@ -59,11 +60,13 @@ coords = [
 #########################################################################
 
 # Parameter initialization
-nsims = 500
+nsims = 5000
 nreps = 1
 
 # Create the set of operators
-fn = default_fn(nsims, cost_fn, metric, constraints=constraints)
+from pyoptex.doe.cost_optimal.remove import remove_optimal_onebyone_prevent
+fn = default_fn(nsims, cost_fn, metric, constraints=constraints,
+                remove=remove_optimal_onebyone_prevent)
 
 # Create design
 start_time = time.time()
@@ -73,6 +76,10 @@ Y, state = create_cost_optimal_design(
     validate=True
 )
 end_time = time.time()
+
+# Decode the columns
+# Y['B'] = (Y['B'] + 1) / 2 * 30 + 6
+# Y['C'] = (Y['C'] + 1) / 2 * 24 + 12
 
 #########################################################################
 

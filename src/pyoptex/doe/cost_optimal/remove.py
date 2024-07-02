@@ -77,7 +77,7 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     keep = np.ones(len(state.Y), dtype=np.bool_)
 
     # Stats
-    insert_loc = params.stats.get['insert_loc'][params.stats['it']]
+    insert_loc = params.stats['insert_loc'][params.stats['it']]
 
     # Find which to drop
     while np.any(state.cost_Y > state.max_cost):

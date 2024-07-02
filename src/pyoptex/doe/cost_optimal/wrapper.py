@@ -248,13 +248,16 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
 
     # Simulation
     best_state = simulate(params, **kwargs)
-    for i in range(nreps-1):
-        try:
-            state = simulate(params, **kwargs)
-            if state.metric > best_state.metric:
-                best_state = state
-        except ValueError as e:
-            print(e)
+    try:
+        for i in range(nreps-1):
+            try:
+                state = simulate(params, **kwargs)
+                if state.metric > best_state.metric:
+                    best_state = state
+            except ValueError as e:
+                print(e)
+    except KeyboardInterrupt:
+        pass
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)

@@ -102,7 +102,10 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
 
     #######################################################################
 
-    for _ in tqdm(range(nsims)):
+    for i in tqdm(range(nsims)):
+        # Set iteration
+        params.stats['it'] = i
+
         # Create a new random run
         accepted_sample = False
         while not accepted_sample:

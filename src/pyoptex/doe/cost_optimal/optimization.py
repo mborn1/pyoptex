@@ -3,6 +3,7 @@ import numpy as np
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
 from ..utils.design import force_Zi_asc
+from ..utils.init import full_factorial
 from ...utils.numba import numba_any_axis1, numba_diff_axis0
 from ..._profile import profile
 
@@ -68,6 +69,9 @@ def adapt_group(groups, factor, row_start, row_end):
                     b.append((row_end, block_end, groups[row_end], max_grp+2))
 
     return np.array(b)
+
+def adapt_groups(groups, Y, colstart, row_start, row_end):
+    return [adapt_group(groups[i], Y[:, colstart[i]:colstart[i+1]], row_start, row_end) for i in range(colstart.size - 1)]
 
 ######################################################
 
@@ -359,10 +363,11 @@ def pe_metric(state, params):
 
                     # Compute costs
                     new_costs = params.fn.cost(state.Y)
-                    new_cost = np.sum(new_costs, axis=1)
+                    new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
+                    max_cost = np.array([m for _, m, _ in new_costs])
 
                     # Check constraints
-                    if np.all(new_cost <= params.max_cost):
+                    if np.all(new_cost <= max_cost):
                         # Update Zsn, Vinv
                         bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row+1)
 
@@ -391,7 +396,7 @@ def pe_metric(state, params):
                     Xrow = np.copy(state.X[row])
 
                     # Update the state
-                    state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs)
+                    state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
 
                 else:
                     # Reset values
