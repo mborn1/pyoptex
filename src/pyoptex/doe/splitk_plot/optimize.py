@@ -79,26 +79,30 @@ def optimize(params, max_it=10000, validate=False):
                             Xi_star = params.Y2X(state.Y[runs])
 
                             # Compute updates
-                            U, D = compute_update_UD(
-                                level, grp, Xi_star, state.X,
-                                params.plot_sizes, params.c, params.thetas, params.thetas_inv
-                            )
+                            if params.compute_update:
+                                U, D = compute_update_UD(
+                                    level, grp, Xi_star, state.X,
+                                    params.plot_sizes, params.c, params.thetas, params.thetas_inv
+                                )
 
-                            # Check for validation
-                            if validate:
-                                validate_UD(U, D, Xi_star, runs, state, params)
+                                # Check for validation
+                                if validate:
+                                    validate_UD(U, D, Xi_star, runs, state, params)
+                            else:
+                                # Don't compute U and D
+                                U, D = None, None
 
                             # Update the X
                             state.X[runs] = Xi_star
 
                             # Check if the update is accepted
                             update = Update(level, grp, runs, cols, new_coord, Ycoord, state.metric, U, D)
-                            up = params.fn.metric.update(state.Y, state.X, update)
+                            up = params.fn.metric.update(state.Y, state.X, params, update)
 
                             # New best design
                             if up > 0:
                                 # Mark the metric as accepted
-                                params.fn.metric.accepted(state.Y, state.X, update)
+                                params.fn.metric.accepted(state.Y, state.X, params, update)
 
                                 # Store the best coordinates
                                 Ycoord = new_coord

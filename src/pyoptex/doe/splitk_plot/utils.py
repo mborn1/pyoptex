@@ -4,7 +4,7 @@ from collections import namedtuple
 from ..constraints import no_constraints
 
 FunctionSet = namedtuple('FunctionSet', 'metric constraints')
-Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv Y2X cov')
+Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv Y2X cov compute_update')
 Update = namedtuple('Update', 'level grp runs cols new_coord old_coord old_metric U D')
 State = namedtuple('State', 'Y X metric')
 

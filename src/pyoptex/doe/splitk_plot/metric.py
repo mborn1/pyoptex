@@ -28,22 +28,31 @@ class Dopt:
         pass
 
     def init(self, Y, X, params):
-        # Compute information matrix
-        self.Vinv = params.Vinv
-        M = X.T @ params.Vinv @ X
-        self.Minv = np.linalg.inv(M)
+        if params.compute_update:
+            # Compute information matrix
+            M = X.T @ params.Vinv @ X
+            self.Minv = np.linalg.inv(M)
 
-    def update(self, Y, X, update):
-        # Compute change in determinant
-        du, self.P = det_update_UD(update.U, update.D, self.Minv)
-        du = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
+    def update(self, Y, X, params, update):
+        if params.compute_update:
+            # Compute change in determinant
+            du, self.P = det_update_UD(update.U, update.D, self.Minv)
+            du = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
 
-        # Return update as addition
-        return (du - 1) * update.old_metric
+            # Return update as addition
+            metric_update = (du - 1) * update.old_metric
 
-    def accepted(self, Y, X, update):
+        else:
+            # Compute from scratch
+            new_metric = self.call(Y, X, params)
+            metric_update = new_metric - update.old_metric
+
+        return metric_update
+
+    def accepted(self, Y, X, params, update):
         # Update Minv
-        self.Minv -= inv_update_UD(update.U, update.D, self.Minv, self.P)
+        if params.compute_update:
+            self.Minv -= inv_update_UD(update.U, update.D, self.Minv, self.P)
 
     def call(self, Y, X, params):
         M = X.T @ params.Vinv @ X
@@ -72,30 +81,38 @@ class Aopt:
         pass
 
     def init(self, Y, X, params):
-        # Compute information matrix
-        M = X.T @ params.Vinv @ X
-        self.Minv = np.linalg.inv(M)
+        if params.compute_update:
+            # Compute information matrix
+            M = X.T @ params.Vinv @ X
+            self.Minv = np.linalg.inv(M)
 
-    def update(self, Y, X, update):
-        # Compute update to Minv
-        try:
-            self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
-        except np.linalg.LinAlgError as e:
-            # Infeasible design
-            return -np.inf
+    def update(self, Y, X, params, update):
+        if params.compute_update:
+            # Compute update to Minv
+            try:
+                self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+            except np.linalg.LinAlgError as e:
+                # Infeasible design
+                return -np.inf
 
-        # Compute update to metric (double negation with update)
-        metric_update = np.mean(np.trace(self.Mup, axis1=-2, axis2=-1))
+            # Compute update to metric (double negation with update)
+            metric_update = np.mean(np.trace(self.Mup, axis1=-2, axis2=-1))
 
-        # Numerical instability (negative trace of variances)
-        if metric_update > -update.old_metric:
-            metric_update = -np.inf
+            # Numerical instability (negative trace of variances)
+            if metric_update > -update.old_metric:
+                metric_update = -np.inf
+        
+        else:
+            # Compute from scratch
+            new_metric = self.call(Y, X, params)
+            metric_update = new_metric - update.old_metric
 
         return metric_update
 
-    def accepted(self, Y, X, update):
+    def accepted(self, Y, X, params, update):
         # Update Minv
-        self.Minv -= self.Mup
+        if params.compute_update:
+            self.Minv -= self.Mup
 
     def call(self, Y, X, params):
         # Compute covariates
@@ -149,30 +166,38 @@ class Iopt:
                     * np.prod(params.effect_types[params.effect_types > 1], initial=1)
 
     def init(self, Y, X, params):
-        # Compute information matrix
-        M = X.T @ params.Vinv @ X
-        self.Minv = np.linalg.inv(M)
+        if params.compute_update:
+            # Compute information matrix
+            M = X.T @ params.Vinv @ X
+            self.Minv = np.linalg.inv(M)
 
-    def update(self, Y, X, update):
-        # Compute update to Minv
-        try:
-            self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
-        except np.linalg.LinAlgError as e:
-            # Infeasible design
-            return -np.inf
+    def update(self, Y, X, params, update):
+        if params.compute_update:
+            # Compute update to Minv
+            try:
+                self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+            except np.linalg.LinAlgError as e:
+                # Infeasible design
+                return -np.inf
 
-        # Compute update to metric (double negation with update)
-        metric_update = np.mean(np.sum(self.Mup * self.moments.T, axis=(1, 2))) / self.intdx
+            # Compute update to metric (double negation with update)
+            metric_update = np.mean(np.sum(self.Mup * self.moments.T, axis=(1, 2))) / self.intdx
 
-        # Numerical instability (negative variance)
-        if metric_update > -update.old_metric:
-            metric_update = -np.inf
+            # Numerical instability (negative variance)
+            if metric_update > -update.old_metric:
+                metric_update = -np.inf
+
+        else:
+            # Compute from scratch
+            new_metric = self.call(Y, X, params)
+            metric_update = new_metric - update.old_metric
 
         return metric_update
 
-    def accepted(self, Y, X, update):
+    def accepted(self, Y, X, params, update):
         # Update Minv
-        self.Minv -= self.Mup
+        if params.compute_update:
+            self.Minv -= self.Mup
 
     def call(self, Y, X, params):
         # Apply covariates
@@ -188,6 +213,6 @@ class Iopt:
 
             # Invert for minimization
             return -trace 
-        return -np.inf
+        return -np.inf 
 
 

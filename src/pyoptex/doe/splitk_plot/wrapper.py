@@ -23,7 +23,7 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
 def default_fn(metric, constraints=no_constraints):
     return FunctionSet(metric, constraints)
 
-def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None):
+def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, grps=None, compute_update=True):
     """
     effect_types : dict or np.array(1d)
         If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
@@ -155,29 +155,36 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
         old_plot_sizes = np.zeros_like(plot_sizes) 
 
     # Define which groups to optimize
-    grps = level_grps(old_plot_sizes, plot_sizes)
-    grps = List([grps[lvl] for lvl in effect_levels])
+    lgrps = level_grps(old_plot_sizes, plot_sizes)
+    if grps is None:
+        grps = List([lgrps[lvl] for lvl in effect_levels])
+    else:
+        grps = List([np.concatenate((grps[i].astype(np.int64), lgrps[effect_levels[i]]), dtype=np.int64) for i in range(len(effect_levels))])
 
     # Force types
     plot_sizes = plot_sizes.astype(np.int64)
 
+    # Compile constraints
+    fn = fn._replace(constraints=numba.njit(fn.constraints))
+
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X, cov
+        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X, cov,
+        compute_update
     )
     
     return params, col_names
 
 def create_splitk_plot_design(
-        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None,
-        n_tries=10, max_it=10000, validate=False
+        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, 
+        grps=None, compute_update=True, n_tries=10, max_it=10000, validate=False
     ):
     assert n_tries > 0
 
     # Extract the parameters
     params, col_names = create_parameters(
-        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X, cov
+        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X, cov, grps, compute_update
     )
 
     # Pre initialize metric
