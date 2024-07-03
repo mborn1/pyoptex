@@ -115,13 +115,18 @@ def optimize(params, max_it=10000, validate=False):
 
                                 # Set update
                                 updated = True
-                            else:
-                                # Reset the current coordinates
-                                state.Y[runs, cols] = Ycoord
-                                state.X[runs] = Xrows
+
+                # Set the correct coordinates
+                state.Y[runs, cols] = Ycoord
+                state.X[runs] = Xrows
+
+                # Validate the state
+                if validate:
+                    validate_state(state, params)
             
         # Stop if nothing updated for an entire iteration
         if not updated:
             break
 
+    print(params.fn.metric.call(state.Y, state.X, params), state.metric)
     return Y, state
