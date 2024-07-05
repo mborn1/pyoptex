@@ -128,5 +128,4 @@ def optimize(params, max_it=10000, validate=False):
         if not updated:
             break
 
-    print(params.fn.metric.call(state.Y, state.X, params), state.metric)
     return Y, state
