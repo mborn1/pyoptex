@@ -204,7 +204,6 @@ class Iopt:
         M = X.T @ params.Vinv @ X
 
         # Check if invertible (more stable than relying on inverse)
-        print(X.shape, np.linalg.matrix_rank(X))
         if np.linalg.matrix_rank(X) >= X.shape[1]:
             # Compute average trace (normalized)
             trace = np.mean(np.trace(np.linalg.solve(

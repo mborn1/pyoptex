@@ -36,7 +36,6 @@ def optimize(params, max_it=10000, validate=False):
     # Initialization
     params.fn.metric.init(Y, X, params)
     metric = params.fn.metric.call(Y, X, params)
-    print('Initial metric:', metric)
     state = State(Y, X, metric)
 
     # Make sure we are not stuck in finite loop
