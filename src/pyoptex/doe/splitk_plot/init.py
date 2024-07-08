@@ -185,7 +185,7 @@ def initialize_feasible(params, complete=False, max_tries=10):
 
         # Make sure it's feasible
         Xenc = params.Y2X(Yenc)
-        feasible = np.linalg.matrix_rank(Xenc) == Xenc.shape[1]
+        feasible = np.linalg.matrix_rank(Xenc) >= Xenc.shape[1]
 
         # Check if not in infinite loop
         if tries >= max_tries and not feasible:

@@ -5,6 +5,7 @@ from numba.typed import List
 from tqdm import tqdm
 
 from .optimize import optimize
+from .init import initialize_feasible
 from .utils import Parameters, FunctionSet, State, level_grps, obs_var, extend_design
 from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
 from ..utils.model import encode_model
@@ -20,8 +21,8 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     c = c[:, 1:]
     return c
 
-def default_fn(metric, constraints=no_constraints):
-    return FunctionSet(metric, constraints)
+def default_fn(metric, constraints=no_constraints, init=initialize_feasible):
+    return FunctionSet(metric, constraints, init)
 
 def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, grps=None, compute_update=True):
     """

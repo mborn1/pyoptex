@@ -122,7 +122,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
     # Check if prior is estimeable
     Xprior = params.Y2X(params.prior)
-    if Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) == Xprior.shape[1]:
+    if Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) >= Xprior.shape[1]:
         return params.prior 
     nprior = len(Xprior)
 
@@ -159,7 +159,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         for i in tqdm(r):
             keep[i] = False
             Xk = X[keep]
-            if np.linalg.matrix_rank(Xk) != X.shape[1]:
+            if np.linalg.matrix_rank(Xk) < X.shape[1]:
                 keep[i] = True
         Y = Y[keep]
 
@@ -172,7 +172,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         costs = params.fn.cost(Y)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        feasible = (np.linalg.matrix_rank(X) == X.shape[1]) and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
+        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:

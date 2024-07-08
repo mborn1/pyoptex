@@ -55,7 +55,7 @@ class Aopt:
         M = X.T @ Vinv @ X
 
         # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(M[0]) == M.shape[1]:
+        if np.linalg.matrix_rank(M[0]) >= M.shape[1]:
             # Extrace variances
             diag = np.diag(np.linalg.inv(M), axis1=-2, axis2=-1)
 
@@ -120,7 +120,7 @@ class Iopt:
         M = X.T @ Vinv @ X
 
         # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(M[0]) == M.shape[1]:
+        if np.linalg.matrix_rank(M[0]) >= M.shape[1]:
             # Compute average trace (normalized)
             trace = np.mean(np.trace(np.linalg.solve(
                 M, 

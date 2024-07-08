@@ -31,11 +31,12 @@ def optimize(params, max_it=10000, validate=False):
         The state according to the generated design.
     """
     # Initialize a design
-    _, (Y, X) = initialize_feasible(params)
+    _, (Y, X) = params.fn.init(params)
 
     # Initialization
     params.fn.metric.init(Y, X, params)
     metric = params.fn.metric.call(Y, X, params)
+    print('Initial metric:', metric)
     state = State(Y, X, metric)
 
     # Make sure we are not stuck in finite loop
