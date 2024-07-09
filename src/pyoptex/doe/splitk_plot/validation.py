@@ -28,4 +28,4 @@ def validate_state(state, params):
 
     # Validate metric
     new_metric = params.fn.metric.call(state.Y, state.X, params)
-    assert (state.metric - new_metric) / new_metric < 1e-6, f'The metric does not match: {state.metric} -- {new_metric}'
+    assert np.abs((state.metric - new_metric) / new_metric) < 1e-6, f'The metric does not match: {state.metric} -- {new_metric}'

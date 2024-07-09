@@ -116,9 +116,9 @@ def optimize(params, max_it=10000, validate=False):
                                 # Set update
                                 updated = True
 
-                # Set the correct coordinates
-                state.Y[runs, cols] = Ycoord
-                state.X[runs] = Xrows
+                    # Set the correct coordinates
+                    state.Y[runs, cols] = Ycoord
+                    state.X[runs] = Xrows
 
                 # Validate the state
                 if validate:
