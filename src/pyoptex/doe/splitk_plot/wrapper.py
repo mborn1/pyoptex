@@ -135,10 +135,16 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
                 'cov is the array of elements to prepend to Y'
             )
 
+    # Compile constraints
+    fn = fn._replace(constraints=numba.njit(fn.constraints), constraintso=numba.njit(fn.constraintso))
+
     # Determine a prior
     if prior is not None:
         # Expand prior information
         prior, old_plot_sizes = prior
+
+        # Validate the prior
+        assert not np.any(fn.constraintso(prior)), 'Prior does not uphold the constraints'
 
         # Convert prior to numpy
         if isinstance(prior, pd.DataFrame):
@@ -164,9 +170,6 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
 
     # Force types
     plot_sizes = plot_sizes.astype(np.int64)
-
-    # Compile constraints
-    fn = fn._replace(constraints=numba.njit(fn.constraints), constraintso=numba.njit(fn.constraintso))
 
     # Create the parameters
     params = Parameters(
