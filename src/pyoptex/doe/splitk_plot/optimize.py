@@ -37,6 +37,8 @@ def optimize(params, max_it=10000, validate=False):
     params.fn.metric.init(Y, X, params)
     metric = params.fn.metric.call(Y, X, params)
     state = State(Y, X, metric)
+    if validate:
+        validate_state(state, params)
 
     # Make sure we are not stuck in finite loop
     for it in range(max_it):

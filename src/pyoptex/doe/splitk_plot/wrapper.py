@@ -22,7 +22,7 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     return c
 
 def default_fn(metric, constraints=no_constraints, init=initialize_feasible):
-    return FunctionSet(metric, constraints, init)
+    return FunctionSet(metric, constraints.encode(), constraints.func(), init)
 
 def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, grps=None, compute_update=True):
     """
@@ -166,7 +166,7 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
     plot_sizes = plot_sizes.astype(np.int64)
 
     # Compile constraints
-    fn = fn._replace(constraints=numba.njit(fn.constraints))
+    fn = fn._replace(constraints=numba.njit(fn.constraints), constraintso=numba.njit(fn.constraintso))
 
     # Create the parameters
     params = Parameters(

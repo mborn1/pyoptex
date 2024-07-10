@@ -112,7 +112,7 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
             # Loop until no longer all invalid
             while all_invalid[grp]:
                 # Adjust the design
-                Y = __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, complete)
+                Y = __init_unconstrained(effect_types, effect_levels, grps_, thetas, coords, Y, complete)
                 # Validate the constraints
                 c = constraints(Y[grp*jmp:(grp+1)*jmp])
                 # Update all invalid
@@ -172,7 +172,7 @@ def initialize_feasible(params, complete=False, max_tries=10):
         # Constraint corrections
         Y = __correct_constraints(
             params.effect_types, params.effect_levels, params.grps, 
-            params.thetas, params.coords, params.plot_sizes, params.fn.constraints,
+            params.thetas, params.coords, params.plot_sizes, params.fn.constraintso,
             Y, complete
         )
 
