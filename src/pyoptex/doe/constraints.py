@@ -2,12 +2,6 @@ import re
 import numpy as np
 import numba
 
-@numba.njit
-def no_constraints(Y):
-    """
-    Function always returning False for each run.
-    """
-    return np.zeros(Y.shape[:-1], dtype=np.bool8)
 
 def parse_script(script, effect_types, eps=1e-6):
     """
@@ -225,4 +219,5 @@ class CompCol(BinaryCol):
         else:
             return f'({self.col._encode()} {self.sep} {self.col2._encode()})'
 
+no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', (None, None), is_constant=True)
 

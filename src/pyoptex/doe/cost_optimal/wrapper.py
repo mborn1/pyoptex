@@ -66,7 +66,7 @@ def default_fn(
         restart = RestartEveryNFailed(nsims / 100)
 
     # Return the function set
-    return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints)
+    return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
 
 def create_parameters(effect_types, fn, model=None, coords=None, 
                         ratios=None, grouped_cols=None, prior=None, Y2X=None):
@@ -180,6 +180,9 @@ def create_parameters(effect_types, fn, model=None, coords=None,
             prior = encode_design(prior, effect_types)
     else:
         prior = np.empty((0, colstart[-1]))
+
+    # Compile constraints
+    fn = fn._replace(constraints=numba.njit(fn.constraints))
     
     # Create the parameters
     params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X, {})

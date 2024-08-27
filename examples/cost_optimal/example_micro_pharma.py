@@ -48,7 +48,7 @@ def cost_fn(Y):
 metric = Dopt()
 
 # Define constraints  12 * X3 - 15 * X2 + 3 >= 0
-constraints = parse_script(f'(12 * `C` - 15 * `B` + 3 < 0)', effect_types).encode()
+constraints = parse_script(f'(12 * `C` - 15 * `B` + 3 < 0)', effect_types)
 
 # Define coordinates
 coords = [

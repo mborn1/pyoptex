@@ -67,7 +67,7 @@ metric = Iopt(cov=cov)
 constraints = parse_script(
     f'(`A` + `B` > 1 + eps) | (`A` < 0.1 - eps) | (`B` < 0.2 - eps) | (`A` > 0.4 + eps) | (`B` > 0.5 + eps)', 
     effect_types
-).encode()
+)
 
 # Parameter initialization
 nsims = 5000

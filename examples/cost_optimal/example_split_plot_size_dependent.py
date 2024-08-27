@@ -34,7 +34,7 @@ model = partial_rsm_names({key: value[1] for key, value in effects.items()})
 grouped_cols = np.zeros(len(effects))
 
 # Constraints
-constraints = parse_script(f'((`B` > 0) & (`C` < -0.4)) | ((`B` < 0) & (`C` > 0.4))', effect_types).encode()
+constraints = parse_script(f'((`B` > 0) & (`C` < -0.4)) | ((`B` < 0) & (`C` > 0.4))', effect_types)
 
 #########################################################################
 
