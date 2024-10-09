@@ -1,6 +1,15 @@
+from pyoptex.doe.utils.comp import outer_integral
 import numpy as np
-import re
 
-script = '-1 - `A` + 5'
+n = 10000000
+samples = np.stack((
+    np.ones(n),
+    np.random.rand(n) * 2 - 1,
+    np.random.rand(n) * 2 - 1,
+))
+samples = np.stack((
+    samples[0], samples[1], samples[2], samples[1] * samples[2], samples[1]**2, samples[2]**2
+))
+print(samples.shape)
 
-print(re.sub(r'(?<!Col\()(-*(?=[\.\d]+)[\.\d]+)', lambda m: f'Col({m.group(1)}, (effect_types, col_start), is_constant=True)', script))
+print(outer_integral(samples.T))

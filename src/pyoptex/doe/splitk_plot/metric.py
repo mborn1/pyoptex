@@ -138,8 +138,6 @@ class Iopt:
         The moments matrix.
     samples : np.array(2d)
         The covariate expanded samples for the moments matrix.
-    intdx : float
-        The integral over the input space for normalization.
     n : int
         The number of samples.
     Minv : np.array(3d)
@@ -149,7 +147,6 @@ class Iopt:
     """
     def __init__(self, n=10000):
         self.moments = None
-        self.intdx = None
         self.n = n
 
         self.Minv = None
@@ -162,8 +159,6 @@ class Iopt:
 
         # Compute moments matrix and normalization factor
         self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
-        self.intdx = 2**np.sum(params.effect_types == 1) \
-                    * np.prod(params.effect_types[params.effect_types > 1], initial=1)
 
     def init(self, Y, X, params):
         if params.compute_update:
@@ -181,7 +176,7 @@ class Iopt:
                 return -np.inf
 
             # Compute update to metric (double negation with update)
-            metric_update = np.mean(np.sum(self.Mup * self.moments.T, axis=(1, 2))) / self.intdx
+            metric_update = np.mean(np.sum(self.Mup * self.moments.T, axis=(1, 2)))
 
             # Numerical instability (negative variance)
             if metric_update > -update.old_metric:
@@ -209,7 +204,7 @@ class Iopt:
             trace = np.mean(np.trace(np.linalg.solve(
                 M, 
                 np.broadcast_to(self.moments, (params.Vinv.shape[0], *self.moments.shape))
-            ), axis1=-2, axis2=-1)) / self.intdx
+            ), axis1=-2, axis2=-1))
 
             # Invert for minimization
             return -trace 

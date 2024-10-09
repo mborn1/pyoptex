@@ -86,8 +86,6 @@ class Iopt:
         The moments matrix.
     samples : np.array(2d)
         The covariate expanded samples for the moments matrix.
-    intdx : float
-        The integral over the input space for normalization.
     n : int
         The number of samples.
     complete : bool
@@ -97,7 +95,6 @@ class Iopt:
         self.cov = cov or no_cov
         self.moments = None
         self.samples = None
-        self.intdx = None
         self.n = n
         self.complete = complete
 
@@ -111,8 +108,6 @@ class Iopt:
 
         # Compute moments matrix and normalization factor
         self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
-        self.intdx = 2**np.sum(params.effect_types == 1) \
-                    * np.prod(params.effect_types[params.effect_types > 1], initial=1)
 
     def call(self, Y, X, Zs, Vinv, costs):
         # Apply covariates
@@ -125,7 +120,7 @@ class Iopt:
             trace = np.mean(np.trace(np.linalg.solve(
                 M, 
                 np.broadcast_to(self.moments, (Vinv.shape[0], *self.moments.shape))
-            ), axis1=-2, axis2=-1)) / self.intdx
+            ), axis1=-2, axis2=-1))
 
             # Invert for minimization
             return -trace 

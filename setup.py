@@ -27,6 +27,7 @@ setuptools.setup(
         'tqdm==4.64.0',
         'scipy==1.8.0',
         'pandas==1.5.3',
+        'plotly==5.22.0',
     ],
     extras_require={
         'dev': [
