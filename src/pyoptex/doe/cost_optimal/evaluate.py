@@ -11,7 +11,7 @@ from ..utils.model import encode_model, encode_names, model2names
 from ..constraints import no_constraints
 
 def evaluate_metrics(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                        constraints=no_constraints, Y2X=None, cov=None):
+                        constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
     # Create the design parameters
     fn = default_fn(1, cost_fn, None, constraints=constraints)
     params, col_names = create_parameters(effect_types, fn, model=model, grouped_cols=grouped_cols, ratios=ratios, Y2X=Y2X)
@@ -34,7 +34,7 @@ def evaluate_metrics(Y, effect_types, cost_fn=None, model=None, grouped_cols=Non
         costs = params.fn.cost(Y)
 
     # Initialize the metrics
-    iopt = Iopt(n=10000, cov=cov)
+    iopt = Iopt(n=iopt_N, cov=cov)
     iopt.init(params)
     dopt = Dopt(cov=cov)
     dopt.init(params)
@@ -50,7 +50,7 @@ def evaluate_metrics(Y, effect_types, cost_fn=None, model=None, grouped_cols=Non
     return (m_iopt, m_dopt, m_aopt)
 
 def fraction_of_design_space(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                                constraints=no_constraints, Y2X=None, cov=None):
+                                constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
     assert ratios is None or len(ratios.shape) == 1 or ratios.shape[0] == 1, 'Can only specify one set of variance ratios'
 
     # Create the design parameters
@@ -75,7 +75,7 @@ def fraction_of_design_space(Y, effect_types, cost_fn=None, model=None, grouped_
         costs = params.fn.cost(Y)
     
     # Initialize Iopt
-    iopt = Iopt(n=10000, cov=cov)
+    iopt = Iopt(n=iopt_N, cov=cov)
     iopt.init(params)
 
     # Compute information matrix
