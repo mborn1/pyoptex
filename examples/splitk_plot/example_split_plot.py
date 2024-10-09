@@ -44,7 +44,7 @@ ratios = None
 #########################################################################
 
 # Parameter initialization
-n_tries = 10000
+n_tries = 10
 
 # Create the set of operators
 fn = default_fn(metric)
@@ -67,4 +67,14 @@ print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
 print(f'Execution time: {end_time - start_time:.3f}')
 print(Y)
+
+#########################################################################
+
+from pyoptex.doe.splitk_plot.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix
+from pyoptex.doe.utils.plot import plot_correlation_map
+print(evaluate_metrics(Y, effect_types, plot_sizes, model=model, ratios=ratios))
+plot_fraction_of_design_space(Y, effect_types, plot_sizes, model=model, ratios=ratios).show()
+plot_estimation_variance_matrix(Y, effect_types, plot_sizes, model=model, ratios=ratios).show()
+plot_correlation_map(Y, effect_types, model=model).show()
+
 

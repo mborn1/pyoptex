@@ -23,3 +23,4 @@ def outer_integral(arr):
     for i in range(arr.shape[0]):
         out += np.expand_dims(arr[i], 1) @ np.expand_dims(arr[i], 0)
     return out / arr.shape[0]
+    
