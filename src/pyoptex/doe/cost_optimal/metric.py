@@ -57,7 +57,8 @@ class Aopt:
         # Check if invertible (more stable than relying on inverse)
         if np.linalg.matrix_rank(M[0]) >= M.shape[1]:
             # Extrace variances
-            diag = np.diag(np.linalg.inv(M), axis1=-2, axis2=-1)
+            Minv = np.linalg.inv(M)
+            diag = np.array([np.diag(m) for m in Minv])
 
             # Weight
             if self.W is not None:

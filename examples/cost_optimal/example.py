@@ -45,12 +45,13 @@ metric = Iopt()
 prior = None
 
 # Define multiple ratios
-ratios = np.stack((np.ones(len(effects)) * 10, np.ones(len(effects)) * 0.1))
+# ratios = np.stack((np.ones(len(effects)) * 10, np.ones(len(effects)) * 0.1))
+ratios = None
 
 #########################################################################
 
 # Parameter initialization
-nsims = 100
+nsims = 10
 nreps = 1
 
 # Create the set of operators
@@ -70,10 +71,21 @@ end_time = time.time()
 
 # Write design to storage
 Y.to_csv(f'example_design.csv', index=False)
+print(Y)
+print(effect_types)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
 print(f'Cost: {state.cost_Y}')
 print(f'Number of experiments: {len(state.Y)}')
 print(f'Execution time: {end_time - start_time:.3f}')
+
+#########################################################################
+
+from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix
+from pyoptex.doe.utils.plot import plot_correlation_map
+print(evaluate_metrics(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios))
+plot_fraction_of_design_space(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
+plot_estimation_variance_matrix(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
+plot_correlation_map(Y, effect_types, model=model).show()
 

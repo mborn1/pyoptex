@@ -141,3 +141,45 @@ def encode_model(model, effect_types):
 
     return model
 
+################################################
+
+def encode_names(col_names, effect_types):
+    lbls = [
+        lbl for i in range(len(col_names)) 
+            for lbl in (
+                [col_names[i]] if effect_types[i] <= 2 
+                else [f'{col_names[i]}_{j}' for j in range(effect_types[i] - 1)]
+            )
+    ]
+    return lbls
+
+def model2names(model, col_names=None):
+    # Convert model to columns
+    if isinstance(model, pd.DataFrame):
+        col_names = list(model.columns)
+        model = model.to_numpy()
+
+    # Set base column names
+    if col_names is None:
+        col_names = list(np.arange(model.shape[1]).astype(str))
+    col_names = np.asarray(col_names)
+
+    def __comb(x):
+        # Select the model term
+        term = model[x]
+
+        # Create higher order representations
+        higher_order_effects = (term != 1) & (term != 0)
+        high = np.char.add(np.char.add(col_names[higher_order_effects], '^'), term[higher_order_effects].astype(str))
+
+        # Concatenate with main effects and join
+        term_repr = np.concatenate((col_names[term == 1], high))
+        term_repr = f' * '.join(term_repr)
+
+        # Constant term
+        if term_repr == '':
+            term_repr = 'cst'
+
+        return term_repr 
+        
+    return list(np.vectorize(__comb)(np.arange(model.shape[0])))
