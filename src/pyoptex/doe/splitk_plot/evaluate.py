@@ -43,9 +43,9 @@ def evaluate_metrics(Y, effect_types, plot_sizes, model=None, ratios=None,
     aopt.init(Y, X, params)
 
     # Compute the metrics
-    m_iopt = iopt.call(Y, X, params)
+    m_iopt = -iopt.call(Y, X, params)
     m_dopt = dopt.call(Y, X, params)
-    m_aopt = aopt.call(Y, X, params)
+    m_aopt = -aopt.call(Y, X, params)
 
     # Return the metrics
     return (m_iopt, m_dopt, m_aopt)

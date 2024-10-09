@@ -42,9 +42,9 @@ def evaluate_metrics(Y, effect_types, cost_fn=None, model=None, grouped_cols=Non
     aopt.init(params)
 
     # Compute the metrics
-    m_iopt = iopt.call(Y, X, Zs, Vinv, costs)
+    m_iopt = -iopt.call(Y, X, Zs, Vinv, costs)
     m_dopt = dopt.call(Y, X, Zs, Vinv, costs)
-    m_aopt = aopt.call(Y, X, Zs, Vinv, costs)
+    m_aopt = -aopt.call(Y, X, Zs, Vinv, costs)
 
     # Return the metrics
     return (m_iopt, m_dopt, m_aopt)
