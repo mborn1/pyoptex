@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from numba.typed import List
+import numba
 
 from .simulation import simulate
 from .init import init_feasible
