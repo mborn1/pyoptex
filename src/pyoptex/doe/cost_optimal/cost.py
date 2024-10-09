@@ -69,12 +69,11 @@ def discount_effect_trans_cost(costs, effect_types, max_cost, base_cost=1):
             # Detect change in runs
             c = 0
             for j in range(old_run.size):
-                if old_run[j] != new_run[j]:
+                if old_run[j] != new_run[j] and costs[j] > c:
                     c = costs[j]
-                    break
             
             # Set base cost
-            if c == 0:
+            if c < base_cost:
                 c = base_cost
 
             # Set the cost
