@@ -14,3 +14,4 @@ from . import simulation
 from . import temperature
 from . import utils
 from . import validation
+from . import evaluate
