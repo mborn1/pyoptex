@@ -10,7 +10,7 @@ from ..utils.design import x2fx, encode_design
 from ..constraints import no_constraints
 
 def evaluate_metrics(Y, effect_types, plot_sizes, model=None, ratios=None,
-                        constraints=no_constraints, Y2X=None, cov=None):
+                        constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
     # Create the design parameters
     effect_levels = np.ones(len(effect_types), dtype=np.int64)
     fn = default_fn(None, constraints=constraints)
@@ -31,8 +31,7 @@ def evaluate_metrics(Y, effect_types, plot_sizes, model=None, ratios=None,
     X = params.Y2X(Y)
 
     # Initialize the metrics
-    n = 10000
-    iopt = Iopt(n=n)
+    iopt = Iopt(n=iopt_N)
     iopt.preinit(params)
     iopt.init(Y, X, params)
     dopt = Dopt()
@@ -51,7 +50,7 @@ def evaluate_metrics(Y, effect_types, plot_sizes, model=None, ratios=None,
     return (m_iopt, m_dopt, m_aopt)
 
 def fraction_of_design_space(Y, effect_types, plot_sizes, model=None, ratios=None,
-                                constraints=no_constraints, Y2X=None, cov=None):
+                                constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
     assert ratios is None or len(ratios.shape) == 1 or ratios.shape[0] == 1, 'Can only specify one set of variance ratios'
 
     # Create the design parameters
@@ -74,8 +73,7 @@ def fraction_of_design_space(Y, effect_types, plot_sizes, model=None, ratios=Non
     X = params.Y2X(Y)
     
     # Initialize Iopt
-    n = 10000
-    iopt = Iopt(n=n)
+    iopt = Iopt(n=iopt_N)
     iopt.preinit(params)
     iopt.init(Y, X, params)
 
