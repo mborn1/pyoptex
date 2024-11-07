@@ -23,7 +23,7 @@ def _validate_prior(params):
     costs = params.fn.cost(params.prior)
     cost_Y = np.array([np.sum(c) for c, _, _ in costs])
     max_cost = np.array([m for _, m, _ in costs])
-    assert np.all(cost_Y < max_cost), 'Prior exceeds maximum cost'
+    assert np.all(cost_Y <= max_cost), 'Prior exceeds maximum cost'
 
 @profile
 def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
