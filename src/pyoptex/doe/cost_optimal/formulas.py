@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 
 from ..._profile import profile
 
@@ -152,12 +153,12 @@ def detect_block_end_from_start(groups, start):
 
 ###################################
 
-def inv_PpD(P):
+def inv_PpD(P, ratios=1):
     """
     Part of update formulas, see article for information.
     """
-    P[:, 0, 0] += 1
-    P[:, 1, 1] += 1
+    P[:, 0, 0] += 1/ratios
+    P[:, 1, 1] += 1/ratios
     return np.linalg.inv(P)
 
 @profile
@@ -171,7 +172,6 @@ def group_update_vinv(Vinv, Zi, b, ratios):
     # Add another dimension to ratios for broadcasting
     ratios = ratios[:, np.newaxis]
 
-    # TODO: possible to improve multiplications with U/V
     # Initialize U and V
     U = np.zeros((Vinv.shape[0], len(Zi), 2))
     V = np.zeros((2, len(Zi)))
@@ -250,3 +250,78 @@ def del_vinv_update(Vinv, pos, ratios):
     Vinvn -= dinv[:, np.newaxis, np.newaxis] * (b[:, :, np.newaxis] @ b[:, np.newaxis, :])
 
     return Vinvn
+
+###################################
+
+# Expanded multiplications with R and S
+# Slower than regular matrix multiplications
+
+@numba.njit
+def inv_PpD_numba(P, ratios=1):
+    """
+    Part of update formulas, see article for information.
+    """
+    P[:, 0, 0] += 1/ratios
+    P[:, 1, 1] += 1/ratios
+    out = np.empty(P.shape)
+    for i in range(len(P)):
+        out[i] = np.linalg.inv(P[i])
+    return out
+
+@numba.njit
+def multR(A, row_start, row_end, T_to_left, T_to_right, T_from_left, T_from_right): 
+    out = np.empty((A.shape[0], A.shape[1], 2))
+    out[:, :, 0] = np.sum(A[:, :, row_start:row_end], axis=2)
+    out[:, :, 1] = (
+        np.sum(A[:, :, T_to_left], axis=2)
+            + np.sum(A[:, :, T_to_right], axis=2) 
+            - np.sum(A[:, :, T_from_left], axis=2)
+            - np.sum(A[:, :, T_from_right], axis=2)
+    )
+    return out
+
+@numba.njit
+def multS(A, row_start, row_end, 
+            T_to_left, T_to_right, T_from_left, T_from_right, not_T_from_mid, T_to_mid):
+    out = np.empty((A.shape[0], 2, A.shape[2]))
+    out[:, 0] = (
+        np.sum(A[:, T_to_left, :], axis=1)
+            + np.sum(A[:, T_to_right, :], axis=1) 
+            - np.sum(A[:, T_from_left, :], axis=1)
+            - np.sum(A[:, T_from_right, :], axis=1)
+            + 2*np.sum(A[:, not_T_from_mid, :], axis=1)
+            + 2*np.sum(A[:, T_to_mid, :], axis=1)
+    )
+    out[:, 1] = np.sum(A[:, row_start:row_end, :], axis=1)
+    return out
+
+@numba.njit
+def _group_update_vinv(Vinv, Zi, b, ratios):
+    """
+    Part of update formulas, see article for information.
+    """
+    # Expand change
+    row_start, row_end, group_from, group_to = b
+
+    # Define T
+    T_from = (Zi==group_from)
+    T_to = (Zi==group_to)
+
+    # Divide parts of T
+    T_from_left = np.flatnonzero(T_from[:row_start])
+    T_from_right = row_end + np.flatnonzero(T_from[row_end:])
+    not_T_from_mid = row_start + np.flatnonzero(~T_from[row_start:row_end])
+    T_to_left = np.flatnonzero(T_to[:row_start])
+    T_to_right = row_end + np.flatnonzero(T_to[row_end:])
+    T_to_mid = row_start + np.flatnonzero(T_to[row_start:row_end])
+
+    # Perform the update
+    SV = multS(Vinv, row_start, row_end, T_to_left, T_to_right, T_from_left, T_from_right, not_T_from_mid, T_to_mid)
+    P = multR(SV, row_start, row_end, T_to_left, T_to_right, T_from_left, T_from_right)
+    VR = multR(Vinv, row_start, row_end, T_to_left, T_to_right, T_from_left, T_from_right)
+    PpDinv = inv_PpD_numba(P, ratios)
+    for i in range(len(Vinv)):
+        Vinv[i] -= VR[i] @ (PpDinv[i] @ SV[i])
+
+    return Vinv
+
