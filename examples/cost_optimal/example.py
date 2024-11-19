@@ -16,6 +16,10 @@ from pyoptex.doe.cost_optimal.cost import discount_effect_trans_cost
 from pyoptex.doe.cost_optimal.init import init_feasible
 
 np.random.seed(42)
+@numba.njit
+def set_seed(value):
+    np.random.seed(value)
+set_seed(42)
 
 # Define parameters
 effects = {
@@ -52,7 +56,7 @@ ratios = None
 #########################################################################
 
 # Parameter initialization
-nsims = 10
+nsims = 100
 nreps = 1
 
 # Create the set of operators
@@ -83,10 +87,10 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 #########################################################################
 
-from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix
-from pyoptex.doe.utils.plot import plot_correlation_map
-print(evaluate_metrics(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios))
-plot_fraction_of_design_space(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
-plot_estimation_variance_matrix(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
-plot_correlation_map(Y, effect_types, model=model).show()
+# from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix
+# from pyoptex.doe.utils.plot import plot_correlation_map
+# print(evaluate_metrics(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios))
+# plot_fraction_of_design_space(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
+# plot_estimation_variance_matrix(Y, effect_types, cost_fn=cost_fn, model=model, grouped_cols=grouped_cols, ratios=ratios).show()
+# plot_correlation_map(Y, effect_types, model=model).show()
 
