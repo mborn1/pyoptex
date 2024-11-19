@@ -11,8 +11,9 @@ import time
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
-from pyoptex.doe.cost_optimal.cov import cov_block_cost
+from pyoptex.doe.cost_optimal.cov import cov_block_cost, cov_augment_time, cov_augment_time_double
 from pyoptex.doe.cost_optimal.cost import discount_effect_trans_cost
+from pyoptex.doe.cost_optimal.init import init_feasible
 
 np.random.seed(42)
 

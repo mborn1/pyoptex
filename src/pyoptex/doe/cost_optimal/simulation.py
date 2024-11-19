@@ -130,7 +130,8 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
 
         # Accept
         cost_transition = (np.all(new_state.cost_Y <= new_state.max_cost) and np.any(state.cost_Y > state.max_cost))
-        accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() or cost_transition
+        accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() or cost_transition \
+                        or np.isinf(state.metric) or np.isnan(state.metric)
         if accept:
             # Update the state and temperature
             state = new_state
@@ -138,10 +139,10 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
             params.fn.restart.accepted()
 
             # Fix numerical issues with inverse update formulas
+            Vinv = np.array([np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) for ratios in params.ratios])
+            metric = params.fn.metric.call(state.Y, state.X, state.Zs, Vinv, state.costs)
             state = State(
-                state.Y, state.X, state.Zs, 
-                np.array([np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) for ratios in params.ratios]),
-                state.metric, state.cost_Y, state.costs, state.max_cost
+                state.Y, state.X, state.Zs, Vinv, metric, state.cost_Y, state.costs, state.max_cost
             )
 
             # Set the best state
