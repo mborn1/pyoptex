@@ -124,7 +124,7 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
     return Y
 
 @profile
-def initialize_feasible(params, complete=False, max_tries=10):
+def initialize_feasible(params, complete=False, max_tries=1000):
     """
     Generate a random initial design for split^k plot problem.
     `grps` specifies at each level which level-groups should be
@@ -189,7 +189,12 @@ def initialize_feasible(params, complete=False, max_tries=10):
 
         # Check if not in infinite loop
         if tries >= max_tries and not feasible:
-            raise ValueError('Unable to find a feasible design the constraints')
+            
+            i = 0
+            while np.linalg.matrix_rank(Xenc[:, :i]) == i:
+                i += 1
+
+            raise ValueError(f'Unable to find a feasible design within the constraints: term {i} is fully correlated to the lower terms')
                     
     return Y, (Yenc, Xenc)
 
