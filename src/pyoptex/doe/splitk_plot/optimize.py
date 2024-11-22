@@ -103,7 +103,7 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
                             up = params.fn.metric.update(state.Y, state.X, params, update)
 
                             # New best design
-                            if ((state.metric == 0 or np.isinf(state.metric)) and up > 0) or up / state.metric > eps:
+                            if ((state.metric == 0 or np.isinf(state.metric)) and up > 0) or up / np.abs(state.metric) > eps:
                                 # Mark the metric as accepted
                                 params.fn.metric.accepted(state.Y, state.X, params, update)
 

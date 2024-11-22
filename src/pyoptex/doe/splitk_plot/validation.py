@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 from .utils import obs_var, State
 
