@@ -110,7 +110,11 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
                                 # Store the best coordinates
                                 Ycoord = new_coord
                                 Xrows = np.copy(state.X[runs])
-                                state = State(state.Y, state.X, state.metric + up)
+                                if np.isinf(up):
+                                    metric = params.fn.metric.call(state.Y, state.X, params)
+                                else:
+                                    metric = state.metric + up
+                                state = State(state.Y, state.X, metric)
 
                                 # Validate the state
                                 if validate:
