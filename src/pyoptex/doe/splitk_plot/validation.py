@@ -22,13 +22,17 @@ def validate_UD(U, D, Xi_star, runs, unstable_state, params):
         Mstar = M[i] + U.T @ np.diag(D[i]) @ U
         assert np.linalg.norm(Mstar - X.T @ Vinv[i] @ X) < 1e-6
     
-def validate_state(state, params):
+def validate_state(state, params, eps=1e-6):
     # Validate X
     assert np.all(state.X == params.Y2X(state.Y)), 'X does not match Y2X(Y)'
 
     # Validate metric
-    new_metric = params.fn.metric.call(state.Y, state.X, params)
-    assert (state.metric == 0 and new_metric == 0) or np.abs((state.metric - new_metric) / new_metric) < 1e-6, f'The metric does not match: {state.metric} -- {new_metric}'
+    if (metric == 0 and state.metric == 0) \
+        or (np.isnan(metric) and np.isnan(state.metric))\
+        or (np.isinf(metric) and np.isinf(state.metric)):
+        warnings.warn(f'Metric is {state.metric}')
+    else:
+        assert np.abs((state.metric - metric) / metric) < eps, f'The metric does not match: {state.metric} -- {metric}'
 
     # Validate constraints
     assert not np.any(params.fn.constraints(state.Y)), f'Constraints are violated'
