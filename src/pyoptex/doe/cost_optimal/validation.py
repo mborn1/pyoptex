@@ -34,7 +34,7 @@ def validate_state(state, params, eps=1e-6):
         assert np.all(np.abs(state.Vinv[i] - vinv) < eps), f'{np.linalg.norm(state.Vinv[i] - vinv)}'
 
     # Validate costs
-    costs = params.fn.cost(state.Y)
+    costs = params.fn.cost(state.Y, params)
 
     # Validate cost_Y
     cost_Y = np.array([np.sum(c) for c, _, _ in costs])

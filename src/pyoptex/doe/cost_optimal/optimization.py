@@ -121,7 +121,7 @@ def ce_metric(state, params):
                         state.X[row] = params.Y2X(state.Y[row:row+1])
 
                         # Compute costs
-                        new_costs = params.fn.cost(state.Y)
+                        new_costs = params.fn.cost(state.Y, params)
                         new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                         max_cost = np.array([m for _, m, _ in new_costs])
 
@@ -255,7 +255,7 @@ def ce_struct_metric(state, params):
                         state.X[rows] = params.Y2X(state.Y[rows])
 
                         # Compute costs
-                        new_costs = params.fn.cost(state.Y)
+                        new_costs = params.fn.cost(state.Y, params)
                         new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                         max_cost = np.array([m for _, m, _ in new_costs])
                         
@@ -371,7 +371,7 @@ def pe_metric(state, params):
                     state.X[row] = params.Y2X(state.Y[row:row+1])
 
                     # Compute costs
-                    new_costs = params.fn.cost(state.Y)
+                    new_costs = params.fn.cost(state.Y, params)
                     new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                     max_cost = np.array([m for _, m, _ in new_costs])
 

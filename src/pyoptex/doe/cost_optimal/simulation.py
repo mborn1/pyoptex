@@ -20,7 +20,7 @@ def _validate_prior(params):
     """
     assert params.prior.shape[1] == params.colstart[-1], 'Prior does not have the correct shape'
     assert not np.any(params.fn.constraints(params.prior)), 'Prior contains constraint violating runs'
-    costs = params.fn.cost(params.prior)
+    costs = params.fn.cost(params.prior, params)
     cost_Y = np.array([np.sum(c) for c, _, _ in costs])
     max_cost = np.array([m for _, m, _ in costs])
     assert np.all(cost_Y <= max_cost), 'Prior exceeds maximum cost'
@@ -87,7 +87,7 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
     X = params.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
-    costs = params.fn.cost(Y)
+    costs = params.fn.cost(Y, params)
     cost_Y = np.array([np.sum(c) for c, _, _ in costs])
     max_cost = np.array([m for _, m, _ in costs])
     metric = params.fn.metric.call(Y, X, Zs, Vinv, costs)

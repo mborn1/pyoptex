@@ -117,7 +117,7 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
                 Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
 
             # Compute cost reduction
-            costsn = params.fn.cost(Yn)
+            costsn = params.fn.cost(Yn, params)
             cost_Yn = np.array([np.sum(c) for c, _, _ in costsn])
             max_cost = np.array([m for _, m, _ in costsn])
 

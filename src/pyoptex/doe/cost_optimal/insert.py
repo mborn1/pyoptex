@@ -110,7 +110,7 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         Zs, Vinv = state.Zs, state.Vinv
 
     # Update costs
-    costs = params.fn.cost(Y)
+    costs = params.fn.cost(Y, params)
     cost_Y = np.sum(costs, axis=1)
 
     # Compute the new metric
@@ -196,7 +196,7 @@ def insert_optimal(new_run, state, params):
             Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
 
         # Compute cost increase
-        costsn = params.fn.cost(Yn)
+        costsn = params.fn.cost(Yn, params)
         cost_Yn = np.array([np.sum(c) for c, _, _ in costsn])
         max_cost = np.array([m for _, m, _ in costsn])
 

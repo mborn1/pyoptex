@@ -8,6 +8,8 @@ from ...utils.numba import numba_any_axis1, numba_diff_axis0
 FunctionSet = namedtuple('FunctionSet', 'init sample cost metric temp accept restart insert remove constraints', defaults=(None,)*9 + (no_constraints,))
 Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior Y2X stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
+Factor = namedtuple('Factor', 'name grouped ratio type min max levels coords', 
+                        defaults=(None, True, 1, 'cont', -1, 1, [], None))
 
 def obs_var_Zs(Yenc, colstart, grouped_cols=None):
     """

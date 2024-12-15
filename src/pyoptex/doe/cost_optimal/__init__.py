@@ -1,4 +1,5 @@
 from .wrapper import default_fn, create_parameters, create_cost_optimal_design
+from .utils import Factor
 
 from . import accept
 from . import cost

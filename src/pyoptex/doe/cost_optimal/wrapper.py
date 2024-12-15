@@ -3,6 +3,7 @@ import pandas as pd
 import numba
 from numba.typed import List
 import numba
+import warnings
 
 from .simulation import simulate
 from .init import init_feasible
@@ -12,7 +13,7 @@ from .accept import exponential_accept_rel
 from .restart import RestartEveryNFailed
 from .insert import insert_optimal
 from .remove import remove_optimal_onebyone
-from .utils import Parameters, FunctionSet
+from .utils import Parameters, FunctionSet, Factor
 from ..utils.model import encode_model
 from ..utils.design import x2fx, encode_design, decode_design, create_default_coords
 from ..constraints import no_constraints
@@ -70,9 +71,7 @@ def default_fn(
     # Return the function set
     return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
 
-def create_parameters(effect_types, fn, model=None, coords=None, 
-                        ratios=None, grouped_cols=None, prior=None, Y2X=None,
-                        use_formulas=True):
+def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formulas=True):
     """
     Creates the parameters object by preprocessing some elements. This is a simple utility function
     to transform each variable to its correct representation.
@@ -80,15 +79,10 @@ def create_parameters(effect_types, fn, model=None, coords=None,
     Y2X can allow the user to provide a custom design to model matrix function. This can be useful to incorporate
     non-polynomial columns.
 
-    .. warning::
-        Make sure the order of the columns is as indicated in effect_types 
-        (and it accounts for preceding categorical variables)!
-
     Parameters
     ----------
-    effect_types : dict or np.array(1d)
-        If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
-        a continuous factor, anything higher is a categorical factor with that many levels.
+    factors : list(Factor)
+        The list of factors.
     fn : :py:class:`FunctionSet`
         A set of operators for the algorithm. Must be specified up front.
     model : pd.DataFrame or np.array(2d)
@@ -96,14 +90,6 @@ def create_parameters(effect_types, fn, model=None, coords=None,
         it makes sure the columns are correctly ordered. A model is defined by the default regression
         notation (e.g. [0, ..., 0] for the intercept, [1, 0, ..., 0] for the first main effect, etc.).
         The parameter is ignored if a Y2X function is provided.
-    coords : None or list(np.array(2d) or None)
-        If None or one element is None, the :py:func:`create_default_coords` are used.
-    ratios : None or np.array(1d) or np.array(2d)
-        The array of ratios vs. epsilon for each factors random effect variance. Set to all ones by default.
-        Multi-dimensional ratios permit the computation of multiple Vinv simultaneously.
-    grouped_cols : None or np.array(1d)
-        A boolean array indicating which columns must receive a corresponding random effect. By default,
-        all variables do.
     prior : None or np.array(2d)
         A possible prior design to use for augmentation.
     Y2X : func(Y)
@@ -114,55 +100,75 @@ def create_parameters(effect_types, fn, model=None, coords=None,
     -------
     params : :py:func:`Parameters`
         The parameters object required for :py:func:`simulate`
-    col_names : list(str) or None
-        A list of column names initially presented. None if no information was found.
     """
+    # Initial input validation
     assert model is not None or Y2X is not None, 'Either a polynomial model or Y2X function must be provided'
+    assert len(factors) > 0, 'At least one factor must be provided'
+    for i, f in enumerate(factors):
+        assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
+        assert f.type.lower() in ['cont', 'continuous', 'cat', 'categorical'], f'Factor {i} with name {f.name} has an unknown type {f.type}, must be "continuous" or "categorical"'
+        if f.type.lower() in ['cont', 'continuous']:
+            assert isinstance(f.min, float) or isinstance(f.min, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as minimum, but received {f.min} with type {type(f.min)}'
+            assert isinstance(f.max, float) or isinstance(f.max, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as maximum, but received {f.max} with type {type(f.max)}'
+            assert f.min < f.max, f'Continuous factor {i} with name {f.name} requires a strictly lower minimum than maximum, but has a minimum of {f.min} and a maximum of {f.max}'
+            assert f.coords is None, f'Cannot specify coordinates for continuous factors, please specify the levels'
+        else:
+            assert len(f.levels) >= 2, f'Categorical factor {i} with name {f.name} has {len(f.levels)} levels, at least two required. Have you specified the "levels" parameters?'
+            if f.coords is not None:
+                coords = np.array(f.coords)
+                assert len(coords.shape) == 2, f'Categorical factor {i} with name {f.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions'
+                assert coords.shape[0] == len(f.levels), f'Categorical factor {i} with name {f.name} requires one encoding for every level, but has {len(f.levels)} levels and {coords.shape[0]} encodings'
+                assert coords.shape[1] == len(f.levels) - 1, f'Categorical factor {i} with name {f.name} and N levels requires N-1 dummy columns, but has {len(f.levels)} levels and {coords.shape[1]} dummy columns'
+                assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Categorical factor {i} with name {f.name} does not have a valid (full rank) encoding'
+    if model is not None:
+        assert isinstance(model, pd.DataFrame), f'The model must specified as a dataframe but is a {type(model)}'
+    if prior is not None:
+        assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
 
-    if isinstance(effect_types, dict):
-        # Detect effect types
-        col_names = list(effect_types.keys())
-        effect_types = np.array(list(effect_types.values()))
-    else:
-        # No column names known
-        col_names = None
+    # Provide warnings
+    if model is not None and Y2X is not None:
+        warnings.warn('Both a model and Y2X function are specified, using Y2X')
 
-    # Set default grouped columns and ratios (force to 2d)
-    grouped_cols = grouped_cols if grouped_cols is not None else np.ones(effect_types.size, dtype=np.bool_)
-    ratios = ratios if ratios is not None else np.ones((1, effect_types.size))
-    if len(ratios.shape) == 1:
-        ratios = ratios.reshape(1, -1)
+    # Extract the factor parameters
+    col_names = [str(f.name) for f in factors]
+    effect_types = np.array([1 if f.type.lower() in ['cont', 'continuous'] else len(f.levels) for f in factors])
+    grouped_cols = np.array([bool(f.grouped) for f in factors])
+    ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list) or isinstance(f.ratio, np.ndarray)
+                        else [f.ratio] for f in factors]
+    
+    # Extract coordinates
+    def extract_coord(factor):
+        if factor.coords is None:
+            # Define the coordinates
+            coord = create_default_coords(1)
 
-    # Set default coords
-    coords = coords if coords is not None else [None]*effect_types.size
-    coords = [create_default_coords(et) if coord is None else coord for coord, et in zip(coords, effect_types)]
+            # Encode the coordinates for categorical factors
+            if factor.type.lower() not in ['cont', 'continuous']:
+                coord = encode_design(coord, np.array([len(factor.levels)]))
 
-    # Map ratios to grouped columns if necessary
-    if ratios.shape[1] != grouped_cols.size:
-        assert ratios.shape[1] == np.sum(grouped_cols), 'Must specify a ratio for each grouped column'
-        r = np.ones((ratios.shape[0], effect_types.size))
-        r[:, grouped_cols] = ratios
-        ratios = r
+        else:
+            # Extract the coordinates
+            coord = np.array(factor.coords).astype(np.float64)
 
-    # Encode the coordinates
+            # Normalize the continuous coordinates
+            if factor.type.lower() in ['cont', 'continuous']:
+                coord = (coord.reshape(-1, 1) - factor.min) / (factor.max - factor.min) * 2 - 1
+
+        return coord
+    coords = List([extract_coord(f) for f in factors])
+
+    # Align ratios
+    nratios = max([len(r) for r in ratios])
+    assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
+    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios])
+
+    # Define the starting columns
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
-    coords_enc = List([
-        encode_design(coord, np.array([et]))
-            if et > 1 and coord.shape[1] == 1 and np.all(np.sort(coord) == create_default_coords(et))
-            else coord.astype(np.float64)
-        for coord, et in zip(coords, effect_types)
-    ])
-
+    
     # Set the Y2X function
     if Y2X is None:
-
         # Detect model in correct order
-        if isinstance(model, pd.DataFrame):
-            if col_names is not None:
-                model = model[col_names].to_numpy()
-            else:
-                col_names = model.columns
-                model = model.to_numpy()
+        model = model[col_names].to_numpy()
 
         # Encode model
         modelenc = encode_model(model, effect_types)
@@ -172,15 +178,18 @@ def create_parameters(effect_types, fn, model=None, coords=None,
         
     # Create the prior
     if prior is not None:
+        # Normalize factors
+        for f in factors:
+            if f.type.lower() in ['cont', 'continuous']:
+                prior[str(f.name)] = ((prior[str(f.name)] - f.min) / (f.max - f.min)) * 2 - 1
+            else:
+                prior[str(f.name)] = prior[str(f.name)].map({lname: i for i, lname in enumerate(f.levels)})
+
         # Convert from pandas to numpy
-        if isinstance(prior, pd.DataFrame):
-            if col_names is not None:
-                prior = prior[col_names]
-            prior = prior.to_numpy()
+        prior = prior[col_names].to_numpy()
         
-        # Possibly encode the design
-        if prior.shape[1] == effect_types.size:
-            prior = encode_design(prior, effect_types)
+        # Encode the design
+        prior = encode_design(prior, effect_types)
     else:
         prior = np.empty((0, colstart[-1]))
 
@@ -188,12 +197,11 @@ def create_parameters(effect_types, fn, model=None, coords=None,
     fn = fn._replace(constraints=numba.njit(fn.constraints))
     
     # Create the parameters
-    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)
+    params = Parameters(fn, colstart, coords, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)
 
-    return params, col_names
+    return params
 
-def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
-                     Y2X=None, nreps=1, use_formulas=True, **kwargs):
+def create_cost_optimal_design(factors, fn, model=None, prior=None, Y2X=None, nreps=1, use_formulas=True, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
     permits the ability to provided `nreps` random starts for the algorithm. Kwargs can contain any of
@@ -209,9 +217,8 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
 
     Parameters
     ----------
-    effect_types : dict or np.array(1d)
-        If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
-        a continuous factor, anything higher is a categorical factor with that many levels.
+    factors : list(Factor)
+        The factors for the design.
     fn : :py:class:`FunctionSet`
         A set of operators for the algorithm. Must be specified up front.
     model : pd.DataFrame or np.array(2d)
@@ -219,13 +226,6 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
         it makes sure the columns are correctly ordered. A model is defined by the default regression
         notation (e.g. [0, ..., 0] for the intercept, [1, 0, ..., 0] for the first main effect, etc.).
         The parameter is ignored if a Y2X function is provided.
-    coords : None or list(np.array(2d) or None)
-        If None or one element is None, the :py:func:`_default_coords` are used.
-    ratios : None or np.array(1d)
-        The array of ratios vs. epsilon for each factors random effect variance. Set to all ones by default.
-    grouped_cols : None or np.array(1d)
-        A boolean array indicating which columns must receive a corresponding random effect. By default,
-        all variables do.
     prior : None or np.array(2d)
         A possible prior design to use for augmentation.
     Y2X : func(Y)
@@ -245,12 +245,10 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
         The state corresponding to the returned design. Contains the encoded design, model matrix, 
         costs, metric, etc.
     """
-    assert nreps > 0
+    assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
     # Extract the parameters
-    params, col_names = create_parameters(
-        effect_types, fn, model, coords, ratios, grouped_cols, prior, Y2X, use_formulas
-    )
+    params = create_parameters(factors, fn, model, prior, Y2X, use_formulas)
 
     # Simulation
     best_state = simulate(params, **kwargs)
@@ -263,11 +261,15 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
             except ValueError as e:
                 print(e)
     except KeyboardInterrupt:
-        pass
+        print('Interrupted: returning current results')
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=col_names)
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in factors])
+    for f in factors:
+        if f.type.lower() in ['cont', 'continuous']:
+            Y[str(f.name)] = (Y[str(f.name)] + 1) / 2 * (f.max - f.min) + f.min
+        else:
+            Y[str(f.name)] = Y[str(f.name)].astype(int).map({i: lname for i, lname in enumerate(f.levels)})
     return Y, best_state
-
 

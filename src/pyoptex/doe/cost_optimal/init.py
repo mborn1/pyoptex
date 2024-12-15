@@ -38,7 +38,7 @@ def greedy_cost_minimization(Y, params):
         # Compute all costs
         for k in range(non_chosen.size):
             Yn[i] = Y[non_chosen[k]]
-            costs[k] = params.fn.cost(Yn[:i+1])
+            costs[k] = params.fn.cost(Yn[:i+1], params)
 
         # Compute the total cost of each operation
         costs_Y = np.array([np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost]) for cost in costs])
@@ -169,7 +169,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
         # Fill it up
         X = params.Y2X(Y)
-        costs = params.fn.cost(Y)
+        costs = params.fn.cost(Y, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
         feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
@@ -177,7 +177,13 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
             if reverse:
-                raise ValueError('Unable to find a feasible design within the cost constraints')
+                if np.all(cost_Y <= max_cost):
+                    for i in range(1, X.shape[1]+1):
+                        if np.linalg.matrix_rank(X[:, :i]) < i:
+                            break
+                    raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components')
+                else:
+                    raise ValueError(f'Unable to find a feasible design due to the budget: maximum costs are {max_cost}, design costs are {cost_Y}')
             else:
                 reverse = True 
 

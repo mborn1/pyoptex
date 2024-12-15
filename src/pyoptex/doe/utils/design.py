@@ -21,9 +21,9 @@ def create_default_coords(effect_type):
         The default possible coordinates for the factor.
     """
     if effect_type == 1:
-        return np.array([-1, 0, 1]).reshape(-1, 1)
+        return np.array([-1, 0, 1], dtype=np.float64).reshape(-1, 1)
     else:
-        return np.arange(effect_type).reshape(-1, 1)
+        return np.arange(effect_type, dtype=np.float64).reshape(-1, 1)
 
 ################################################
 
@@ -212,26 +212,6 @@ def decode_design(Y, effect_types, coords=None):
             start += ncols
 
     return Ydec
-
-################################################
-
-def denormalize(Y, ranges):
-    for name, (typ, r) in ranges.items():
-        if name in Y:
-            if typ == 1:
-                Y[name] = (r[1] - r[0]) * ((Y[name] + 1) / 2) + r[0]
-            else:
-                Y[name] = np.array(list(r))[Y[name].to_numpy().astype(np.int64)]
-    return Y
-
-def normalize(Y, ranges):
-    for name, (typ, r) in ranges.items():
-        if name in Y:
-            if typ == 1:
-                Y[name] = (Y[name] - r[0]) / (r[1] - r[0]) * 2 - 1
-            else:
-                Y[name] = Y[name].map({j: i for i, j in enumerate(r)})
-    return Y
 
 ################################################
 
