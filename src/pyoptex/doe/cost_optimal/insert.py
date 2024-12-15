@@ -3,7 +3,8 @@ import numba
 
 from .formulas import insert_update_vinv, detect_block_end_from_start, NO_UPDATE
 from .simulation import State
-from ..utils.design import x2fx, force_Zi_asc
+from .utils import obs_var_Zs
+from ..utils.design import x2fx, force_Zi_asc, obs_var_from_Zs
 from ...utils.numba import numba_insert_axis0
 from ..._profile import profile
 
@@ -98,9 +99,13 @@ def _insert_position(new_run, pos, state, params, new_X=None):
 
     # Update Zs and Vinv
     if any(Zi is not None for Zi in state.Zs):
-        a, b = groups_insert(Y, state.Zs, pos, params.colstart)
-        Zs, Vinv = insert_update_vinv(state.Vinv, state.Zs, pos, a, b, params.ratios)
-        Zs = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zs)
+        if params.use_formulas:
+            a, b = groups_insert(Y, state.Zs, pos, params.colstart)
+            Zs, Vinv = insert_update_vinv(state.Vinv, state.Zs, pos, a, b, params.ratios)
+            Zs = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zs)
+        else:
+                Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
+                Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
     else:
         Zs, Vinv = state.Zs, state.Vinv
 
@@ -178,9 +183,13 @@ def insert_optimal(new_run, state, params):
 
         # Compute new observation variance
         if any(Zi is not None for Zi in state.Zs):
-            a, b = groups_insert(Yn, state.Zs, k, params.colstart)
-            Zsn, Vinvn = insert_update_vinv(state.Vinv, state.Zs, k, a, b, params.ratios)
-            Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+            if params.use_formulas:
+                a, b = groups_insert(Yn, state.Zs, k, params.colstart)
+                Zsn, Vinvn = insert_update_vinv(state.Vinv, state.Zs, k, a, b, params.ratios)
+                Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+            else:
+                Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
+                Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
         else:
             # Shortcut as there are no hard-to-vary factors
             Zsn = state.Zs

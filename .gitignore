@@ -15,7 +15,7 @@ archive/results/*
 experiments/results/*
 analysis/data/*
 sims/results/*
-
+ignore/*
 test.ipynb
 *.csv
 *.lprof

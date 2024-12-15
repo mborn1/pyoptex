@@ -2,7 +2,8 @@ import numpy as np
 
 from .formulas import detect_block_end_from_start, remove_update_vinv
 from .simulation import State
-from ..utils.design import force_Zi_asc
+from .utils import obs_var_Zs
+from ..utils.design import force_Zi_asc, obs_var_from_Zs
 from ..._profile import profile
 
 
@@ -103,9 +104,13 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
             # Compute Zsn and Vinvn
             if any(Zi is not None for Zi in state.Zs):
-                b = groups_remove(Yn, state.Zs, k, params.colstart)
-                Zsn, Vinvn = remove_update_vinv(state.Vinv, state.Zs, k, b, params.ratios)
-                Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+                if params.use_formulas:
+                    b = groups_remove(Yn, state.Zs, k, params.colstart)
+                    Zsn, Vinvn = remove_update_vinv(state.Vinv, state.Zs, k, b, params.ratios)
+                    Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+                else:
+                    Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
+                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
             else:
                 # Shortcut as there are no hard-to-vary factors
                 Zsn = state.Zs

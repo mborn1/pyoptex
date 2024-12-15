@@ -71,7 +71,8 @@ def default_fn(
     return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
 
 def create_parameters(effect_types, fn, model=None, coords=None, 
-                        ratios=None, grouped_cols=None, prior=None, Y2X=None):
+                        ratios=None, grouped_cols=None, prior=None, Y2X=None,
+                        use_formulas=True):
     """
     Creates the parameters object by preprocessing some elements. This is a simple utility function
     to transform each variable to its correct representation.
@@ -187,12 +188,12 @@ def create_parameters(effect_types, fn, model=None, coords=None,
     fn = fn._replace(constraints=numba.njit(fn.constraints))
     
     # Create the parameters
-    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X, {})
+    params = Parameters(fn, colstart, coords_enc, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)
 
     return params, col_names
 
 def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios=None, grouped_cols=None, prior=None, 
-                     Y2X=None, nreps=1, **kwargs):
+                     Y2X=None, nreps=1, use_formulas=True, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
     permits the ability to provided `nreps` random starts for the algorithm. Kwargs can contain any of
@@ -248,7 +249,7 @@ def create_cost_optimal_design(effect_types, fn, model=None, coords=None, ratios
 
     # Extract the parameters
     params, col_names = create_parameters(
-        effect_types, fn, model, coords, ratios, grouped_cols, prior, Y2X
+        effect_types, fn, model, coords, ratios, grouped_cols, prior, Y2X, use_formulas
     )
 
     # Simulation

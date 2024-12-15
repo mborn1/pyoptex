@@ -2,7 +2,8 @@ import numpy as np
 
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
-from ..utils.design import force_Zi_asc
+from .utils import obs_var_Zs
+from ..utils.design import force_Zi_asc, obs_var_from_Zs
 from ..utils.init import full_factorial
 from ...utils.numba import numba_any_axis1, numba_diff_axis0
 from ..._profile import profile
@@ -132,11 +133,15 @@ def ce_metric(state, params):
                                 Zsn = state.Zs
                                 Vinvn = state.Vinv
                             else:
-                                Zin, Vinvn = ce_update_vinv(
-                                    np.copy(state.Vinv), 
-                                    np.copy(state.Zs[col]), b, params.ratios[:, col]
-                                )
-                                Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                if params.use_formulas:
+                                    Zin, Vinvn = ce_update_vinv(
+                                        np.copy(state.Vinv), 
+                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                    )
+                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                else:
+                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
+                                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
 
                             # Check metric
                             new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
@@ -261,11 +266,15 @@ def ce_struct_metric(state, params):
                                 Zsn = state.Zs
                                 Vinvn = state.Vinv
                             else:
-                                Zin, Vinvn = ce_update_vinv(
-                                    np.copy(state.Vinv), 
-                                    np.copy(state.Zs[col]), b, params.ratios[:, col]
-                                )
-                                Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                if params.use_formulas:
+                                    Zin, Vinvn = ce_update_vinv(
+                                        np.copy(state.Vinv), 
+                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                    )
+                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                else:
+                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
+                                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
 
                             # Compute new metric
                             new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
@@ -368,20 +377,27 @@ def pe_metric(state, params):
 
                     # Check constraints
                     if np.all(new_cost <= max_cost):
-                        # Update Zsn, Vinv
-                        bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row+1)
+                        
+                        # Check if using update formulas
+                        if params.use_formulas:
+                            # Update Zsn, Vinv
+                            bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row+1)
 
-                        # Sequential update of the groups
-                        for col, b in enumerate(bs):
-                            if len(b) == 0:
-                                Zsn = state.Zs
-                                Vinvn = state.Vinv
-                            else:
-                                Zin, Vinvn = ce_update_vinv(
-                                    np.copy(state.Vinv), 
-                                    np.copy(state.Zs[col]), b, params.ratios[:, col]
-                                )
-                                Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                            # Sequential update of the groups
+                            for col, b in enumerate(bs):
+                                if len(b) == 0:
+                                    Zsn = state.Zs
+                                    Vinvn = state.Vinv
+                                else:
+                                    Zin, Vinvn = ce_update_vinv(
+                                        np.copy(state.Vinv), 
+                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                    )
+                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                        else:
+                            # Recompute from scratch
+                            Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
+                            Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
 
                         # Check metric
                         new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
