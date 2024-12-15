@@ -1,5 +1,6 @@
 import numba
 import numpy as np
+import warnings
 
 from .utils import Update, State
 from .formulas import compute_update_UD
@@ -8,7 +9,7 @@ from .validation import validate_state, validate_UD
 from ..._profile import profile
 
 @profile
-def optimize(params, max_it=10000, validate=False):
+def optimize(params, max_it=10000, validate=False, eps=1e-4):
     """
     Optimize a model iteratively using the coordinate exchange algorithm.
     Only specific groups at each level are updated to allow design augmentation.
@@ -102,14 +103,18 @@ def optimize(params, max_it=10000, validate=False):
                             up = params.fn.metric.update(state.Y, state.X, params, update)
 
                             # New best design
-                            if up > 0:
+                            if ((state.metric == 0 or np.isinf(state.metric)) and up > 0) or up / np.abs(state.metric) > eps:
                                 # Mark the metric as accepted
                                 params.fn.metric.accepted(state.Y, state.X, params, update)
 
                                 # Store the best coordinates
                                 Ycoord = new_coord
                                 Xrows = np.copy(state.X[runs])
-                                state = State(state.Y, state.X, state.metric + up)
+                                if np.isinf(up):
+                                    metric = params.fn.metric.call(state.Y, state.X, params)
+                                else:
+                                    metric = state.metric + up
+                                state = State(state.Y, state.X, metric)
 
                                 # Validate the state
                                 if validate:
@@ -126,8 +131,15 @@ def optimize(params, max_it=10000, validate=False):
                 if validate:
                     validate_state(state, params)
             
+        # Recompute metric for numerical stability
+        old_metric = state.metric
+        state = state._replace(metric=params.fn.metric.call(state.Y, state.X, params))
+        if ((state.metric == 0 and old_metric > 0) or (np.isinf(state.metric) and ~np.isinf(state.metric))) and params.compute_update:
+            warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
+            
         # Stop if nothing updated for an entire iteration
         if not updated:
             break
 
+    validate_state(state, params)
     return Y, state

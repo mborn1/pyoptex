@@ -55,4 +55,4 @@ def validate_state(state, params, eps=1e-6):
         or (np.any(cost_Y > max_cost) and np.isinf(state.metric)):
         warnings.warn(f'Metric is {state.metric}')
     else:
-        assert np.abs((state.metric - metric) / metric) < eps, f'{state.metric} -- {metric}'
+        assert np.abs((state.metric - metric) / metric) < eps, f'The metric does not match: {state.metric} -- {metric}'

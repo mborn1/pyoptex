@@ -133,7 +133,8 @@ def cov_augment_time_double(time_outer=1, time_inner=1, cost_index=0):
             # Define outer time array
             cum_cost = np.cumsum(costs[cost_index][0])
             t_outer = np.floor_divide(cum_cost, time_outer)
-            t_outer = t_outer / t_outer[-1] * 2 - 1
+            if cum_cost[-1] > time_outer:
+                t_outer = t_outer / t_outer[-1] * 2 - 1
 
             # Define inner time array
             t_inner = np.mod(cum_cost, time_outer)

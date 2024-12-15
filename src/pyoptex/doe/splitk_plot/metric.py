@@ -2,6 +2,7 @@ import numpy as np
 import numba
 from numba.experimental import jitclass
 from numba import types
+import warnings
 
 from .utils import obs_var
 from .init import init_random
@@ -37,10 +38,14 @@ class Dopt:
         if params.compute_update:
             # Compute change in determinant
             du, self.P = det_update_UD(update.U, update.D, self.Minv)
-            du = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
+            if du > 0:
+                # Compute power
+                duu = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
 
-            # Return update as addition
-            metric_update = (du - 1) * update.old_metric
+                # Return update as addition
+                metric_update = (duu - 1) * update.old_metric
+            else:
+                return -update.old_metric
 
         else:
             # Compute from scratch
@@ -52,7 +57,11 @@ class Dopt:
     def accepted(self, Y, X, params, update):
         # Update Minv
         if params.compute_update:
-            self.Minv -= inv_update_UD(update.U, update.D, self.Minv, self.P)
+            try:
+                self.Minv -= inv_update_UD(update.U, update.D, self.Minv, self.P)
+            except np.linalg.LinAlgError as e:
+                warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
+                raise e
 
     def call(self, Y, X, params):
         M = X.T @ params.Vinv @ X
