@@ -1,9 +1,11 @@
 import plotly.express as px
 import numpy as np
 import pandas as pd
-from .design import correlation_map
+# from .evaluate import correlation_map
 
 def design_heatmap(Y):
+    # TODO: fix categorical factors
+
     # Top-down plotting
     return px.imshow(Y, aspect='auto')
 

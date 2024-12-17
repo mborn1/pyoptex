@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 import plotly.express as px
 import pandas as pd
@@ -7,174 +8,170 @@ from .metric import Aopt, Dopt, Iopt
 from .wrapper import default_fn, create_parameters
 from .utils import obs_var_Zs
 from ..utils.design import x2fx, encode_design, obs_var_from_Zs
-from ..utils.model import encode_model, encode_names, model2names
+from ..utils.model import model2encnames
 from ..constraints import no_constraints
 
-def evaluate_metrics(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                        constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
+
+def evaluate_metrics(Y, metrics, factors, Y2X, fn):
+    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    Y = Y.copy()
+
     # Create the design parameters
-    fn = default_fn(1, cost_fn, None, constraints=constraints)
-    params, col_names = create_parameters(effect_types, fn, model=model, grouped_cols=grouped_cols, ratios=ratios, Y2X=Y2X)
+    params = create_parameters(factors, fn, Y2X)
+
+    # Normalize Y
+    for f in factors:
+        Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    if isinstance(Y, pd.DataFrame):
-        if col_names is not None:
-            Y = Y[col_names]
-        Y = Y.to_numpy()
+    col_names = [str(f.name) for f in factors]
+    Y = Y[col_names].to_numpy()
 
     # Encode the design
-    Y = encode_design(Y, params.effect_types)
+    Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
     X = params.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
-    costs = None
-    if params.fn.cost is not None:
-        costs = params.fn.cost(Y)
+    costs = params.fn.cost(Y, params)
 
     # Initialize the metrics
-    iopt = Iopt(n=iopt_N, cov=cov)
-    iopt.init(params)
-    dopt = Dopt(cov=cov)
-    dopt.init(params)
-    aopt = Aopt(cov=cov)
-    aopt.init(params)
+    for metric in metrics:
+        metric.init(params)
 
     # Compute the metrics
-    m_iopt = -iopt.call(Y, X, Zs, Vinv, costs)
-    m_dopt = dopt.call(Y, X, Zs, Vinv, costs)
-    m_aopt = -aopt.call(Y, X, Zs, Vinv, costs)
+    return [metric.call(Y, X, Zs, Vinv, costs) for metric in metrics]
 
-    # Return the metrics
-    return (m_iopt, m_dopt, m_aopt)
-
-def fraction_of_design_space(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                                constraints=no_constraints, Y2X=None, cov=None, iopt_N=10000):
-    assert ratios is None or len(ratios.shape) == 1 or ratios.shape[0] == 1, 'Can only specify one set of variance ratios'
+def fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000, return_params=False):
+    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    Y = Y.copy()
 
     # Create the design parameters
-    fn = default_fn(1, cost_fn, None, constraints=constraints)
-    params, col_names = create_parameters(effect_types, fn, model=model, grouped_cols=grouped_cols, ratios=ratios, Y2X=Y2X)
+    params = create_parameters(factors, fn, Y2X)
+
+    # Normalize Y
+    for f in factors:
+        Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    if isinstance(Y, pd.DataFrame):
-        if col_names is not None:
-            Y = Y[col_names]
-        Y = Y.to_numpy()
+    col_names = [str(f.name) for f in factors]
+    Y = Y[col_names].to_numpy()
 
     # Encode the design
-    Y = encode_design(Y, params.effect_types)
+    Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
     X = params.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
-    Vinv = np.linalg.inv(obs_var_from_Zs(Zs, len(Y), params.ratios[0]))
-    costs = None
-    if params.fn.cost is not None:
-        costs = params.fn.cost(Y)
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
+    costs = params.fn.cost(Y, params)
     
     # Initialize Iopt
-    iopt = Iopt(n=iopt_N, cov=cov)
+    iopt = Iopt(n=iopt_N, cov=fn.metric.cov)
     iopt.init(params)
 
     # Compute information matrix
-    if cov is not None:
-        _, X, _, Vinv = cov(Y, X, Zs, Vinv, costs)
+    if iopt.cov is not None:
+        _, X, _, Vinv = iopt.cov(Y, X, Zs, Vinv, costs)
     M = X.T @ Vinv @ X
 
     # Compute prediction variances
-    pred_var = np.sum(iopt.samples.T * np.linalg.solve(M, iopt.samples.T), axis=0)
+    pred_var = np.sum(iopt.samples.T * np.linalg.solve(M, np.broadcast_to(iopt.samples.T, (M.shape[0], *iopt.samples.T.shape))), axis=-2)
+    pred_var = np.sort(pred_var)
 
-    return np.sort(pred_var)
+    if return_params:
+        return pred_var, params
+    return pred_var
 
-def plot_fraction_of_design_space(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                                    constraints=no_constraints, Y2X=None, cov=None):
+def plot_fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000):
     # Compute prediction variances
-    pred_var = fraction_of_design_space(Y, effect_types, cost_fn, model, grouped_cols, ratios, constraints, Y2X, cov)
+    pred_var, params = fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=iopt_N, return_params=True)
 
     # Create the figure
     fig = go.Figure()
-    color = DEFAULT_PLOTLY_COLORS[0]
-    fig.add_trace(go.Scatter(x=np.linspace(0, 1, len(pred_var)), y=pred_var, marker_color=color))
-    fig.add_hline(y=np.mean(pred_var), annotation_text=f'{np.mean(pred_var):.3f}', annotation_font_color=DEFAULT_PLOTLY_COLORS[0], 
-                  line_dash='dash', line_width=1, line_color=DEFAULT_PLOTLY_COLORS[0], annotation_position='bottom right')
+    for i, pv in enumerate(pred_var):
+        color = DEFAULT_PLOTLY_COLORS[i]
+        name = ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(factors, params.ratios[i]) if f.grouped])
+        fig.add_trace(go.Scatter(x=np.linspace(0, 1, len(pv)), y=pv, marker_color=color, name=name))
+        fig.add_hline(y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}', annotation_font_color=color, 
+                        line_dash='dash', line_width=1, line_color=color, annotation_position='bottom right')
+
+    # Set axis
+    fig.update_layout(
+        xaxis_title='Fraction of design space',
+        yaxis_title='Relative prediction variance',
+        legend_title_text='A-priori variance ratios',
+    )
 
     return fig
 
-def estimation_variance_matrix(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                                  constraints=no_constraints, Y2X=None, cov=None):
-    assert ratios is None or len(ratios.shape) == 1 or ratios.shape[0] == 1, 'Can only specify one set of variance ratios'
+def estimation_variance_matrix(Y, factors, Y2X, fn, return_params=False):
+    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    Y = Y.copy()
     
     # Create the design parameters
-    fn = default_fn(1, cost_fn, None, constraints=constraints)
-    params, col_names = create_parameters(effect_types, fn, model=model, grouped_cols=grouped_cols, ratios=ratios, Y2X=Y2X)
+    params = create_parameters(factors, fn, Y2X)
+
+    # Normalize Y
+    for f in factors:
+        Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    if isinstance(Y, pd.DataFrame):
-        if col_names is not None:
-            Y = Y[col_names]
-        Y = Y.to_numpy()
-
-    # Encode the columns names
-    col_names_model = None
-    if model is not None and cov is None:
-        # Convert model to numpy
-        if isinstance(model, pd.DataFrame):
-            if col_names is not None:
-                model = model[col_names]
-            model = model.to_numpy()
-
-        # Set default column names
-        if col_names is None:
-            col_names = list(np.arange(model.shape[1]).astype(str))
-        
-        # Encode the model
-        model_enc = encode_model(model, params.effect_types)
-
-        # Create the column names
-        col_names_enc = encode_names(col_names, params.effect_types)
-        col_names_model = model2names(model_enc, col_names_enc)
+    col_names = [str(f.name) for f in factors]
+    Y = Y[col_names].to_numpy()
 
     # Encode the design
-    Y = encode_design(Y, params.effect_types)
+    Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
     X = params.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
-    Vinv = np.linalg.inv(obs_var_from_Zs(Zs, len(Y), params.ratios[0]))
-    costs = None
-    if params.fn.cost is not None:
-        costs = params.fn.cost(Y)
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
+    costs = params.fn.cost(Y, params)
 
     # Compute information matrix
-    if cov is not None:
-        _, X, _, Vinv = cov(Y, X, Zs, Vinv, costs)
+    if fn.metric.cov is not None:
+        _, X, _, Vinv = fn.metric.cov(Y, X, Zs, Vinv, costs)
     M = X.T @ Vinv @ X
 
     # Compute inverse of information matrix
     Minv = np.linalg.inv(M)
 
-    # Add column names to information matrix
-    if col_names_model is not None:
-        Minv = pd.DataFrame(Minv, columns=col_names_model, index=col_names_model)
-
     # Create figure
+    if return_params:
+        return Minv, params
     return Minv
 
-def plot_estimation_variance_matrix(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                                        constraints=no_constraints, Y2X=None, cov=None):
+def plot_estimation_variance_matrix(Y, factors, Y2X, fn, model=None):
     # Compute estimation variance matrix
-    Minv = estimation_variance_matrix(Y, effect_types, cost_fn, model, grouped_cols, ratios, constraints, Y2X, cov)
+    Minv, params = estimation_variance_matrix(Y, factors, Y2X, fn, return_params=True)
 
-    # TODO: add columns names to imshow
+    # Determine the encoded column names
+    if model is None:
+        encoded_colnames = np.arange(Minv.shape[-1])
+    else:
+        col_names = [str(f.name) for f in factors]
+        encoded_colnames = model2encnames(model[col_names], params.effect_types)
+
+    # Create the figure
+    fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
+        vertical_spacing=0.05,
+        subplot_titles=[
+            'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(factors, params.ratios[i]) if f.grouped])
+            for i in range(len(Minv))
+        ]
+    )
+    for i in range(len(Minv)):
+        fig.add_trace(go.Heatmap(
+            z=np.flipud(Minv[i]), x=encoded_colnames, y=encoded_colnames[::-1], colorbar_len=0.75/len(Minv),
+            colorbar_x=1, colorbar_y=1-(i+0.75/2+0.05*i)/len(Minv)
+        ), row=i+1, col=1)
 
     # Return the plot
-    return px.imshow(Minv)
+    return fig
 
-def estimation_variance(Y, effect_types, cost_fn=None, model=None, grouped_cols=None, ratios=None,
-                            constraints=no_constraints, Y2X=None, cov=None):
+def estimation_variance(Y, factors, Y2X, fn):
     # Compute estimation variance matrix
-    Minv = estimation_variance_matrix(Y, effect_types, cost_fn, model, grouped_cols, ratios, constraints, Y2X, cov)
-
-    return np.diag(Minv) 
+    Minv = estimation_variance_matrix(Y, factors, Y2X, fn)
+    return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])

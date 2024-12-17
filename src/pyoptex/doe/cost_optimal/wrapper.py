@@ -14,8 +14,7 @@ from .restart import RestartEveryNFailed
 from .insert import insert_optimal
 from .remove import remove_optimal_onebyone
 from .utils import Parameters, FunctionSet, Factor
-from ..utils.model import encode_model
-from ..utils.design import x2fx, encode_design, decode_design, create_default_coords
+from ..utils.design import encode_design, decode_design, create_default_coords
 from ..constraints import no_constraints
 
 def default_fn(
@@ -71,7 +70,7 @@ def default_fn(
     # Return the function set
     return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
 
-def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formulas=True):
+def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
     """
     Creates the parameters object by preprocessing some elements. This is a simple utility function
     to transform each variable to its correct representation.
@@ -102,7 +101,6 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
         The parameters object required for :py:func:`simulate`
     """
     # Initial input validation
-    assert model is not None or Y2X is not None, 'Either a polynomial model or Y2X function must be provided'
     assert len(factors) > 0, 'At least one factor must be provided'
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
@@ -120,14 +118,8 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
                 assert coords.shape[0] == len(f.levels), f'Categorical factor {i} with name {f.name} requires one encoding for every level, but has {len(f.levels)} levels and {coords.shape[0]} encodings'
                 assert coords.shape[1] == len(f.levels) - 1, f'Categorical factor {i} with name {f.name} and N levels requires N-1 dummy columns, but has {len(f.levels)} levels and {coords.shape[1]} dummy columns'
                 assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Categorical factor {i} with name {f.name} does not have a valid (full rank) encoding'
-    if model is not None:
-        assert isinstance(model, pd.DataFrame), f'The model must specified as a dataframe but is a {type(model)}'
     if prior is not None:
         assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
-
-    # Provide warnings
-    if model is not None and Y2X is not None:
-        warnings.warn('Both a model and Y2X function are specified, using Y2X')
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
@@ -139,21 +131,10 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
     # Align ratios
     nratios = max([len(r) for r in ratios])
     assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
-    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios])
+    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios]).T
 
     # Define the starting columns
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
-    
-    # Set the Y2X function
-    if Y2X is None:
-        # Detect model in correct order
-        model = model[col_names].to_numpy()
-
-        # Encode model
-        modelenc = encode_model(model, effect_types)
-
-        # Create transformation function for polynomial models
-        Y2X = lambda Y: x2fx(Y, modelenc)
         
     # Create the prior
     if prior is not None:
@@ -177,7 +158,7 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
 
     return params
 
-def create_cost_optimal_design(factors, fn, model=None, prior=None, Y2X=None, nreps=1, use_formulas=True, **kwargs):
+def create_cost_optimal_design(factors, fn, Y2X, prior=None, nreps=1, use_formulas=True, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
     permits the ability to provided `nreps` random starts for the algorithm. Kwargs can contain any of
@@ -224,7 +205,7 @@ def create_cost_optimal_design(factors, fn, model=None, prior=None, Y2X=None, nr
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
     # Extract the parameters
-    params = create_parameters(factors, fn, model, prior, Y2X, use_formulas)
+    params = create_parameters(factors, fn, Y2X, prior, use_formulas)
 
     # Simulation
     best_state = simulate(params, **kwargs)

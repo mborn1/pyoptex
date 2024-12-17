@@ -99,16 +99,21 @@ class Iopt:
         self.n = n
         self.complete = complete
 
+        self.initialized_ = False
+
     def init(self, params):
-        # Create the random samples
-        samples = init(params, self.n, complete=self.complete)
-        self.samples = params.Y2X(samples)
+        if not self.initialized_:
+            # Create the random samples
+            samples = init(params, self.n, complete=self.complete)
+            self.samples = params.Y2X(samples)
 
-        # Add random covariates
-        _, self.samples, _, _ = self.cov(samples, self.samples, None, None, None, random=True)
+            # Add random covariates
+            _, self.samples, _, _ = self.cov(samples, self.samples, None, None, None, random=True)
 
-        # Compute moments matrix and normalization factor
-        self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
+            # Compute moments matrix and normalization factor
+            self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
+
+            self.initialized_ = True
 
     def call(self, Y, X, Zs, Vinv, costs):
         # Apply covariates

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from collections import Counter
+from .design import x2fx
 
 def partial_rsm(nquad, ntfi, nlin):
     """
@@ -141,6 +142,24 @@ def encode_model(model, effect_types):
 
     return model
 
+def model2Y2X(model, factors):
+    assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
+
+    # Extract factor parameters
+    col_names = [str(f.name) for f in factors]
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+
+    # Detect model in correct order
+    model = model[col_names].to_numpy()
+
+    # Encode model
+    modelenc = encode_model(model, effect_types)
+
+    # Create transformation function for polynomial models
+    Y2X = lambda Y: x2fx(Y, modelenc)
+
+    return Y2X
+
 ################################################
 
 def encode_names(col_names, effect_types):
@@ -183,3 +202,16 @@ def model2names(model, col_names=None):
         return term_repr 
         
     return list(np.vectorize(__comb)(np.arange(model.shape[0])))
+
+def model2encnames(model, effect_types, col_names=None):
+    # Convert model to columns
+    if isinstance(model, pd.DataFrame):
+        col_names = list(model.columns)
+        model = model.to_numpy()
+
+    # Convert to encoded names
+    model_enc = encode_model(model, effect_types)
+    col_names_enc = encode_names(col_names, effect_types)
+    col_names_model = model2names(model_enc, col_names_enc)
+
+    return col_names_model
