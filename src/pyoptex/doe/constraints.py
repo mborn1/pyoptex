@@ -1,9 +1,11 @@
 import re
 import numpy as np
 import numba
+from numba.typed import List
+from .utils.design import encode_design
+from ..utils.numba import numba_all_axis1
 
-
-def parse_script(script, effect_types, eps=1e-6):
+def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
     Parse a script of constraints using the factor names. It creates a constraint evaluation
     function capable which returns True if any constraints are violated.
@@ -27,36 +29,65 @@ def parse_script(script, effect_types, eps=1e-6):
         The constraint tree which can be used to extract a function for both normal and encoded
         design matrices using .func() and .encode() respectively.
     """
-    # Determine column starts
-    columns = list(effect_types.keys())
-    effect_types = np.array(list(effect_types.values()))
+    # Extract column names
+    col_names = [str(f.name) for f in factors]
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
 
+    # Function to convert name to column object
+    def name2col(m):
+        i = col_names.index(m.group(1))
+        return f'Col({i}, factors[{i}], {colstart[i]})'
+
     # Create the script
-    script = re.sub(r'`(.*?)`', lambda m: f'Col({columns.index(m.group(1))}, (effect_types, col_start))', script)
+    script = re.sub(r'"(.*?)"', lambda m: f'Col("{m.group(1)}", None)', script)
+    script = re.sub(r'`(.*?)`', name2col, script)
     script = script.replace('^', '**')
-    script = re.sub(r'(?<!Col\()(-*(?=[\.\d]+)[\.\d]+)', lambda m: f'Col({m.group(1)}, (effect_types, col_start), is_constant=True)', script)
+    script = 'Col('.join(x[:x.find(')')] + re.sub(r'[-\.\d]+', lambda m: f'Col({m.group(0)}, None)', x[x.find(')'):]) for x in script.split('Col('))
+    if not exclude:
+        script = f'~({script})'
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 'CompCol': CompCol, 
-                         'effect_types': effect_types, 'col_start': colstart, 'eps': Col(eps, (effect_types, colstart), is_constant=True)})
+                         'factors': factors, 'eps': Col(eps, None)})
     return tree
 
 
 class Col:
     CATEGORICAL_MSG = 'Can only perform comparison with categorical columns'
 
-    def __init__(self, col, state, is_constant=False):
+    def __init__(self, col, factor, colstart=0):
         self.col = col
-        self.state = state
-        self.is_constant = is_constant
-        self.is_categorical = (not self.is_constant) and isinstance(col, int) and self.effect_types[col] > 1
+        self.factor = factor
+        self.colstart = colstart
+        self.is_constant = self.factor is None
+        self.is_categorical = (self.factor is not None) and (self.factor.is_categorical)
 
-    @property
-    def effect_types(self):
-        return self.state[0]
-    
-    @property
-    def col_start(self):
-        return self.state[1]
+        self.pre_normalized_ = False
+
+    ##############################################
+    def __str__(self):
+        return f'Y__[:,{self.col}]' if not self.is_constant else str(self.col)
+
+    def func(self):
+        return eval(f'lambda Y__: {str(self)}')
+
+    def _encode(self):
+        if self.is_constant:
+            return str(self.col)
+        elif self.is_categorical:
+            if self.pre_normalized_:
+                return f'(Y__[:,{self.colstart}:{self.colstart+len(self.factor.levels)-1}])'
+            else:
+                raise NotImplementedError('This branch has not been implemented yet')
+        else:
+            if self.pre_normalized_:
+                return f'(Y__[:,{self.colstart}])'
+            else:
+                return f'(Y__[:,{self.colstart}] * {self.factor.scale} + {self.factor.mean})'
+
+    def encode(self):
+        return eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np})
+
+    ##############################################
 
     def __validate_unary__(self):
         if self.is_categorical:
@@ -70,113 +101,100 @@ class Col:
         if self.is_categorical:
             if not other.is_constant:
                 raise ValueError(self.CATEGORICAL_MSG)
-            if other.col >= self.effect_types[self.col]:
-                raise ValueError('Categorical comparison outside range')
+            if other.col not in self.factor.levels:
+                raise ValueError(f'Categorical comparison unknown: {other.col} not in levels {self.factor.levels}')
         if other.is_categorical:
             if not self.is_constant:
                 raise ValueError(self.CATEGORICAL_MSG)
-            if self.col >= self.effect_types[other.col]:
-                raise ValueError('Categorical comparison outside range')
+            if self.col not in other.factor.levels:
+                raise ValueError(f'Categorical comparison unknown: {self.col} not in levels {other.factor.levels}')
 
     ##############################################
     def __pos__(self):
         self.__validate_unary__()
-        return UnaryCol(self, self.state, prefix='+')
+        return UnaryCol(self, prefix='+')
 
     def __neg__(self):
         self.__validate_unary__()
-        return UnaryCol(self, self.state, prefix='-')
+        return UnaryCol(self, prefix='-')
 
     def __abs__(self):
         self.__validate_unary__()
-        return UnaryCol(self, self.state, prefix='abs(', suffix=')')
+        return UnaryCol(self, prefix='abs(', suffix=')')
 
     def __invert__(self):
         self.__validate_unary__()
-        return UnaryCol(self, self.state, prefix='~')
+        return UnaryCol(self, prefix='~')
 
     ##############################################
     def __add__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '+', self.state)
+        return BinaryCol(self, other, '+')
 
     def __sub__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '-', self.state)
+        return BinaryCol(self, other, '-')
 
     def __mul__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '*', self.state)
+        return BinaryCol(self, other, '*')
 
     def __floordiv__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '//', self.state)
+        return BinaryCol(self, other, '//')
 
     def __truediv__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '/', self.state)
+        return BinaryCol(self, other, '/')
 
     def __mod__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '%', self.state)
+        return BinaryCol(self, other, '%')
 
     def __pow__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '**', self.state)        
+        return BinaryCol(self, other, '**')        
 
     def __eq__(self, other):
         self.__validate_comp__(other)
-        return CompCol(self, other, '==', self.state)
+        return CompCol(self, other, '==')
 
     def __ne__(self, other):
         self.__validate_comp__(other)
-        return CompCol(self, other, '!=', self.state)
+        return CompCol(self, other, '!=')
 
     def __ge__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '>=', self.state)
+        return BinaryCol(self, other, '>=')
 
     def __gt__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '>', self.state)
+        return BinaryCol(self, other, '>')
 
     def __le__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '<=', self.state)
+        return BinaryCol(self, other, '<=')
 
     def __lt__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '<', self.state)
+        return BinaryCol(self, other, '<')
 
     def __and__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '&', self.state)
+        return BinaryCol(self, other, '&')
 
     def __or__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '|', self.state)
+        return BinaryCol(self, other, '|')
 
     def __xor__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '^', self.state)
-
-    ##############################################
-    def __str__(self):
-        return f'Y__[:,{self.col}]' if not self.is_constant else str(self.col)
-
-    def func(self):
-        return eval(f'lambda Y__: {str(self)}')
-
-    def _encode(self):
-        return f'Y__[:,{self.col_start[self.col]}]' if not self.is_constant else str(self.col)
-
-    def encode(self):
-        return eval(f'lambda Y__: {self._encode()}')
+        return BinaryCol(self, other, '^')
 
 
 class UnaryCol(Col):
-    def __init__(self, col, state, prefix='', suffix=''):
-        super().__init__(col, state)
+    def __init__(self, col, prefix='', suffix=''):
+        super().__init__(col, None)
         self.prefix = prefix
         self.suffix = suffix
     def __str__(self):
@@ -186,8 +204,8 @@ class UnaryCol(Col):
 
 
 class BinaryCol(Col):
-    def __init__(self, left, right, sep, state):
-        super().__init__(left, state)
+    def __init__(self, left, right, sep):
+        super().__init__(left, None)
         self.col2 = right
         self.sep = sep
 
@@ -203,13 +221,13 @@ class CompCol(BinaryCol):
         return f'({str(self.col)} {self.sep} {str(self.col2)})'
 
     def __encode__(self, col1, col2):
-        # Check encoding
-        if col2.col == self.effect_types[col1.col] - 1:
-            # Last column
-            x = ' & '.join((f'({str(Col(self.col_start[col1.col] + i, self.state))} {self.sep} -1)' for i in range(col2.col)))
-            return f'({x})'
-        else:
-            return f'({str(Col(self.col_start[col1.col] + col2.col, self.state))} {self.sep} 1)'
+        assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
+        if not col1.pre_normalized_:
+            encoded = encode_design(np.array([[col1.factor.normalize(col2.col)]]), np.array([len(col1.factor.levels)]), 
+                                    List([col1.factor.coords_]))[0]
+            col2.col = f'np.array({list(encoded)})'
+            col1.pre_normalized_ = True
+        return f'numba_all_axis1({col1._encode()} {self.sep} {col2._encode()})'
 
     def _encode(self):
         if self.col.is_categorical:
@@ -219,5 +237,5 @@ class CompCol(BinaryCol):
         else:
             return f'({self.col._encode()} {self.sep} {self.col2._encode()})'
 
-no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', (None, None), is_constant=True)
+no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', None)
 

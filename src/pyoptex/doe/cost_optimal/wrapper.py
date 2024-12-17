@@ -107,7 +107,7 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
         assert f.type.lower() in ['cont', 'continuous', 'cat', 'categorical'], f'Factor {i} with name {f.name} has an unknown type {f.type}, must be "continuous" or "categorical"'
-        if f.type.lower() in ['cont', 'continuous']:
+        if f.is_continuous:
             assert isinstance(f.min, float) or isinstance(f.min, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as minimum, but received {f.min} with type {type(f.min)}'
             assert isinstance(f.max, float) or isinstance(f.max, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as maximum, but received {f.max} with type {type(f.max)}'
             assert f.min < f.max, f'Continuous factor {i} with name {f.name} requires a strictly lower minimum than maximum, but has a minimum of {f.min} and a maximum of {f.max}'
@@ -131,31 +131,10 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
-    effect_types = np.array([1 if f.type.lower() in ['cont', 'continuous'] else len(f.levels) for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     grouped_cols = np.array([bool(f.grouped) for f in factors])
-    ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list) or isinstance(f.ratio, np.ndarray)
-                        else [f.ratio] for f in factors]
-    
-    # Extract coordinates
-    def extract_coord(factor):
-        if factor.coords is None:
-            # Define the coordinates
-            coord = create_default_coords(1)
-
-            # Encode the coordinates for categorical factors
-            if factor.type.lower() not in ['cont', 'continuous']:
-                coord = encode_design(coord, np.array([len(factor.levels)]))
-
-        else:
-            # Extract the coordinates
-            coord = np.array(factor.coords).astype(np.float64)
-
-            # Normalize the continuous coordinates
-            if factor.type.lower() in ['cont', 'continuous']:
-                coord = (coord.reshape(-1, 1) - factor.min) / (factor.max - factor.min) * 2 - 1
-
-        return coord
-    coords = List([extract_coord(f) for f in factors])
+    ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list) or isinstance(f.ratio, np.ndarray) else [f.ratio] for f in factors]
+    coords = List([f.coords_ for f in factors])
 
     # Align ratios
     nratios = max([len(r) for r in ratios])
@@ -180,16 +159,13 @@ def create_parameters(factors, fn, model=None, prior=None, Y2X=None, use_formula
     if prior is not None:
         # Normalize factors
         for f in factors:
-            if f.type.lower() in ['cont', 'continuous']:
-                prior[str(f.name)] = ((prior[str(f.name)] - f.min) / (f.max - f.min)) * 2 - 1
-            else:
-                prior[str(f.name)] = prior[str(f.name)].map({lname: i for i, lname in enumerate(f.levels)})
+            prior[str(f.name)] = f.normalize(prior[str(f.name)])
 
         # Convert from pandas to numpy
         prior = prior[col_names].to_numpy()
         
         # Encode the design
-        prior = encode_design(prior, effect_types)
+        prior = encode_design(prior, effect_types, coords=coords)
     else:
         prior = np.empty((0, colstart[-1]))
 
@@ -267,9 +243,6 @@ def create_cost_optimal_design(factors, fn, model=None, prior=None, Y2X=None, nr
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
     Y = pd.DataFrame(Y, columns=[str(f.name) for f in factors])
     for f in factors:
-        if f.type.lower() in ['cont', 'continuous']:
-            Y[str(f.name)] = (Y[str(f.name)] + 1) / 2 * (f.max - f.min) + f.min
-        else:
-            Y[str(f.name)] = Y[str(f.name)].astype(int).map({i: lname for i, lname in enumerate(f.levels)})
+        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
     return Y, best_state
 

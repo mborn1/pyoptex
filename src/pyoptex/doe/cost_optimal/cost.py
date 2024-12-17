@@ -18,12 +18,12 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
         col_names = [str(f.name) for f in factors]
 
         # Compute denormalization parameters
-        norm_mean = np.array([f.min / (f.max - f.min) * 2 + 1 for f in factors])
-        norm_scale = np.array([2 / (f.max - f.min) for f in factors])
+        norm_mean = np.array([f.mean for f in factors])
+        norm_scale = np.array([f.scale for f in factors])
 
         # Extract categorical factors
         cat_factors = {str(f.name): {float(i): lname for i, lname in enumerate(f.levels)} 
-                        for f in factors if f.type.lower() not in ['cont', 'continuous']}
+                        for f in factors if f.is_categorical}
         
         # Wrap the function
         @wraps(fn1)
@@ -112,7 +112,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
         The cost function for the simulation algorithm.
     """
     # Expand the costs to categorically encoded
-    costs = np.array([c for f in factors for c in ([costs[str(f.name)]] if f.type.lower() in ['cont', 'continuous'] else [costs[str(f.name)]]*(len(f.levels)-1))])
+    costs = np.array([c for f in factors for c in ([costs[str(f.name)]] if f.is_continuous else [costs[str(f.name)]]*(len(f.levels)-1))])
 
     # Define the transition costs
     @numba.njit
@@ -170,7 +170,7 @@ def additive_effect_trans_cost(costs, factors, max_cost, base_cost=1):
         The cost function for the simulation algorithm.
     """
     # Compute the column starts
-    effect_types = np.array([1 if f.type.lower() in ['cont', 'continuous'] else len(f.levels) for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
     costs = np.array([costs[str(f.name)] for f in factors])
     
@@ -245,7 +245,7 @@ def max_changes_cost(factor, factors, max_cost):
         The cost function for the simulation algorithm.
     """
     # Expand factor for categorical variables
-    effect_types = np.array([1 if f.type.lower() in ['cont', 'continuous'] else len(f.levels) for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
     
     # Determine the columns of the factor

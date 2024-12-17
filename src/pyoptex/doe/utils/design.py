@@ -128,7 +128,7 @@ def obs_var_from_Zs(Zs, N, ratios=None):
 ################################################
 
 @numba.njit
-def encode_design(Y, effect_types):
+def encode_design(Y, effect_types, coords=None):
     """
     Encode the design according to the effect types.
     Each categorical factor is encoded using
@@ -163,7 +163,10 @@ def encode_design(Y, effect_types):
             start += 1
         else:
             # Categorical factor: effect encode
-            eye = np.concatenate((np.eye(cols[i]), -np.ones((1, cols[i]))))
+            if coords is None:
+                eye = np.concatenate((np.eye(cols[i]), -np.ones((1, cols[i]))))
+            else:
+                eye = coords[i]
             Yenc[..., start:start+cols[i]] = numba_take_advanced(eye, Y[..., i].astype(np.int64))
             start += cols[i]
 
