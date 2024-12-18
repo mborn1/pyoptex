@@ -180,7 +180,7 @@ def initialize_feasible(params, complete=False, max_tries=1000):
         Yenc = encode_design(Y, params.effect_types)
 
         # Make sure it's feasible
-        Xenc = params.Y2X(Yenc)
+        Xenc = params.fn.Y2X(Yenc)
         feasible = np.linalg.matrix_rank(Xenc) >= Xenc.shape[1]
 
         # Check if not in infinite loop

@@ -8,8 +8,8 @@ from ..constraints import no_constraints
 from ...utils.numba import numba_any_axis1, numba_diff_axis0
 from ..utils.design import create_default_coords, encode_design
 
-FunctionSet = namedtuple('FunctionSet', 'init sample cost metric temp accept restart insert remove constraints', defaults=(None,)*9 + (no_constraints,))
-Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior Y2X stats use_formulas')
+FunctionSet = namedtuple('FunctionSet', 'Y2X init sample cost metric temp accept restart insert remove constraints', defaults=(None,)*10 + (no_constraints,))
+Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
 __Factor__ = namedtuple('__Factor__', 'name grouped ratio type min max levels coords', 
                         defaults=(None, True, 1, 'cont', -1, 1, None, None))

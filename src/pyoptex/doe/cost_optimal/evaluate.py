@@ -12,12 +12,12 @@ from ..utils.model import model2encnames
 from ..constraints import no_constraints
 
 
-def evaluate_metrics(Y, metrics, factors, Y2X, fn):
+def evaluate_metrics(Y, metrics, factors, fn):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
     # Create the design parameters
-    params = create_parameters(factors, fn, Y2X)
+    params = create_parameters(factors, fn)
 
     # Normalize Y
     for f in factors:
@@ -31,7 +31,7 @@ def evaluate_metrics(Y, metrics, factors, Y2X, fn):
     Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
-    X = params.Y2X(Y)
+    X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
@@ -43,12 +43,12 @@ def evaluate_metrics(Y, metrics, factors, Y2X, fn):
     # Compute the metrics
     return [metric.call(Y, X, Zs, Vinv, costs) for metric in metrics]
 
-def fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000, return_params=False):
+def fraction_of_design_space(Y, factors, fn, iopt_N=10000, return_params=False):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
     # Create the design parameters
-    params = create_parameters(factors, fn, Y2X)
+    params = create_parameters(factors, fn)
 
     # Normalize Y
     for f in factors:
@@ -62,7 +62,7 @@ def fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000, return_params=Fa
     Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
-    X = params.Y2X(Y)
+    X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
@@ -84,9 +84,9 @@ def fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000, return_params=Fa
         return pred_var, params
     return pred_var
 
-def plot_fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000):
+def plot_fraction_of_design_space(Y, factors, fn, iopt_N=10000):
     # Compute prediction variances
-    pred_var, params = fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=iopt_N, return_params=True)
+    pred_var, params = fraction_of_design_space(Y, factors, fn, iopt_N=iopt_N, return_params=True)
 
     # Create the figure
     fig = go.Figure()
@@ -106,12 +106,12 @@ def plot_fraction_of_design_space(Y, factors, Y2X, fn, iopt_N=10000):
 
     return fig
 
-def estimation_variance_matrix(Y, factors, Y2X, fn, return_params=False):
+def estimation_variance_matrix(Y, factors, fn, return_params=False):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
     
     # Create the design parameters
-    params = create_parameters(factors, fn, Y2X)
+    params = create_parameters(factors, fn)
 
     # Normalize Y
     for f in factors:
@@ -125,7 +125,7 @@ def estimation_variance_matrix(Y, factors, Y2X, fn, return_params=False):
     Y = encode_design(Y, params.effect_types, params.coords)
 
     # Define the metric inputs
-    X = params.Y2X(Y)
+    X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
@@ -143,9 +143,9 @@ def estimation_variance_matrix(Y, factors, Y2X, fn, return_params=False):
         return Minv, params
     return Minv
 
-def plot_estimation_variance_matrix(Y, factors, Y2X, fn, model=None):
+def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     # Compute estimation variance matrix
-    Minv, params = estimation_variance_matrix(Y, factors, Y2X, fn, return_params=True)
+    Minv, params = estimation_variance_matrix(Y, factors, fn, return_params=True)
 
     # Determine the encoded column names
     if model is None:
@@ -173,7 +173,7 @@ def plot_estimation_variance_matrix(Y, factors, Y2X, fn, model=None):
     # Return the plot
     return fig
 
-def estimation_variance(Y, factors, Y2X, fn):
+def estimation_variance(Y, factors, fn):
     # Compute estimation variance matrix
-    Minv = estimation_variance_matrix(Y, factors, Y2X, fn)
+    Minv = estimation_variance_matrix(Y, factors, fn)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])

@@ -64,7 +64,7 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
 
     # Initialize the design (state)
     Y = params.fn.init(params)
-    X = params.Y2X(Y)
+    X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)

@@ -18,7 +18,7 @@ from ..utils.design import encode_design, decode_design, create_default_coords
 from ..constraints import no_constraints
 
 def default_fn(
-    nsims, cost, metric, 
+    nsims, cost, metric, Y2X,
     init=init_feasible, sample=sample_random, temperature=None,
     accept=exponential_accept_rel, restart=None, insert=insert_optimal,
     remove=remove_optimal_onebyone, constraints=no_constraints
@@ -68,9 +68,9 @@ def default_fn(
         restart = RestartEveryNFailed(nsims / 100)
 
     # Return the function set
-    return FunctionSet(init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
+    return FunctionSet(Y2X, init, sample, cost, metric, temperature, accept, restart, insert, remove, constraints.encode())
 
-def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
+def create_parameters(factors, fn, prior=None, use_formulas=True):
     """
     Creates the parameters object by preprocessing some elements. This is a simple utility function
     to transform each variable to its correct representation.
@@ -141,7 +141,7 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
         prior = np.empty((0, colstart[-1]))
     
     # Create the parameters
-    params = Parameters(fn, colstart, coords, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)
+    params = Parameters(fn, colstart, coords, ratios, effect_types, grouped_cols, prior, {}, use_formulas)
 
     # Validate the cost of the prior
     if params.prior is not None:
@@ -152,7 +152,7 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
 
     return params
 
-def create_cost_optimal_design(factors, fn, Y2X, prior=None, nreps=1, use_formulas=True, **kwargs):
+def create_cost_optimal_design(factors, fn, prior=None, nreps=1, use_formulas=True, **kwargs):
     """
     Simulation wrapper dealing with some preprocessing for the algorithm. It creates the parameters and
     permits the ability to provided `nreps` random starts for the algorithm. Kwargs can contain any of
@@ -199,7 +199,7 @@ def create_cost_optimal_design(factors, fn, Y2X, prior=None, nreps=1, use_formul
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
     # Extract the parameters
-    params = create_parameters(factors, fn, Y2X, prior, use_formulas)
+    params = create_parameters(factors, fn, prior, use_formulas)
 
     # Simulation
     best_state = simulate(params, **kwargs)

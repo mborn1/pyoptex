@@ -5,8 +5,8 @@ from collections import namedtuple
 from ..constraints import no_constraints
 from ..utils.design import create_default_coords, encode_design
 
-FunctionSet = namedtuple('FunctionSet', 'metric constraints constraintso init')
-Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv Y2X compute_update')
+FunctionSet = namedtuple('FunctionSet', 'metric Y2X constraints constraintso init')
+Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv compute_update')
 Update = namedtuple('Update', 'level grp runs cols new_coord old_coord Xi_old old_metric')
 State = namedtuple('State', 'Y X metric')
 

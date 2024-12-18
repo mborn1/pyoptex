@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
 
-print(np.array([(1, 2, 3)]))
-
+print(pio.templates['plotly'])

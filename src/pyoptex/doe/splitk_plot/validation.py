@@ -5,7 +5,7 @@ from .utils import obs_var, State
     
 def validate_state(state, params, eps=1e-6):
     # Validate X
-    assert np.all(state.X == params.Y2X(state.Y)), 'X does not match Y2X(Y)'
+    assert np.all(state.X == params.fn.Y2X(state.Y)), 'X does not match Y2X(Y)'
 
     # Validate metric
     metric = params.fn.metric.call(state.Y, state.X, params)

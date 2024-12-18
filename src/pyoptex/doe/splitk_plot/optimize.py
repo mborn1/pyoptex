@@ -79,7 +79,7 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
                         # Validate whether to check the coordinate
                         if not np.any(params.fn.constraints(state.Y[runs])):
                             # Update the X
-                            state.X[runs] = params.Y2X(state.Y[runs])
+                            state.X[runs] = params.fn.Y2X(state.Y[runs])
 
                             # Check if the update is accepted
                             update = Update(level, grp, runs, cols, new_coord, Ycoord, Xrows, state.metric)

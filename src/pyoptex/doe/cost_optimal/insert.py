@@ -91,7 +91,7 @@ def _insert_position(new_run, pos, state, params, new_X=None):
     """
     # Compute new X
     if new_X is None:
-        new_X = params.Y2X(new_run)
+        new_X = params.fn.Y2X(new_run)
 
     # Create the new design
     Y = numba_insert_axis0(state.Y, pos, new_run[0])
@@ -165,7 +165,7 @@ def insert_optimal(new_run, state, params):
         The new state after inserting the run.
     """
     # Compute new X
-    new_X = params.Y2X(new_run)
+    new_X = params.fn.Y2X(new_run)
     nprior = len(params.prior)
 
     ############################################################

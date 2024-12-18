@@ -18,7 +18,7 @@ def validate_state(state, params, eps=1e-6):
     assert np.all(state.Y[:len(params.prior)] == params.prior)
 
     # Validate X
-    X = params.Y2X(state.Y)
+    X = params.fn.Y2X(state.Y)
     assert np.all(state.X == X), f'{state.X - X}'
 
     # Validate Zs

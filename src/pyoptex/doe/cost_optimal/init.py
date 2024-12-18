@@ -121,7 +121,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     reverse = False
 
     # Check if prior is estimeable
-    Xprior = params.Y2X(params.prior)
+    Xprior = params.fn.Y2X(params.prior)
     if Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) >= Xprior.shape[1]:
         return params.prior 
     nprior = len(Xprior)
@@ -146,7 +146,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
             Y = Y[:max_size]
 
         # Compute X
-        X = params.Y2X(Y)
+        X = params.fn.Y2X(Y)
 
         # Augmentation
         Y = np.concatenate((params.prior, Y), axis=0)
@@ -168,7 +168,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
             Y = greedy_cost_minimization(Y, params)
 
         # Fill it up
-        X = params.Y2X(Y)
+        X = params.fn.Y2X(Y)
         costs = params.fn.cost(Y, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])

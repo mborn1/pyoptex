@@ -45,8 +45,6 @@ ratios = np.stack((np.ones(1) * 10, np.ones(1) * 0.1))
 
 # Covariate
 cov = cov_time_trend(plot_sizes[1], np.prod(plot_sizes), model)
-# cov = cov_double_time_trend(plot_sizes[1], plot_sizes[0], np.prod(plot_sizes), model)
-# cov = None
 
 #########################################################################
 

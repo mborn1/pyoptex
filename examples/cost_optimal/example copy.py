@@ -59,9 +59,9 @@ cost_fn = transition_discount_cost(transition_costs, factors, max_transition_cos
 # Define constraints
 constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
-# TODO: what about covariates? -- add decorator like cost function
 # TODO: introduce analysis -- reuse functions and factors
 # TODO: make more helper cost functions
+# TODO: what about covariates? -- add decorator like cost function
 # TODO: compile and simplify constraints tree
 
 #######################################################################
@@ -69,12 +69,12 @@ constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', fa
 # Simulation parameters
 nsims = 10
 nreps = 1
-fn = default_fn(nsims, cost_fn, metric, constraints=constraints)
+fn = default_fn(nsims, cost_fn, metric, Y2X, constraints=constraints)
 
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    factors, fn, Y2X, nsims=nsims, nreps=nreps, prior=prior, 
+    factors, fn, nsims=nsims, nreps=nreps, prior=prior, 
     validate=True
 )
 end_time = time.time()
@@ -95,11 +95,11 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
 design_heatmap(Y, factors).show()
-plot_correlation_map(Y, factors, Y2X, model=model).show()
+plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
-print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, Y2X, fn))
-plot_fraction_of_design_space(Y, factors, Y2X, fn).show()
-plot_estimation_variance_matrix(Y, factors, Y2X, fn, model).show()
-print(estimation_variance(Y, factors, Y2X, fn))
+print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, fn))
+plot_fraction_of_design_space(Y, factors, fn).show()
+plot_estimation_variance_matrix(Y, factors, fn, model).show()
+print(estimation_variance(Y, factors, fn))
 

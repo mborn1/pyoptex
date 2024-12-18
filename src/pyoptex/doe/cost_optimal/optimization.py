@@ -118,7 +118,7 @@ def ce_metric(state, params):
 
                     # Check the constraints
                     if not params.fn.constraints(state.Y[row:row+1])[0]:
-                        state.X[row] = params.Y2X(state.Y[row:row+1])
+                        state.X[row] = params.fn.Y2X(state.Y[row:row+1])
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y, params)
@@ -252,7 +252,7 @@ def ce_struct_metric(state, params):
 
                     # Check constraints
                     if not np.any(params.fn.constraints(state.Y[rows])):
-                        state.X[rows] = params.Y2X(state.Y[rows])
+                        state.X[rows] = params.fn.Y2X(state.Y[rows])
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y, params)
@@ -368,7 +368,7 @@ def pe_metric(state, params):
 
                 # Check the constraints
                 if not params.fn.constraints(state.Y[row:row+1])[0]:
-                    state.X[row] = params.Y2X(state.Y[row:row+1])
+                    state.X[row] = params.fn.Y2X(state.Y[row:row+1])
 
                     # Compute costs
                     new_costs = params.fn.cost(state.Y, params)

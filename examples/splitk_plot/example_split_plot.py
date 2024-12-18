@@ -69,12 +69,12 @@ validate_plot_sizes(factors, model)
 n_tries = 10
 
 # Create the set of operators
-fn = default_fn(metric, constraints=constraints)
+fn = default_fn(metric, Y2X, constraints=constraints)
 
 # Create design
 start_time = time.time()
 Y, state = create_splitk_plot_design(
-    factors, fn, Y2X, prior=prior, grps=None, 
+    factors, fn, prior=prior, grps=None, 
     n_tries=n_tries, validate=True
 )
 end_time = time.time()

@@ -105,7 +105,7 @@ class Iopt:
         if not self.initialized_:
             # Create the random samples
             samples = init(params, self.n, complete=self.complete)
-            self.samples = params.Y2X(samples)
+            self.samples = params.fn.Y2X(samples)
 
             # Add random covariates
             _, self.samples, _, _ = self.cov(samples, self.samples, None, None, None, random=True)

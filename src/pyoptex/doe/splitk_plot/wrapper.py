@@ -21,10 +21,10 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
     c = c[:, 1:]
     return c
 
-def default_fn(metric, constraints=no_constraints, init=initialize_feasible):
-    return FunctionSet(metric, constraints.encode(), constraints.func(), init)
+def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible):
+    return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
 
-def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True):
+def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     """
     
     """
@@ -137,20 +137,20 @@ def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X,
+        coords, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv,
         use_formulas
     )
     
     return params
 
 def create_splitk_plot_design(
-        factors, fn, Y2X, prior=None, grps=None, use_formulas=True, 
+        factors, fn, prior=None, grps=None, use_formulas=True, 
         n_tries=10, max_it=10000, validate=False
     ):
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
 
     # Extract the parameters
-    params = create_parameters(factors, fn, Y2X, prior, grps, use_formulas)
+    params = create_parameters(factors, fn, prior, grps, use_formulas)
 
     # Pre initialize metric
     params.fn.metric.preinit(params)

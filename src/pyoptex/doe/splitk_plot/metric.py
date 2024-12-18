@@ -227,7 +227,7 @@ class Iopt(Metric):
     def preinit(self, params):
         # Create the random samples
         samples = init_random(params, self.n, complete=self.complete)
-        self.samples = params.Y2X(samples)
+        self.samples = params.fn.Y2X(samples)
 
         # Expand covariates
         _, self.samples = self.cov(samples, self.samples, random=True)
