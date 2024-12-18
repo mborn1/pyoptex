@@ -153,10 +153,12 @@ def plot_estimation_variance_matrix(Y, factors, Y2X, fn, model=None):
     else:
         col_names = [str(f.name) for f in factors]
         encoded_colnames = model2encnames(model[col_names], params.effect_types)
+        if len(encoded_colnames) < Minv.shape[-1]:
+            encoded_colnames.extend([f'cov_{i}' for i in range(Minv.shape[-1] - len(encoded_colnames))])
 
     # Create the figure
     fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
-        vertical_spacing=0.05,
+        vertical_spacing=0.07,
         subplot_titles=[
             'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(factors, params.ratios[i]) if f.grouped])
             for i in range(len(Minv))

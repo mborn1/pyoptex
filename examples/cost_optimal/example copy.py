@@ -40,7 +40,7 @@ model = partial_rsm_names({
 Y2X = model2Y2X(model, factors)
 
 # Define the criterion for optimization
-metric = Iopt()
+metric = Iopt(cov=cov_augment_time(time=60))
 
 # Define the prior design for augmentation
 prior = pd.DataFrame([['L1', 0, 2, 0]], columns=['A1', 'E', 'F', 'G'])
@@ -85,7 +85,6 @@ end_time = time.time()
 
 # Write design to storage
 Y.to_csv(f'example_design.csv', index=False)
-
 print(Y)
 
 print('Completed optimization')
@@ -96,13 +95,13 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 #######################################################################
 
-from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
 from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
-# design_heatmap(Y, factors).show()
-# print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, Y2X, fn))
-# plot_fraction_of_design_space(Y, factors, Y2X, fn).show()
-# plot_estimation_variance_matrix(Y, factors, Y2X, fn).show()
-# plot_estimation_variance_matrix(Y, factors, Y2X, fn, model).show()
-# print(estimation_variance(Y, factors, Y2X, fn))
+design_heatmap(Y, factors).show()
 plot_correlation_map(Y, factors, Y2X, model=model).show()
+
+from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
+print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, Y2X, fn))
+plot_fraction_of_design_space(Y, factors, Y2X, fn).show()
+plot_estimation_variance_matrix(Y, factors, Y2X, fn, model).show()
+print(estimation_variance(Y, factors, Y2X, fn))
 
