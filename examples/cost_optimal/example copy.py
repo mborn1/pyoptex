@@ -59,7 +59,6 @@ cost_fn = transition_discount_cost(transition_costs, factors, max_transition_cos
 # Define constraints
 constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
-# TODO: do the same for split^k-plot
 # TODO: what about covariates? -- add decorator like cost function
 
 # TODO: introduce analysis -- reuse functions and factors

@@ -5,7 +5,7 @@ import warnings
 from .utils import Update, State
 from .formulas import compute_update_UD
 from .init import initialize_feasible
-from .validation import validate_state, validate_UD
+from .validation import validate_state
 from ..._profile import profile
 
 @profile
@@ -78,28 +78,11 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
 
                         # Validate whether to check the coordinate
                         if not np.any(params.fn.constraints(state.Y[runs])):
-                            # Compute new X
-                            Xi_star = params.Y2X(state.Y[runs])
-
-                            # Compute updates
-                            if params.compute_update:
-                                U, D = compute_update_UD(
-                                    level, grp, Xi_star, state.X,
-                                    params.plot_sizes, params.c, params.thetas, params.thetas_inv
-                                )
-
-                                # Check for validation
-                                if validate:
-                                    validate_UD(U, D, Xi_star, runs, state, params)
-                            else:
-                                # Don't compute U and D
-                                U, D = None, None
-
                             # Update the X
-                            state.X[runs] = Xi_star
+                            state.X[runs] = params.Y2X(state.Y[runs])
 
                             # Check if the update is accepted
-                            update = Update(level, grp, runs, cols, new_coord, Ycoord, state.metric, U, D)
+                            update = Update(level, grp, runs, cols, new_coord, Ycoord, Xrows, state.metric)
                             up = params.fn.metric.update(state.Y, state.X, params, update)
 
                             # New best design

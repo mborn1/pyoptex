@@ -6,7 +6,7 @@ import warnings
 
 from .utils import obs_var
 from .init import init_random
-from .formulas import det_update_UD, inv_update_UD, inv_update_UD_no_P
+from .formulas import det_update_UD, inv_update_UD, inv_update_UD_no_P, compute_update_UD
 from ..utils.comp import outer_integral
 
 class Dopt:
@@ -24,6 +24,8 @@ class Dopt:
     def __init__(self):
         self.Minv = None
         self.P = None
+        self.U = None
+        self.D = None
 
     def preinit(self, params):
         pass
@@ -36,8 +38,14 @@ class Dopt:
 
     def update(self, Y, X, params, update):
         if params.compute_update:
+            # Compute U, D update
+            self.U, self.D = compute_update_UD(
+                update.level, update.grp, update.Xi_old, X,
+                params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            )
+
             # Compute change in determinant
-            du, self.P = det_update_UD(update.U, update.D, self.Minv)
+            du, self.P = det_update_UD(self.U, self.D, self.Minv)
             if du > 0:
                 # Compute power
                 duu = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
@@ -58,7 +66,7 @@ class Dopt:
         # Update Minv
         if params.compute_update:
             try:
-                self.Minv -= inv_update_UD(update.U, update.D, self.Minv, self.P)
+                self.Minv -= inv_update_UD(self.U, self.D, self.Minv, self.P)
             except np.linalg.LinAlgError as e:
                 warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
                 raise e
@@ -97,9 +105,15 @@ class Aopt:
 
     def update(self, Y, X, params, update):
         if params.compute_update:
+            # Compute U, D update
+            U, D = compute_update_UD(
+                update.level, update.grp, update.Xi_old, X,
+                params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            )
+
             # Compute update to Minv
             try:
-                self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+                self.Mup = inv_update_UD_no_P(U, D, self.Minv)
             except np.linalg.LinAlgError as e:
                 # Infeasible design
                 return -np.inf
@@ -177,9 +191,15 @@ class Iopt:
 
     def update(self, Y, X, params, update):
         if params.compute_update:
+            # Compute U, D update
+            U, D = compute_update_UD(
+                update.level, update.grp, update.Xi_old, X,
+                params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            )
+
             # Compute update to Minv
             try:
-                self.Mup = inv_update_UD_no_P(update.U, update.D, self.Minv)
+                self.Mup = inv_update_UD_no_P(U, D, self.Minv)
             except np.linalg.LinAlgError as e:
                 # Infeasible design
                 return -np.inf

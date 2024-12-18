@@ -179,10 +179,6 @@ def initialize_feasible(params, complete=False, max_tries=1000):
         # Encode the design
         Yenc = encode_design(Y, params.effect_types)
 
-        # Add covariates
-        if params.cov is not None:
-            Yenc = np.concatenate((Yenc, params.cov), axis=1)
-
         # Make sure it's feasible
         Xenc = params.Y2X(Yenc)
         feasible = np.linalg.matrix_rank(Xenc) >= Xenc.shape[1]

@@ -68,7 +68,7 @@ class Col:
         return f'Y__[:,{self.col}]' if not self.is_constant else str(self.col)
 
     def func(self):
-        return eval(f'lambda Y__: {str(self)}')
+        return numba.njit(eval(f'lambda Y__: {str(self)}'))
 
     def _encode(self):
         if self.is_constant:
@@ -85,7 +85,7 @@ class Col:
                 return f'(Y__[:,{self.colstart}] * {self.factor.scale} + {self.factor.mean})'
 
     def encode(self):
-        return eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np})
+        return numba.njit(eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np}))
 
     ##############################################
 

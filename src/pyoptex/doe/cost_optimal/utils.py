@@ -11,10 +11,35 @@ from ..utils.design import create_default_coords, encode_design
 FunctionSet = namedtuple('FunctionSet', 'init sample cost metric temp accept restart insert remove constraints', defaults=(None,)*9 + (no_constraints,))
 Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior Y2X stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
-Factor_ = namedtuple('Factor', 'name grouped ratio type min max levels coords', 
-                        defaults=(None, True, 1, 'cont', -1, 1, [], None))
-class Factor(Factor_):
+__Factor__ = namedtuple('__Factor__', 'name grouped ratio type min max levels coords', 
+                        defaults=(None, True, 1, 'cont', -1, 1, None, None))
+class Factor(__Factor__):
     __slots__ = ()
+
+    def __new__(cls, *args, **kwargs):
+
+        # Create the object
+        self = super(Factor, cls).__new__(cls, *args, **kwargs)
+
+        # Validate the object creation
+        assert self.type in ['cont', 'continuous', 'cat', 'categorical'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
+        assert self.ratio >= 0, f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
+        if self.is_continuous:
+            assert isinstance(self.min, float) or isinstance(self.min, int), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
+            assert isinstance(self.max, float) or isinstance(self.max, int), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
+            assert self.min < self.max, f'Factor {self.name} must have a lower minimum than maximum, but is {self.min} vs. {self.max}'
+            assert self.coords is None, f'Cannot specify coordinates for continuous factors, but factor {self.name} has {self.coords}. Please specify the levels'
+            assert self.levels is None or len(self.levels) >= 2, f'A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}'
+        else:
+            assert len(self.levels) >= 2, f'A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}'
+            if self.coords is not None:
+                coords = np.array(self.coords)
+                assert len(coords.shape) == 2, f'Factor {self.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions'
+                assert coords.shape[0] == len(self.levels), f'Factor {self.name} requires one encoding for every level, but has {len(self.levels)} levels and {coords.shape[0]} encodings'
+                assert coords.shape[1] == len(self.levels) - 1, f'Factor {self.name} has N levels and requires N-1 dummy columns, but has {len(self.levels)} levels and {coords.shape[1]} dummy columns'
+                assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Factor {self.name} does not have a valid (full rank) encoding'
+
+        return self
 
     @property
     def mean(self):
@@ -35,13 +60,16 @@ class Factor(Factor_):
     @property
     def coords_(self):
         if self.coords is None:
-            coord = create_default_coords(1 if self.is_continuous else len(self.levels))
-            if self.is_categorical:
+            if self.is_continuous:
+                if self.levels is not None:
+                    coord = self.normalize(np.array(self.levels))
+                else:
+                    coord = create_default_coords(1)
+            else:
+                coord = create_default_coords(len(self.levels))
                 coord = encode_design(coord, np.array([len(self.levels)]))
         else:
             coord = np.array(self.coords).astype(np.float64)
-            if self.is_continuous:
-                coord = (coord.reshape(-1, 1) - self.mean) / self.scale
         return coord
 
     def normalize(self, data):

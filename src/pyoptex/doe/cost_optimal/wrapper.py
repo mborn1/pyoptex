@@ -104,22 +104,9 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
     assert len(factors) > 0, 'At least one factor must be provided'
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
-        assert f.type.lower() in ['cont', 'continuous', 'cat', 'categorical'], f'Factor {i} with name {f.name} has an unknown type {f.type}, must be "continuous" or "categorical"'
-        if f.is_continuous:
-            assert isinstance(f.min, float) or isinstance(f.min, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as minimum, but received {f.min} with type {type(f.min)}'
-            assert isinstance(f.max, float) or isinstance(f.max, int), f'Continuous factor {i} with name {f.name} requires an integer or a float as maximum, but received {f.max} with type {type(f.max)}'
-            assert f.min < f.max, f'Continuous factor {i} with name {f.name} requires a strictly lower minimum than maximum, but has a minimum of {f.min} and a maximum of {f.max}'
-            assert f.coords is None, f'Cannot specify coordinates for continuous factors, please specify the levels'
-        else:
-            assert len(f.levels) >= 2, f'Categorical factor {i} with name {f.name} has {len(f.levels)} levels, at least two required. Have you specified the "levels" parameters?'
-            if f.coords is not None:
-                coords = np.array(f.coords)
-                assert len(coords.shape) == 2, f'Categorical factor {i} with name {f.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions'
-                assert coords.shape[0] == len(f.levels), f'Categorical factor {i} with name {f.name} requires one encoding for every level, but has {len(f.levels)} levels and {coords.shape[0]} encodings'
-                assert coords.shape[1] == len(f.levels) - 1, f'Categorical factor {i} with name {f.name} and N levels requires N-1 dummy columns, but has {len(f.levels)} levels and {coords.shape[1]} dummy columns'
-                assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Categorical factor {i} with name {f.name} does not have a valid (full rank) encoding'
     if prior is not None:
         assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
+    # TODO: validate prior
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
@@ -149,9 +136,6 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
         prior = encode_design(prior, effect_types, coords=coords)
     else:
         prior = np.empty((0, colstart[-1]))
-
-    # Compile constraints
-    fn = fn._replace(constraints=numba.njit(fn.constraints))
     
     # Create the parameters
     params = Parameters(fn, colstart, coords, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)

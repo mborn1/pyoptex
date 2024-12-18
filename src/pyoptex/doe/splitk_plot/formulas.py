@@ -3,7 +3,7 @@ import numpy as np
 
 @numba.njit
 def compute_update_UD(
-        level, grp, Xi_star, X, 
+        level, grp, Xi_old, X, 
         plot_sizes, c, thetas, thetas_inv
     ):
     """
@@ -46,29 +46,29 @@ def compute_update_UD(
     jmp = thetas[level]
     runs = slice(grp*jmp, (grp+1)*jmp)
     
-    # Extract level-section
-    Xi = X[runs]
+    # Extract new X section
+    Xi_star = X[runs]
 
     # Initialize U and D
-    star_offset = int(Xi.shape[0] * (1 + thetas_inv[level])) + (plot_sizes.size - level - 1)
-    U = np.zeros((2*star_offset, Xi.shape[1]))
+    star_offset = int(Xi_old.shape[0] * (1 + thetas_inv[level])) + (plot_sizes.size - level - 1)
+    U = np.zeros((2*star_offset, Xi_old.shape[1]))
     D = np.zeros((len(c), 2*star_offset))
 
     # Store level-0 results
-    U[:Xi.shape[0]] = Xi
-    U[star_offset: star_offset + Xi.shape[0]] = Xi_star
-    D[:, :Xi.shape[0]] = -np.ones(Xi.shape[0])
-    D[:, star_offset: star_offset + Xi.shape[0]] = np.ones(Xi.shape[0])
-    co = Xi.shape[0]
+    U[:Xi_old.shape[0]] = Xi_old
+    U[star_offset: star_offset + Xi_old.shape[0]] = Xi_star
+    D[:, :Xi_old.shape[0]] = -np.ones(Xi_old.shape[0])
+    D[:, star_offset: star_offset + Xi_old.shape[0]] = np.ones(Xi_old.shape[0])
+    co = Xi_old.shape[0]
 
     # Loop before (= summations)
     if level != 0:
         # Reshape for summation
-        Xi = Xi.reshape((-1, plot_sizes[0], Xi.shape[1]))
+        Xi_old = Xi_old.reshape((-1, plot_sizes[0], Xi_old.shape[1]))
         Xi_star = Xi_star.reshape((-1, plot_sizes[0], Xi_star.shape[1]))
         for i in range(1, level):
             # Sum all smaller sections
-            Xi_sum = np.sum(Xi, axis=1)
+            Xi_sum = np.sum(Xi_old, axis=1)
             Xi_star_sum = np.sum(Xi_star, axis=1)
             
             # Store entire matrix
@@ -80,22 +80,22 @@ def compute_update_UD(
             co = coe
 
             # Reshape for next iteration
-            Xi = Xi_sum.reshape((-1, plot_sizes[i], Xi_sum.shape[1]))
+            Xi_old = Xi_sum.reshape((-1, plot_sizes[i], Xi_sum.shape[1]))
             Xi_star = Xi_star_sum.reshape((-1, plot_sizes[i], Xi_star_sum.shape[1]))
 
         # Sum level-section
-        Xi = np.sum(Xi, axis=1)
+        Xi_old = np.sum(Xi_old, axis=1)
         Xi_star = np.sum(Xi_star, axis=1)
 
         # Store results
-        U[co] = Xi
+        U[co] = Xi_old
         U[star_offset+co] = Xi_star
         D[:, co] = -c[:, level-1]
         D[:, star_offset+co] = c[:, level-1]
         co += 1
 
     # Flatten the arrays for the next step
-    Xi = Xi.flatten()
+    Xi_old = Xi_old.flatten()
     Xi_star = Xi_star.flatten()
 
     # Loop after (= updates)
@@ -105,8 +105,8 @@ def compute_update_UD(
         grp = grp // plot_sizes[j]
 
         # Compute section sum
-        r = np.sum(X[grp*jmp: (grp+1)*jmp], axis=0)
-        r_star = r - Xi + Xi_star
+        r_star = np.sum(X[grp*jmp: (grp+1)*jmp], axis=0)
+        r = r_star - Xi_star + Xi_old
 
         # Store the results
         U[co] = r
@@ -116,7 +116,7 @@ def compute_update_UD(
         co += 1
 
         # Set variables for next iteration
-        Xi = r
+        Xi_old = r
         Xi_star = r_star
 
     # Return values

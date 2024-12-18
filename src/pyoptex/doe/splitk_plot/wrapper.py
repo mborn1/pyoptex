@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from .optimize import optimize
 from .init import initialize_feasible
-from .utils import Parameters, FunctionSet, State, level_grps, obs_var, extend_design
+from .utils import Parameters, FunctionSet, State, Factor, Plot, level_grps, obs_var, extend_design
 from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
 from ..utils.model import encode_model
 from ..constraints import no_constraints
@@ -24,51 +24,53 @@ def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
 def default_fn(metric, constraints=no_constraints, init=initialize_feasible):
     return FunctionSet(metric, constraints.encode(), constraints.func(), init)
 
-def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, grps=None, compute_update=True):
+def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True):
     """
-    effect_types : dict or np.array(1d)
-        If dictionary, maps each column name to its type. Also extracts the column names. A 1 indicates
-        a continuous factor, anything higher is a categorical factor with that many levels.
-    Y2X : func
-        Function to transform Y (with any covariates) to X
+    
     """
-    assert model is not None or Y2X is not None, 'Either a polynomial model or Y2X function must be provided'
+    # Assertions
+    assert len(factors) > 0, 'At least one factor must be provided'
+    for i, f in enumerate(factors):
+        assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
+    if prior is not None:
+        assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
+    assert min(f.plot.level for f in factors) == 0, f'The plots must start from level 0 (easy-to-change factors)'
 
-    # Parse effect types
-    if isinstance(effect_types, dict):
-        # Detect effect types
-        col_names = list(effect_types.keys())
-        effect_types = np.array(list(effect_types.values()))
-    else:
-        # No column names known
-        col_names = None
-
-    # Parse effect levels
-    if isinstance(effect_levels, dict):
-        if col_names is not None:
-            effect_levels = np.array([effect_levels[col] for col in col_names])
+    # Extract the plot sizes
+    nb_plots = max(f.plot.level for f in factors) + 1
+    plot_sizes = np.ones(nb_plots, dtype=np.int64) * -1
+    ratios = [None] * nb_plots
+    for f in factors:
+        # Fix plot sizes
+        if plot_sizes[f.plot.level] == -1:
+            plot_sizes[f.plot.level] = f.plot.size
         else:
-            col_names = list(effect_levels.keys())
-            effect_levels = np.array(list(effect_levels.values()))
+            assert plot_sizes[f.plot.level] == f.plot.size, f'Plot sizes at the same plot level must be equal, but are {plot_sizes[f.plot.level]} and {f.plot.size}'
 
-    # Ratios
-    ratios = ratios if ratios is not None else np.ones((1, plot_sizes.size - 1))
-    if len(ratios.shape) == 1:
-        ratios = ratios.reshape(1, -1)
-    assert ratios.shape[1] == plot_sizes.size - 1, f'Bad number of ratios for plotsizes (ratios shape: {ratios.shape}, plot sizes size: {plot_sizes.size})'
+        # Fix ratios
+        r = np.sort(f.plot.ratio) if isinstance(f.plot.ratio, tuple) or isinstance(f.plot.ratio, list) \
+                or isinstance(f.plot.ratio, np.ndarray) else [f.plot.ratio]
+        if ratios[f.plot.level] is None:
+            ratios[f.plot.level] = r
+        else:
+            assert all(i==j for i, j in zip(ratios[f.plot.level], r)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.plot.level]} and {r}'
 
-    # Set default coords
-    coords = coords if coords is not None else [None]*effect_types.size
-    coords = [create_default_coords(et) if coord is None else coord for coord, et in zip(coords, effect_types)]
+    # Align ratios
+    nratios = max([len(r) for r in ratios])
+    assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
+    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios]).T
+
+    # Normalize ratios
+    ratios = ratios[:, 1:] / ratios[:, 0]
+
+    # Extract parameter arrays
+    col_names = [str(f.name) for f in factors]
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    effect_levels = np.array([f.plot.level for f in factors])
+    coords = List([f.coords_ for f in factors])
 
     # Encode the coordinates
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
-    coords_enc = List([
-        encode_design(coord, np.array([et]))
-            if et > 1 and coord.shape[1] == 1 and np.all(np.sort(coord) == create_default_coords(et))
-            else coord.astype(np.float64)
-        for coord, et in zip(coords, effect_types)
-    ])
 
     # Alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
@@ -81,86 +83,44 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
     # Compute Vinv
     Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])  
 
-    # Set the Y2X function
-    if Y2X is None:
-        # Detect model in correct order
-        if isinstance(model, pd.DataFrame):
-            if col_names is not None:
-                model = model[col_names].to_numpy()
-            else:
-                col_names = model.columns
-                model = model.to_numpy()
-
-        # Add covariates
-        if cov is not None:
-            # Expand covariates
-            cov, model_cov, effect_types_cov = cov
-
-            # Extend effect types
-            cov_col_names = None
-            if isinstance(effect_types_cov, dict):
-                cov_col_names = list(effect_types_cov.keys())
-                effect_types_cov = np.array(list(effect_types_cov.values()))
-            
-            # Parse covariates model
-            if isinstance(model_cov, pd.DataFrame):
-                # Sort the column names
-                if col_names is not None:
-                    if cov_col_names is not None:
-                        cov_col_names = [col for col in model_cov.columns if col not in col_names]
-                    model_cov = model_cov[[*col_names, *cov_col_names]]
-                model_cov = model_cov.to_numpy()
-
-            # Possibly encode cov
-            cov = encode_design(cov, effect_types_cov)
-            
-            # Extend parameters
-            et = np.concatenate((effect_types, effect_types_cov))
-            model = np.concatenate((model, np.zeros((model.shape[0], model_cov.shape[1] - model.shape[1]))), axis=1)
-            model = np.concatenate((model, model_cov), axis=0)
-        else:
-            # Default effect types
-            et = effect_types
-
-        # Encode model
-        modelenc = encode_model(model, et)
-
-        # Create transformation function for polynomial models
-        Y2X = numba.njit(lambda Y: x2fx(Y, modelenc))
-    else:
-        # Make sure cov only specifies the ndarray
-        if not isinstance(cov, np.ndarray):
-            raise ValueEror(
-                'When Y2X is specified, the model must already include covariates and '
-                'cov is the array of elements to prepend to Y'
-            )
-
-    # Compile constraints
-    fn = fn._replace(constraints=numba.njit(fn.constraints), constraintso=numba.njit(fn.constraintso))
-
     # Determine a prior
     if prior is not None:
-        # Expand prior information
-        prior, old_plot_sizes = prior
+        # Expand prior
+        prior, old_plots = prior
+        assert all(isinstance(p, Plot) for p in old_plots), f'Old plots must be of type Plot'
 
-        # Validate the prior
-        assert not np.any(fn.constraintso(prior)), 'Prior does not uphold the constraints'
+        # Normalize factors
+        for f in factors:
+            prior[str(f.name)] = f.normalize(prior[str(f.name)])
 
-        # Convert prior to numpy
-        if isinstance(prior, pd.DataFrame):
-            if col_names is not None:
-                prior = prior[col_names]
-            prior = prior.to_numpy()
+        # Convert from pandas to numpy
+        prior = prior[col_names].to_numpy()
+        
+        # Encode the design
+        prior = encode_design(prior, effect_types, coords=coords)
 
-        # Make sure it's not encoded
-        assert prior.shape[1] == effect_types.size, 'The prior must not be encoded'
+        # Compute old plot sizes
+        nb_old_plots = max(p.level for p in old_plots)
+        old_plot_sizes = np.ones(nb_old_plots, dtype=np.int64) * -1
+        for p in old_plots:
+            if old_plot_sizes[p.level] == -1:
+                old_plot_sizes[p.level] = p.size
+            else:
+                assert plot_sizes[p.level] == p.size, f'Prior plot sizes at the same prior plot level must be equal, but are {plot_sizes[p.level]} and {p.size}'
+
+        # Assert the prior
+        assert np.prod(old_plot_sizes) == len(prior), f'Prior plot sizes are misspecified, prior has {len(prior)} runs, but plot sizes require {np.prod(old_plot_sizes)} runs'
+        assert nb_old_plots == nb_plots, f'The prior must specify the same number of levels as the factors: prior has {len(old_plot_sizes)} levels, but new design requires {len(plot_sizes)} levels'
+
+        # TODO: validate prior (constraints)
 
         # Augment the design
         prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
+
     else:
         # Nothing to start from
-        old_plot_sizes = np.zeros_like(plot_sizes) 
-
+        old_plot_sizes = np.zeros_like(plot_sizes)
+        
     # Define which groups to optimize
     lgrps = level_grps(old_plot_sizes, plot_sizes)
     if grps is None:
@@ -168,28 +128,23 @@ def create_parameters(fn, effect_types, effect_levels, plot_sizes, prior=None, r
     else:
         grps = List([np.concatenate((grps[i].astype(np.int64), lgrps[effect_levels[i]]), dtype=np.int64) for i in range(len(effect_levels))])
 
-    # Force types
-    plot_sizes = plot_sizes.astype(np.int64)
-
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords_enc, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X, cov,
-        compute_update
+        coords, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv, Y2X,
+        use_formulas
     )
     
-    return params, col_names
+    return params
 
 def create_splitk_plot_design(
-        fn, effect_types, effect_levels, plot_sizes, prior=None, ratios=None, coords=None, model=None, Y2X=None, cov=None, 
-        grps=None, compute_update=True, n_tries=10, max_it=10000, validate=False
+        factors, fn, Y2X, prior=None, grps=None, use_formulas=True, 
+        n_tries=10, max_it=10000, validate=False
     ):
-    assert n_tries > 0
+    assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
 
     # Extract the parameters
-    params, col_names = create_parameters(
-        fn, effect_types, effect_levels, plot_sizes, prior, ratios, coords, model, Y2X, cov, grps, compute_update
-    )
+    params = create_parameters(factors, fn, Y2X, prior, grps, use_formulas)
 
     # Pre initialize metric
     params.fn.metric.preinit(params)
@@ -207,8 +162,10 @@ def create_splitk_plot_design(
             best_metric = state.metric
             best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
 
-    # Decode the final design
+    # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=col_names)
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in factors])
+    for f in factors:
+        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
 
     return Y, best_state
