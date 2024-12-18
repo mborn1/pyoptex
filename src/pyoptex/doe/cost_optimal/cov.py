@@ -55,7 +55,7 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
 def no_cov(Y, X, Zs, Vinv, costs, random=False):
     return Y, X, Zs, Vinv
 
-def cov_augment_time(time=1, cost_index=0):
+def cov_time_trend(time=1, cost_index=0):
     """
     Covariance function to account for time trends.
     Cost is assumed to be time.
@@ -95,7 +95,7 @@ def cov_augment_time(time=1, cost_index=0):
 
     return _cov
 
-def cov_augment_time_double(time_outer=1, time_inner=1, cost_index=0):
+def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     """
     Covariance function to account for double time trends. The inner
     time column is reset every time the outer time column resets.
@@ -149,7 +149,7 @@ def cov_augment_time_double(time_outer=1, time_inner=1, cost_index=0):
 
     return _cov
 
-def cov_block_cost(cost=1, ratios=1., cost_index=0):
+def cov_block(cost=1, ratios=1., cost_index=0):
     """
     Covariance function to add a blocking factor to the
     system every `cost` in the cumulative cost.

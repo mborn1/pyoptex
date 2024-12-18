@@ -22,6 +22,7 @@ set_seed(42)
 etc = Plot(level=0, size=4, ratio=1)
 htc = Plot(level=1, size=8, ratio=1)
 plots = [etc, htc]
+nruns = np.prod([p.size for p in plots])
 
 # Define the factors
 factors = [
@@ -39,10 +40,14 @@ model = partial_rsm_names({
 Y2X = model2Y2X(model, factors)
 
 # Define the metric
-metric = Iopt()
+metric = Dopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 
 # Define prior
 prior = None
+
+# TODO: test with prior and fixed grps
+# TODO: test with constraints
+# TODO: refactor evaluate
 
 #########################################################################
 

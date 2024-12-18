@@ -1,7 +1,10 @@
 import numpy as np
 import pandas as pd
 
-def cov_time_trend(ntime, nruns, model, col_name='time'):
+def no_cov(Y, X, random=False, subset=None):
+    return Y, X
+
+def cov_time_trend(ntime, nruns):
     """
     Covariance function to account for time trends.
     The entire design is divided in `ntime` equidistant 
@@ -14,10 +17,6 @@ def cov_time_trend(ntime, nruns, model, col_name='time'):
         The total number of distinct time points.
     nruns : int
         The total number of runs in the design.
-    model : np.array(2d)
-        The current model.
-    col_name : str
-        The name of the new time column. Defaults to 'time'.
     
     Returns
     -------
@@ -33,17 +32,21 @@ def cov_time_trend(ntime, nruns, model, col_name='time'):
     # Create the time array
     time_array = np.repeat(np.linspace(-1, 1, ntime), nruns//ntime).reshape(-1, 1)
 
-    # Create the additional terms
-    model = pd.DataFrame([np.concatenate((np.zeros(model.shape[1]), [1]))], columns=[*model.columns, col_name])
+    def _cov(Y, X, random=False, subset=slice(None, None)):
+        # Extract time
+        if random:
+            t = np.expand_dims(np.random.rand(Y.shape[0]) * 2 - 1, 1)
+        else:
+            t = time_array[subset]
 
-    # Create the covariate
-    cov = (time_array, model, {col_name: 1})
-    return cov
+        # Augment Y and X
+        Y = np.concatenate((Y, t), axis=1)
+        X = np.concatenate((X, t), axis=1)
+        return Y, X
 
-def cov_double_time_trend(
-        ntime_outer, ntime_inner, nruns, model,
-        col_name_outer='time_outer', col_name_inner='time_inner'
-    ):
+    return _cov
+
+def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
     """
     Covariance function to account for a double time trend.
     This is defined by a global time trend divided in `ntime_outer`
@@ -87,13 +90,16 @@ def cov_double_time_trend(
     )
     time_array = np.stack((time_array_outer, time_array_inner)).T
 
-    # Create the additional terms
-    terms = np.array([[1, 0], [0, 1]])
-    model = pd.DataFrame(
-        np.concatenate((np.zeros((terms.shape[0], model.shape[1])), terms), axis=1), 
-        columns=[*model.columns, col_name_outer, col_name_inner]
-    )
+    def _cov(Y, X, random=False, subset=slice(None, None)):
+        # Extract time
+        if random:
+            t = np.random.rand((Y.shape[0], 2)) * 2 - 1
+        else:
+            t = time_array[subset]
 
-    # Create the covariate
-    cov = (time_array, model, {col_name_outer: 1, col_name_inner: 1})
-    return cov
+        # Augment Y and X
+        Y = np.concatenate((Y, t), axis=1)
+        X = np.concatenate((X, t), axis=1)
+        return Y, X
+    
+    return _cov
