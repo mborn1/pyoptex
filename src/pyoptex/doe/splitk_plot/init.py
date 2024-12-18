@@ -66,7 +66,7 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
 
     return Y
 
-@numba.njit
+# @numba.njit
 def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plot_sizes, constraints, Y, complete=False):
     """
     Corrects an unconstrained design randomly to be within the provided constraints

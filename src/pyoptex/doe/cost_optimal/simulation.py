@@ -8,23 +8,6 @@ from .optimization import CEMetric, CEStructMetric
 from ..utils.design import obs_var_from_Zs
 from ..._profile import profile
 
-def _validate_prior(params):
-    """
-    Validates the prior design passed to the algorithm. It requires the correct shape,
-    that all runs are within the constraints and that the cost does not exceed the maximum cost.
-
-    Parameters
-    ----------
-    params : :py:class:`Parameters`
-        The parameters provided to the simulate function
-    """
-    assert params.prior.shape[1] == params.colstart[-1], 'Prior does not have the correct shape'
-    assert not np.any(params.fn.constraints(params.prior)), 'Prior contains constraint violating runs'
-    costs = params.fn.cost(params.prior, params)
-    cost_Y = np.array([np.sum(c) for c, _, _ in costs])
-    max_cost = np.array([m for _, m, _ in costs])
-    assert np.all(cost_Y <= max_cost), 'Prior exceeds maximum cost'
-
 @profile
 def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
     """
@@ -54,9 +37,6 @@ def simulate(params, optimizers=None, final=None, nsims=100, validate=False):
         The best found state containing the encoded design matrix, model matrix,
         costs, metric, etC.
     """
-    # Validate the prior
-    _validate_prior(params)
-
     # Initialize stats
     params.stats['it'] = 0
     params.stats['rejections'] = 0

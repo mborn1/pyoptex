@@ -106,7 +106,6 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
     if prior is not None:
         assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
-    # TODO: validate prior
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
@@ -134,11 +133,22 @@ def create_parameters(factors, fn, Y2X, prior=None, use_formulas=True):
         
         # Encode the design
         prior = encode_design(prior, effect_types, coords=coords)
+
+        # Validate prior
+        assert not np.any(fn.constraints(prior)), 'Prior contains constraint violating runs'
+
     else:
         prior = np.empty((0, colstart[-1]))
     
     # Create the parameters
     params = Parameters(fn, colstart, coords, ratios, effect_types, grouped_cols, prior, Y2X, {}, use_formulas)
+
+    # Validate the cost of the prior
+    if params.prior is not None:
+        costs = params.fn.cost(params.prior, params)
+        cost_Y = np.array([np.sum(c) for c, _, _ in costs])
+        max_cost = np.array([m for _, m, _ in costs])
+        assert np.all(cost_Y <= max_cost), 'Prior exceeds maximum cost'
 
     return params
 

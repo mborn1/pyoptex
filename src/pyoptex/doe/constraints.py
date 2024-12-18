@@ -61,25 +61,39 @@ class Col:
         self.is_constant = self.factor is None
         self.is_categorical = (self.factor is not None) and (self.factor.is_categorical)
 
+        self.col_encoded_ = self.col
+        self.col_normalized_ = self.col
         self.pre_normalized_ = False
+        self.pre_normalized_encoded_ = False
 
     ##############################################
     def __str__(self):
-        return f'Y__[:,{self.col}]' if not self.is_constant else str(self.col)
+        if self.is_constant:
+            return str(self.col_normalized_)
+        elif self.is_categorical:
+            if self.pre_normalized_:
+                return f'Y__[:,{self.col}]'
+            else:
+                raise NotImplementedError('This branch has not been implemented yet')
+        else:
+            if self.pre_normalized_:
+                return f'(Y__[:,{self.col}])'
+            else:
+                return f'(Y__[:,{self.col}] * {self.factor.scale} + {self.factor.mean})'
 
     def func(self):
         return numba.njit(eval(f'lambda Y__: {str(self)}'))
 
     def _encode(self):
         if self.is_constant:
-            return str(self.col)
+            return str(self.col_encoded_)
         elif self.is_categorical:
-            if self.pre_normalized_:
+            if self.pre_normalized_encoded_:
                 return f'(Y__[:,{self.colstart}:{self.colstart+len(self.factor.levels)-1}])'
             else:
                 raise NotImplementedError('This branch has not been implemented yet')
         else:
-            if self.pre_normalized_:
+            if self.pre_normalized_encoded_:
                 return f'(Y__[:,{self.colstart}])'
             else:
                 return f'(Y__[:,{self.colstart}] * {self.factor.scale} + {self.factor.mean})'
@@ -217,16 +231,28 @@ class BinaryCol(Col):
 
 
 class CompCol(BinaryCol):
+    def _str(self, col1, col2):
+        assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
+        if not col1.pre_normalized_:
+            col2.col_normalized_ = col1.factor.levels.index(col2.col)
+            col1.pre_normalized_ = True
+        return f'({str(col1)} {self.sep} {str(col2)})'
+
     def __str__(self):
-        return f'({str(self.col)} {self.sep} {str(self.col2)})'
+        if self.col.is_categorical:
+            return self._str(self.col, self.col2)
+        elif self.col2.is_categorical:
+            return self._str(self.col2, self.col)
+        else:
+            return f'({str(self.col)} {self.sep} {str(self.col2)})'
 
     def __encode__(self, col1, col2):
         assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
-        if not col1.pre_normalized_:
+        if not col1.pre_normalized_encoded_:
             encoded = encode_design(np.array([[col1.factor.normalize(col2.col)]]), np.array([len(col1.factor.levels)]), 
                                     List([col1.factor.coords_]))[0]
-            col2.col = f'np.array({list(encoded)})'
-            col1.pre_normalized_ = True
+            col2.col_encoded_ = f'np.array({list(encoded)})'
+            col1.pre_normalized_encoded_ = True
         return f'numba_all_axis1({col1._encode()} {self.sep} {col2._encode()})'
 
     def _encode(self):

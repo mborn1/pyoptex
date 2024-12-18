@@ -14,6 +14,7 @@ from pyoptex.doe.splitk_plot import create_splitk_plot_design, default_fn, Facto
 from pyoptex.doe.splitk_plot.metric import Dopt, Iopt, Aopt
 from pyoptex.doe.splitk_plot.cov import cov_time_trend, cov_double_time_trend
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+from pyoptex.doe.constraints import parse_constraints_script
 
 # Set the seed
 set_seed(42)
@@ -43,10 +44,20 @@ Y2X = model2Y2X(model, factors)
 metric = Dopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 
 # Define prior
-prior = None
+prior = (
+    pd.DataFrame([
+        ['L1', 0, -1],
+        ['L1', 1, 1],
+        ['L2', -1, 0],
+        ['L2', 0, -1]
+    ], columns=['A', 'B', 'C']),
+    [Plot(level=0, size=2), Plot(level=1, size=2)]
+)
 
-# TODO: test with prior and fixed grps
-# TODO: test with constraints
+# Constraints
+constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
+
+# TODO: add warning for non-estimable variance components
 # TODO: refactor evaluate
 
 #########################################################################
@@ -55,7 +66,7 @@ prior = None
 n_tries = 10
 
 # Create the set of operators
-fn = default_fn(metric)
+fn = default_fn(metric, constraints=constraints)
 
 # Create design
 start_time = time.time()

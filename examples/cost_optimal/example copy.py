@@ -12,7 +12,7 @@ from pyoptex._seed import set_seed
 from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn, Factor
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
-from pyoptex.doe.cost_optimal.cov import cov_block_cost, cov_augment_time, cov_augment_time_double
+from pyoptex.doe.cost_optimal.cov import cov_time_trend
 from pyoptex.doe.cost_optimal.cost import transition_discount_cost
 from pyoptex.doe.cost_optimal.init import init_feasible
 from pyoptex.doe.constraints import parse_constraints_script
@@ -40,7 +40,7 @@ model = partial_rsm_names({
 Y2X = model2Y2X(model, factors)
 
 # Define the criterion for optimization
-metric = Iopt(cov=cov_augment_time(time=60))
+metric = Iopt(cov=cov_time_trend(time=60))
 
 # Define the prior design for augmentation
 prior = pd.DataFrame([['L1', 0, 2, 0]], columns=['A1', 'E', 'F', 'G'])

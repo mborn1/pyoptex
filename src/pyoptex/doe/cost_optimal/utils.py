@@ -23,7 +23,10 @@ class Factor(__Factor__):
 
         # Validate the object creation
         assert self.type in ['cont', 'continuous', 'cat', 'categorical'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
-        assert self.ratio >= 0, f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
+        if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
+            assert all(r >= 0 for r in self.ratio), f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
+        else:
+            assert self.ratio >= 0, f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
         if self.is_continuous:
             assert isinstance(self.min, float) or isinstance(self.min, int), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
             assert isinstance(self.max, float) or isinstance(self.max, int), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        

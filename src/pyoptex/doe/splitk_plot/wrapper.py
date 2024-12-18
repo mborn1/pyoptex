@@ -33,7 +33,7 @@ def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
     if prior is not None:
-        assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
+        assert isinstance(prior[0], pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
     assert min(f.plot.level for f in factors) == 0, f'The plots must start from level 0 (easy-to-change factors)'
 
     # Extract the plot sizes
@@ -96,11 +96,11 @@ def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True
         # Convert from pandas to numpy
         prior = prior[col_names].to_numpy()
         
-        # Encode the design
-        prior = encode_design(prior, effect_types, coords=coords)
+        # Don't encode the design
+        # prior = encode_design(prior, effect_types, coords=coords)
 
         # Compute old plot sizes
-        nb_old_plots = max(p.level for p in old_plots)
+        nb_old_plots = max(p.level for p in old_plots) + 1
         old_plot_sizes = np.ones(nb_old_plots, dtype=np.int64) * -1
         for p in old_plots:
             if old_plot_sizes[p.level] == -1:
@@ -112,7 +112,13 @@ def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True
         assert np.prod(old_plot_sizes) == len(prior), f'Prior plot sizes are misspecified, prior has {len(prior)} runs, but plot sizes require {np.prod(old_plot_sizes)} runs'
         assert nb_old_plots == nb_plots, f'The prior must specify the same number of levels as the factors: prior has {len(old_plot_sizes)} levels, but new design requires {len(plot_sizes)} levels'
 
-        # TODO: validate prior (constraints)
+        # Validate prior
+        assert not np.any(fn.constraintso(prior)), 'Prior contains constraint violating runs'
+        alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
+        for i, f in enumerate(factors):
+            if f.plot.level != 0:
+                p = prior[:, i].reshape(alphas_old[f.plot.level], -1)
+                assert np.all(np.all(p == np.expand_dims(p[:, 0], 1), axis=1)), f'Prior is not a split-plot design for factor {f.name}'
 
         # Augment the design
         prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
@@ -127,7 +133,7 @@ def create_parameters(factors, fn, Y2X, prior=None, grps=None, use_formulas=True
         grps = List([lgrps[lvl] for lvl in effect_levels])
     else:
         grps = List([np.concatenate((grps[i].astype(np.int64), lgrps[effect_levels[i]]), dtype=np.int64) for i in range(len(effect_levels))])
-
+    
     # Create the parameters
     params = Parameters(
         fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
