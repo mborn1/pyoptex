@@ -262,26 +262,31 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     
     return Y
 
-
-############################
-# TODO
-
 def terms_per_level(factors, model):
     """
     Compute the amount of coefficients to be estimated per split-level.
     """
+    # Reorder model
+    assert isinstance(model, pd.DataFrame), 'The model must be a dataframe'
+    col_names = [str(f.name) for f in factors]
+    model = model[col_names].to_numpy()
+
     # Initialize
-    max_split_level = np.max(factors[:, 0])
+    plot_levels = np.array([f.plot.level for f in factors])
+    max_split_level = np.max(plot_levels)
     split_levels = np.zeros(max_split_level+1, np.int64)
 
     # Compute amount of terms with only factors higher or equal to current split-level
     for i in range(max_split_level + 1):
-        split_factors = factors[:, 0] >= i
+        split_factors = plot_levels >= i
         nterms_in_level = np.all(model[:, ~split_factors] == 0, axis=1) & np.any(model[:, split_factors] != 0, axis=1)
         split_levels[i] = np.sum(nterms_in_level)
 
     # Adjust to account for terms already counted in higher levels
     split_levels[:-1] -= split_levels[1:]
+
+    # Add the intercept
+    split_levels[-1] += 1
 
     return split_levels
 
@@ -308,3 +313,16 @@ def min_split_levels(split_levels):
         req[-i] = np.ceil((split_levels[-i] + 1) / np.prod(req[-i+1:]) + 1)
 
     return req
+
+def validate_plot_sizes(factors, model):
+    # Compute plot sizes
+    nb_plots = max(f.plot.level for f in factors) + 1
+    plot_sizes = np.zeros(nb_plots, dtype=np.int64)
+    for f in factors:
+        plot_sizes[f.plot.level] = f.plot.size
+
+    # Validate they are above minimum
+    min_levels = min_split_levels(terms_per_level(factors, model))
+    assert np.all(plot_sizes >= min_levels), f'Make sure the plot sizes are atleast above {min_levels} to estimate variances'
+    
+    

@@ -15,6 +15,7 @@ from pyoptex.doe.splitk_plot.metric import Dopt, Iopt, Aopt
 from pyoptex.doe.splitk_plot.cov import cov_time_trend, cov_double_time_trend
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.constraints import parse_constraints_script
+from pyoptex.doe.splitk_plot.utils import validate_plot_sizes
 
 # Set the seed
 set_seed(42)
@@ -57,10 +58,12 @@ prior = (
 # Constraints
 constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
-# TODO: add warning for non-estimable variance components
 # TODO: refactor evaluate
 
 #########################################################################
+
+# Validate variance components are estimable
+validate_plot_sizes(factors, model)
 
 # Parameter initialization
 n_tries = 10
