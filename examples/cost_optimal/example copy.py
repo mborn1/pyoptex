@@ -26,7 +26,7 @@ factors = [
             coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
             ratio=[0.1, 1, 10]),
     Factor(name='E', type='continuous', grouped=False),
-    Factor(name='F', type='continuous', grouped=False),
+    Factor(name='F', type='continuous', grouped=False, min=2, max=5),
     Factor(name='G', type='continuous', grouped=False),
 ]
 
@@ -43,7 +43,7 @@ Y2X = model2Y2X(model, factors)
 metric = Iopt()
 
 # Define the prior design for augmentation
-prior = pd.DataFrame([['L1', 0, 0, 0]], columns=['A1', 'E', 'F', 'G'])
+prior = pd.DataFrame([['L1', 0, 2, 0]], columns=['A1', 'E', 'F', 'G'])
 
 # Cost function
 max_transition_cost = 3*4*60
@@ -59,13 +59,11 @@ cost_fn = transition_discount_cost(transition_costs, factors, max_transition_cos
 # Define constraints
 constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
-
-# TODO: design_heatmap + correlation plot
-# TODO: what about covariates?
-# TODO: make more helper cost functions
 # TODO: do the same for split^k-plot
-# TODO: introduce analysis -- reuse functions and factors
+# TODO: what about covariates? -- add decorator like cost function
 
+# TODO: introduce analysis -- reuse functions and factors
+# TODO: make more helper cost functions
 # TODO: compile and simplify constraints tree
 
 #######################################################################
@@ -99,13 +97,12 @@ print(f'Execution time: {end_time - start_time:.3f}')
 #######################################################################
 
 from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
-from pyoptex.doe.utils.plot import design_heatmap
-# # from pyoptex.doe.utils.plot import plot_correlation_map
-design_heatmap(Y).show()
+from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+# design_heatmap(Y, factors).show()
 # print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, Y2X, fn))
 # plot_fraction_of_design_space(Y, factors, Y2X, fn).show()
 # plot_estimation_variance_matrix(Y, factors, Y2X, fn).show()
 # plot_estimation_variance_matrix(Y, factors, Y2X, fn, model).show()
 # print(estimation_variance(Y, factors, Y2X, fn))
-# # plot_correlation_map(Y, effect_types, model=model).show()
+plot_correlation_map(Y, factors, Y2X, model=model).show()
 

@@ -18,11 +18,11 @@ class Factor(Factor_):
 
     @property
     def mean(self):
-        return self.min / (self.max - self.min) * 2 + 1
+        return (self.min + self.max) / 2
 
     @property
     def scale(self):
-        return 2 / (self.max - self.min)
+        return (self.max - self.min) / 2
 
     @property
     def is_continuous(self):
