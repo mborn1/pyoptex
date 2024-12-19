@@ -135,7 +135,8 @@ class Aopt(Metric):
     Mup : np.array(3d)
         The update to the inverse of the information matrix. This is used as a cache.
     """
-    def __init__(self):
+    def __init__(self, cov=None):
+        self.cov = cov or no_cov
         self.Minv = None
         self.Mup = None
 

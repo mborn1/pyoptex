@@ -48,6 +48,10 @@ def design_heatmap(Y, factors):
         hovertemplate='<b>Factor</b>: %{x}<br><b>Run</b>: %{y}<br><b>Level</b>: %{customdata}<br><b>Normalized level</b>: %{z}',
         customdata=np.flipud(customdata)
     ))
+    fig.update_layout(
+        title=f'Design: {len(Y)} runs',
+        title_x=0.5
+    )
 
     # Top-down plotting
     return fig
@@ -100,4 +104,10 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
                 corr = corr[~bad][:, ~bad]
             bad = np.all(np.isnan(corr), axis=1)
 
-    return px.imshow(corr)
+    fig = px.imshow(corr)
+    fig.update_layout(
+        title='Correlation map',
+        title_x=0.5
+    )
+
+    return fig

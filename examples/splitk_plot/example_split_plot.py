@@ -47,18 +47,16 @@ metric = Dopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 # Define prior
 prior = (
     pd.DataFrame([
-        ['L1', 0, -1],
-        ['L1', 1, 1],
-        ['L2', -1, 0],
-        ['L2', 0, -1]
+        ['L1', 0, 2],
+        ['L1', 1, 5],
+        ['L2', -1, 3.5],
+        ['L2', 0, 2]
     ], columns=['A', 'B', 'C']),
     [Plot(level=0, size=2), Plot(level=1, size=2)]
 )
 
 # Constraints
 constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
-
-# TODO: refactor evaluate
 
 #########################################################################
 
@@ -92,11 +90,14 @@ print(Y)
 
 #########################################################################
 
-# from pyoptex.doe.splitk_plot.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix
-# from pyoptex.doe.utils.plot import plot_correlation_map
-# print(evaluate_metrics(Y, effect_types, plot_sizes, model=model, ratios=ratios))
-# plot_fraction_of_design_space(Y, effect_types, plot_sizes, model=model, ratios=ratios).show()
-# plot_estimation_variance_matrix(Y, effect_types, plot_sizes, model=model, ratios=ratios).show()
-# plot_correlation_map(Y, effect_types, model=model).show()
+from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+design_heatmap(Y, factors).show()
+plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
+
+from pyoptex.doe.splitk_plot.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
+print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, fn))
+plot_fraction_of_design_space(Y, factors, fn).show()
+plot_estimation_variance_matrix(Y, factors, fn, model).show()
+print(estimation_variance(Y, factors, fn))
 
 

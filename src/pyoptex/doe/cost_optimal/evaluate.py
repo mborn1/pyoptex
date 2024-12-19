@@ -102,6 +102,8 @@ def plot_fraction_of_design_space(Y, factors, fn, iopt_N=10000):
         xaxis_title='Fraction of design space',
         yaxis_title='Relative prediction variance',
         legend_title_text='A-priori variance ratios',
+        title='Fraction of design space plot',
+        title_x=0.5
     )
 
     return fig
@@ -169,6 +171,10 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
             z=np.flipud(Minv[i]), x=encoded_colnames, y=encoded_colnames[::-1], colorbar_len=0.75/len(Minv),
             colorbar_x=1, colorbar_y=1-(i+0.75/2+0.05*i)/len(Minv)
         ), row=i+1, col=1)
+    fig.update_layout(
+        title='Estimation covariance plot',
+        title_x=0.5
+    )
 
     # Return the plot
     return fig

@@ -93,7 +93,7 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
     def _cov(Y, X, random=False, subset=slice(None, None)):
         # Extract time
         if random:
-            t = np.random.rand((Y.shape[0], 2)) * 2 - 1
+            t = np.random.rand(Y.shape[0], 2) * 2 - 1
         else:
             t = time_array[subset]
 
