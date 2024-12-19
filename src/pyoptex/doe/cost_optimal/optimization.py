@@ -1,12 +1,16 @@
+"""
+Module for all optimizaters of the CODEX algorithm
+"""
+
 import numpy as np
 
+from ..._profile import profile
+from ...utils.numba import numba_any_axis1, numba_diff_axis0
+from ..utils.design import force_Zi_asc, obs_var_from_Zs
+from ..utils.init import full_factorial
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
 from .utils import obs_var_Zs
-from ..utils.design import force_Zi_asc, obs_var_from_Zs
-from ..utils.init import full_factorial
-from ...utils.numba import numba_any_axis1, numba_diff_axis0
-from ..._profile import profile
 
 
 def adapt_group(groups, factor, row_start, row_end):
@@ -72,26 +76,122 @@ def adapt_group(groups, factor, row_start, row_end):
     return np.array(b)
 
 def adapt_groups(groups, Y, colstart, row_start, row_end):
-    return [adapt_group(groups[i], Y[:, colstart[i]:colstart[i+1]], row_start, row_end) for i in range(colstart.size - 1)]
+    """
+    Detects which groups should be adapted for each factor
+    according to :py:func:`pyoptex.doe.cost_optimal.optimization.adapt_group`.
+
+    Parameters
+    ----------
+    groups : list(np.array(1d))
+        The grouping matrix for this factor.
+    Y : np.array(2d)
+        The design matrix with the coordinate already changed.
+    colstart : np.array(1d)
+        The start of each encoded column.
+    row_start : int
+        The starting row (included) where the coordinate was changed.
+    row_end : int
+        The final row (excluded) where the coordinate was changed.
+    
+    Returns
+    -------
+    b : list(tuple(row_start, row_end, group_from, group_to))
+        A list of operations to apply changing the groups of the factors.
+    """
+    return [
+        adapt_group(groups[i], Y[:, colstart[i]:colstart[i+1]], row_start, row_end)
+        for i in range(colstart.size - 1)
+    ]
+
+class Optimizer:
+    """
+    Applies the optimizer on the design every
+    n iterations.
+
+    Attributes
+    ----------
+    i : int
+        The current iteration
+    n : int
+        Every nth iteration, the optimization is applied.
+    """
+
+    def __init__(self, n=1):
+        """
+        Initializes the coordinate-exchange optimizer.
+
+        Parameters
+        ----------
+        n : int
+            The number of iterations before applying
+            the optimizer.
+        """
+        self.i = 0
+        self.n = n
+
+    def reset(self):
+        """
+        Resets the optimizer.
+        """
+        self.i = 0
+
+    def _call(self, state, params):
+        """
+        Apply the optimizer.
+
+        Parameters
+        ----------
+        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The state from which to sample.
+        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+            The simulation parameters.
+
+        Returns
+        -------
+        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The optimized state.
+        """
+        raise NotImplementedError('_call function must be implemented for optimizer')
+
+    def call(self, state, params, force=False):
+        """
+        Applies the optimizer.
+
+        Parameters
+        ----------
+        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The state from which to sample.
+        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+            The simulation parameters.
+
+        Returns
+        -------
+        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The optimized state.
+        """
+        self.i += 1
+        if self.i % self.n == 0 or force:
+            state = self._call(state, params)
+        return state
 
 ######################################################
 
 @profile
-def ce_metric(state, params):
+def ce_optimizer(state, params):
     """
     Optimizes the design by applying a single coordinate exchange pass
     over the design.
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to sample.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -128,7 +228,11 @@ def ce_metric(state, params):
                         # Check constraints
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
-                            b = adapt_group(state.Zs[col], state.Y[:, params.colstart[col]:params.colstart[col+1]], row, row+1)
+                            b = adapt_group(
+                                state.Zs[col], 
+                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
+                                row, row+1
+                            )
                             if len(b) == 0:
                                 Zsn = state.Zs
                                 Vinvn = state.Vinv
@@ -136,15 +240,27 @@ def ce_metric(state, params):
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
                                         np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                        np.copy(state.Zs[col]), 
+                                        b, params.ratios[:, col]
                                     )
-                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                    Zsn = tuple([
+                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        for i, Zi in enumerate(state.Zs)
+                                    ])
                                 else:
-                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
-                                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
+                                    Zsn = obs_var_Zs(
+                                        state.Y, params.colstart, 
+                                        params.grouped_cols
+                                    )
+                                    Vinvn = np.array([
+                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                        for ratios in params.ratios
+                                    ])
 
                             # Check metric
-                            new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
+                            new_metric = params.fn.metric.call(
+                                state.Y, state.X, Zsn, Vinvn, new_costs
+                            )
 
                             # Compute accept
                             accept = new_metric > state.metric
@@ -156,7 +272,10 @@ def ce_metric(state, params):
                         Xrow = np.copy(state.X[row])
 
                         # Update the state
-                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
+                        state = State(
+                            state.Y, state.X, Zsn, Vinvn, new_metric, 
+                            new_cost, new_costs, max_cost
+                        )
 
                     else:
                         # Reset values
@@ -165,7 +284,7 @@ def ce_metric(state, params):
 
     return state
 
-class CEMetric:
+class CEOptimizer(Optimizer):
     """
     Applies the coordinate exchange function on the design every
     n iterations.
@@ -177,38 +296,44 @@ class CEMetric:
     n : int
         Every nth iteration, the optimization is applied.
     """
-    def __init__(self, n=1):
-        self.i = 0
-        self.n = n
 
-    def reset(self):
-        self.i = 0
+    def _call(self, state, params):
+        """
+        Applies the optimizer.
 
-    def call(self, state, params):
-        self.i += 1
-        if self.i % self.n == 0:
-            state = ce_metric(state, params)
-        return state
+        Parameters
+        ----------
+        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The state from which to sample.
+        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+            The simulation parameters.
+
+        Returns
+        -------
+        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The optimized state.
+        """
+        return ce_optimizer(state, params)
 
 #########################################################
 
 @profile
-def ce_struct_metric(state, params):
+def ce_struct_optimizer(state, params):
     """
     Optimizes the design by applying a single structured coordinate exchange pass
-    over the design. By structured is meant that not every individual coordinate
-    is adjusted, rather, entire groups of coordinates are adjusted per factor.
+    over the design. Structured coordinate-exchange changes the coordinate
+    of groups of sequential runs with the same factor level.
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to sample.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -261,7 +386,11 @@ def ce_struct_metric(state, params):
                         
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
-                            b = adapt_group(state.Zs[col], state.Y[:, params.colstart[col]:params.colstart[col+1]], rows[0], rows[-1]+1)
+                            b = adapt_group(
+                                state.Zs[col], 
+                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
+                                rows[0], rows[-1]+1
+                            )
                             if len(b) == 0:
                                 Zsn = state.Zs
                                 Vinvn = state.Vinv
@@ -269,15 +398,27 @@ def ce_struct_metric(state, params):
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
                                         np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                        np.copy(state.Zs[col]), 
+                                        b, params.ratios[:, col]
                                     )
-                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                    Zsn = tuple([
+                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        for i, Zi in enumerate(state.Zs)
+                                    ])
                                 else:
-                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
-                                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
+                                    Zsn = obs_var_Zs(
+                                        state.Y, params.colstart, 
+                                        params.grouped_cols
+                                    )
+                                    Vinvn = np.array([
+                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                        for ratios in params.ratios
+                                    ])
 
                             # Compute new metric
-                            new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
+                            new_metric = params.fn.metric.call(
+                                state.Y, state.X, Zsn, Vinvn, new_costs
+                            )
 
                             # Compute accept
                             accept = new_metric > state.metric
@@ -289,7 +430,10 @@ def ce_struct_metric(state, params):
                         Xrows = np.copy(state.X[rows])
 
                         # Update the state
-                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
+                        state = State(
+                            state.Y, state.X, Zsn, Vinvn, new_metric, 
+                            new_cost, new_costs, max_cost
+                        )
                     else:
                         # Reset values
                         state.Y[rows, params.colstart[col]:params.colstart[col+1]] = Ycoord
@@ -297,9 +441,9 @@ def ce_struct_metric(state, params):
 
     return state
 
-class CEStructMetric:
+class CEStructOptimizer(Optimizer):
     """
-    Applies the structured coordinate exchange function on the design every
+    Applies the structured coordinate-exchange function on the design every
     n iterations.
 
     Attributes
@@ -309,37 +453,42 @@ class CEStructMetric:
     n : int
         Every nth iteration, the optimization is applied.
     """
-    def __init__(self, n=1):
-        self.i = 0
-        self.n = n
+    def _call(self, state, params):
+        """
+        Applies the optimizer.
 
-    def reset(self):
-        self.i = 0
+        Parameters
+        ----------
+        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The state from which to sample.
+        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+            The simulation parameters.
 
-    def call(self, state, params):
-        self.i += 1
-        if self.i % self.n == 0:
-            state = ce_struct_metric(state, params)
-        return state
+        Returns
+        -------
+        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The optimized state.
+        """
+        return ce_struct_optimizer(state, params)
 
 #########################################################
 
 @profile
-def pe_metric(state, params):
+def pe_optimizer(state, params):
     """
-    Optimizes the design by applying a single coordinate exchange pass
+    Optimizes the design by applying a point-exchange exchange pass
     over the design.
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to sample.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -381,7 +530,10 @@ def pe_metric(state, params):
                         # Check if using update formulas
                         if params.use_formulas:
                             # Update Zsn, Vinv
-                            bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row+1)
+                            bs = adapt_groups(
+                                state.Zs, state.Y, params.colstart, 
+                                row, row+1
+                            )
 
                             # Sequential update of the groups
                             for col, b in enumerate(bs):
@@ -391,16 +543,25 @@ def pe_metric(state, params):
                                 else:
                                     Zin, Vinvn = ce_update_vinv(
                                         np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), b, params.ratios[:, col]
+                                        np.copy(state.Zs[col]), 
+                                        b, params.ratios[:, col]
                                     )
-                                    Zsn = tuple([Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)])
+                                    Zsn = tuple([
+                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        for i, Zi in enumerate(state.Zs)
+                                    ])
                         else:
                             # Recompute from scratch
                             Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
-                            Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios])
+                            Vinvn = np.array([
+                                np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                for ratios in params.ratios
+                            ])
 
                         # Check metric
-                        new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
+                        new_metric = params.fn.metric.call(
+                            state.Y, state.X, Zsn, Vinvn, new_costs
+                        )
 
                         # Compute accept
                         accept = new_metric > state.metric
@@ -412,7 +573,10 @@ def pe_metric(state, params):
                     Xrow = np.copy(state.X[row])
 
                     # Update the state
-                    state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
+                    state = State(
+                        state.Y, state.X, Zsn, Vinvn, new_metric, 
+                        new_cost, new_costs, max_cost
+                    )
 
                 else:
                     # Reset values
@@ -421,9 +585,9 @@ def pe_metric(state, params):
 
     return state
 
-class PEMetric:
+class PEOptimizer(Optimizer):
     """
-    Applies the structured coordinate exchange function on the design every
+    Applies the point-exchange function on the design every
     n iterations.
 
     Attributes
@@ -433,15 +597,20 @@ class PEMetric:
     n : int
         Every nth iteration, the optimization is applied.
     """
-    def __init__(self, n=1):
-        self.i = 0
-        self.n = n
+    def _call(self, state, params):
+        """
+        Applies the optimizer.
 
-    def reset(self):
-        self.i = 0
+        Parameters
+        ----------
+        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The state from which to sample.
+        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+            The simulation parameters.
 
-    def call(self, state, params):
-        self.i += 1
-        if self.i % self.n == 0:
-            state = pe_metric(state, params)
-        return state
+        Returns
+        -------
+        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+            The optimized state.
+        """
+        return pe_optimizer(state, params)

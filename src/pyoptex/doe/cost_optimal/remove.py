@@ -1,10 +1,14 @@
+"""
+Module for all metrics of the CODEX algorithm
+"""
+
 import numpy as np
 
+from ..._profile import profile
+from ..utils.design import force_Zi_asc, obs_var_from_Zs
 from .formulas import detect_block_end_from_start, remove_update_vinv
 from .simulation import State
 from .utils import obs_var_Zs
-from ..utils.design import force_Zi_asc, obs_var_from_Zs
-from ..._profile import profile
 
 
 def groups_remove(Yn, Zs, pos, colstart):
@@ -18,7 +22,7 @@ def groups_remove(Yn, Zs, pos, colstart):
     Zs : list(np.array(1d) or None)
         The grouping matrices.
     pos : int
-        The run to remove.
+        The index of the run to remove.
     colstart : np.array(1d)
         The start column of each factor.
 
@@ -59,22 +63,21 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The state from which to remove.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The state from which to start.
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     prevent_insert : bool
         Whether to prevent the removal of the recently inserted run.
 
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The new state with runs removed.
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The new state after inserting the run.
     """
     nprior = len(params.prior)
 
     # Temporary variables
-    metrics = np.zeros(len(state.Y), dtype=np.float64)
     keep = np.ones(len(state.Y), dtype=np.bool_)
 
     # Stats
@@ -94,7 +97,6 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
         # Loop over all available runs
         for k in idx:
-        # for k in range(nprior, len(state.Y)):
             # Set keep to false
             keep[k] = False
 
@@ -106,15 +108,26 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             if any(Zi is not None for Zi in state.Zs):
                 if params.use_formulas:
                     b = groups_remove(Yn, state.Zs, k, params.colstart)
-                    Zsn, Vinvn = remove_update_vinv(state.Vinv, state.Zs, k, b, params.ratios)
-                    Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+                    Zsn, Vinvn = remove_update_vinv(
+                        state.Vinv, state.Zs, k, b, params.ratios
+                    )
+                    Zsn = tuple(
+                        force_Zi_asc(Zi) if Zi is not None else None 
+                        for Zi in Zsn
+                    )
                 else:
                     Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
-                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
+                    Vinvn = np.array([
+                        np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) 
+                        for ratios in params.ratios
+                    ])
             else:
                 # Shortcut as there are no hard-to-vary factors
                 Zsn = state.Zs
-                Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
+                Vinvn = np.broadcast_to(
+                    np.eye(len(Yn)), 
+                    (state.Vinv.shape[0], len(Yn), len(Yn))
+                )
 
             # Compute cost reduction
             costsn = params.fn.cost(Yn, params)
@@ -128,12 +141,14 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn, max_cost)
                 
             # Compute metric loss per cost
+            # pylint: disable=line-too-long
             mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y) \
                 - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
             metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
-            if (metric_temp < best_metric or np.isinf(best_metric)) and (k != insert_loc or not prevent_insert or insert_loc < 0):
+            if (metric_temp < best_metric or np.isinf(best_metric)) \
+                    and (k != insert_loc or not prevent_insert or insert_loc < 0):
                 best_metric = metric_temp
                 best_state = staten
                 best_k = k
@@ -152,19 +167,19 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
 def remove_optimal_onebyone_prevent(state, params):
     """
-    Similar to `remove_optimal_onebyone`, but with prevent_insert = True.
+    Similar to :py:func:`pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone`, 
+    but with prevent_insert = True.
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The state from which to remove.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The state from which to start.
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The new state with runs removed.
-    
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The new state after inserting the run.
     """
     return remove_optimal_onebyone(state, params, prevent_insert=True)

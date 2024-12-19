@@ -1,12 +1,17 @@
-import numpy as np
-import numba
+"""
+Module for all insert functions of the CODEX algorithm
+"""
 
-from .formulas import insert_update_vinv, detect_block_end_from_start, NO_UPDATE
+import numpy as np
+
+from ..._profile import profile
+from ...utils.numba import numba_insert_axis0
+from ..utils.design import force_Zi_asc, obs_var_from_Zs
+from .formulas import (NO_UPDATE, detect_block_end_from_start,
+                       insert_update_vinv)
 from .simulation import State
 from .utils import obs_var_Zs
-from ..utils.design import x2fx, force_Zi_asc, obs_var_from_Zs
-from ...utils.numba import numba_insert_axis0
-from ..._profile import profile
+
 
 def groups_insert(Yn, Zs, pos, colstart):
     """
@@ -45,7 +50,7 @@ def groups_insert(Yn, Zs, pos, colstart):
             Zi = Zs[i]
             max_grp = Zi[-1]
             cols = slice(colstart[i], colstart[i+1])
-            
+
             # Detect change types
             if pos > 0 and np.all(Yn[pos-1, cols] == Yn[pos, cols]):
                 # Merge above
@@ -58,7 +63,7 @@ def groups_insert(Yn, Zs, pos, colstart):
                 a[i] = max_grp + 1
 
                 # Double split
-                if pos > 0 and pos < len(Zi) and np.all(Yn[pos-1, cols] == Yn[pos+1, cols]):
+                if 0 < pos < len(Zi) and np.all(Yn[pos-1, cols] == Yn[pos+1, cols]):
                     block_end = detect_block_end_from_start(Zi, pos)
                     b[i] = (pos+1, block_end+1, Zi[pos], max_grp + 2)
         else:
@@ -77,16 +82,16 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         The new run to be added to the design.
     pos : int
         The position at which to insert the new run.
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to start.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     new_X : np.array(1, 1d)
         The model matrix part of that run = x2fx(new_run)
     
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after inserting the run at that position.
     """
     # Compute new X
@@ -104,8 +109,11 @@ def _insert_position(new_run, pos, state, params, new_X=None):
             Zs, Vinv = insert_update_vinv(state.Vinv, state.Zs, pos, a, b, params.ratios)
             Zs = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zs)
         else:
-                Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
-                Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
+            Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
+            Vinv = np.array([
+                np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+                for ratios in params.ratios
+            ])
     else:
         Zs, Vinv = state.Zs, state.Vinv
 
@@ -131,14 +139,14 @@ def insert_last(new_run, state, params):
     ----------
     new_run : np.array(1, 1d)
         The new run to be added to the design.
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to start.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after inserting the run at the last position.
     """
     # Insert in last position
@@ -154,14 +162,14 @@ def insert_optimal(new_run, state, params):
     ----------
     new_run : np.array(1, 1d)
         The new run to be added to the design.
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The state from which to start.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     
     Returns
     -------
-    new_state : :py:class:`State <cost_optimal_designs.simulation.State>`
+    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
         The new state after inserting the run.
     """
     # Compute new X
@@ -185,15 +193,26 @@ def insert_optimal(new_run, state, params):
         if any(Zi is not None for Zi in state.Zs):
             if params.use_formulas:
                 a, b = groups_insert(Yn, state.Zs, k, params.colstart)
-                Zsn, Vinvn = insert_update_vinv(state.Vinv, state.Zs, k, a, b, params.ratios)
-                Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
+                Zsn, Vinvn = insert_update_vinv(
+                    state.Vinv, state.Zs, k, a, b, params.ratios
+                )
+                Zsn = tuple(
+                    force_Zi_asc(Zi) if Zi is not None else None 
+                    for Zi in Zsn
+                )
             else:
                 Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
-                Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
+                Vinvn = np.array([
+                    np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) 
+                    for ratios in params.ratios
+                ])
         else:
             # Shortcut as there are no hard-to-vary factors
             Zsn = state.Zs
-            Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
+            Vinvn = np.broadcast_to(
+                np.eye(len(Yn)), 
+                (state.Vinv.shape[0], len(Yn), len(Yn))
+            )
 
         # Compute cost increase
         costsn = params.fn.cost(Yn, params)
@@ -207,6 +226,7 @@ def insert_optimal(new_run, state, params):
         staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn, max_cost)
 
         # Target
+        # pylint: disable=line-too-long
         mt = np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y) \
                 - np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y)
         metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))

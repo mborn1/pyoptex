@@ -3,8 +3,6 @@
 # Normal imports
 import numpy as np
 import pandas as pd
-import numba
-import os
 import time
 
 # Library imports
@@ -13,8 +11,7 @@ from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn, Fac
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
 from pyoptex.doe.cost_optimal.cov import cov_time_trend
-from pyoptex.doe.cost_optimal.cost import transition_discount_cost
-from pyoptex.doe.cost_optimal.init import init_feasible
+from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.constraints import parse_constraints_script
 
 # Set the seed
@@ -54,13 +51,14 @@ transition_costs = {
     'G': 1
 }
 execution_cost = 5
-cost_fn = transition_discount_cost(transition_costs, factors, max_transition_cost, execution_cost)
+cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, execution_cost)
 
 # Define constraints
 constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
 # TODO: introduce analysis -- reuse functions and factors
 # TODO: make more helper cost functions
+# TODO: Introduce multiprocessing in the framework
 # TODO: what about covariates? -- add decorator like cost function
 # TODO: compile and simplify constraints tree
 

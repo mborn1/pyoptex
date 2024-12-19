@@ -1,3 +1,7 @@
+"""
+Module containing all the covariate functions of the CODEX algorithm
+"""
+
 import numpy as np
 
 # Update function when adding new blocking factors
@@ -51,17 +55,52 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
         Vinv -= VR @ np.linalg.solve(SVR, np.swapaxes(VR, -2, -1))
 
     return Vinv
-        
+
+# pylint: disable=unused-argument,too-many-arguments
 def no_cov(Y, X, Zs, Vinv, costs, random=False):
+    """
+    Function to indicate no covariate is added.
+
+    Parameters
+    ----------
+    Y : np.array(2d)
+        The design matrix
+    X : np.array(2d)
+        The model matrix
+    Zs : list(np.array(1d))
+        The grouping matrices
+    Vinv : np.array(3d)
+        The inverses of the multiple covariance matrices for each
+        set of a-priori variance ratios.
+    costs : list(np.array(1d), float, np.array(1d))
+        The list of different costs.
+    random : bool
+        Whether to add covariates at random or predetermined. The random
+        aspect is used for sampling random points in the design space.
+
+    Returns
+    -------
+    Y : np.array(2d)
+        The updated design matrix with covariates.
+    X : np.array(2d)
+        The updated model matrix with covariates.
+    Zs : list(np.array(1d))
+        The updated grouping matrices with added random covariate effects.
+    Vinv = np.array(3d)
+        The updated inverses of the covariance matrices with the added
+        random covariate effects.
+    """
     return Y, X, Zs, Vinv
 
 def cov_time_trend(time=1, cost_index=0):
     """
     Covariance function to account for time trends.
-    Cost is assumed to be time.
+    The cost at `cost_index` is assumed to represent some form
+    of time. Every `time`, the level of the time trend is increased
+    by one unit.
 
     For example, if time is 2 and we have runs with
-    cumulative cost [0, 1, 2, 3, 4, 5], the added time column
+    cumulative time [0, 1, 2, 3, 4, 5], the added time column
     will be [-1, -1, 0, 0, 1, 1].
 
     Parameters
@@ -74,8 +113,8 @@ def cov_time_trend(time=1, cost_index=0):
     
     Returns
     -------
-    cov : func
-        The covariance function to pass to the metric.
+    cov : func(Y, X, Zs, Vinv, costs)
+        The covariance function.
     """
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
@@ -99,7 +138,11 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     """
     Covariance function to account for double time trends. The inner
     time column is reset every time the outer time column resets.
-    Cost is assumed to be time.
+    The cost at `cost_index` is assumed to represent some form
+    of time. Every `time_outer`, the level of the outer time trend is 
+    increased by one unit. Every `time_inner`, the level of the inner
+    time trend is increased by one unit, being reset whenever the outer
+    time trend changes.
 
     For example, if outer time is 2 and inner time is 1 we have runs with
     cumulative cost [0, 1, 2, 3, 4, 5], the added outer time column
@@ -120,8 +163,8 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     
     Returns
     -------
-    cov : func
-        The covariance function to pass to the metric.
+    cov : func(Y, X, Zs, Vinv, costs)
+        The covariance function.
     """
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
@@ -152,7 +195,8 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
 def cov_block(cost=1, ratios=1., cost_index=0):
     """
     Covariance function to add a blocking factor to the
-    system every `cost` in the cumulative cost.
+    system every `cost` in the cumulative cost. This
+    is mostly used when cost is time related.
 
     For example, if cost = 2 and the cumulative cost is
     [0, 1, 2, 3, 4, 5], the added blocking groups are
@@ -171,8 +215,8 @@ def cov_block(cost=1, ratios=1., cost_index=0):
 
     Returns
     -------
-    cov : func
-        The covariance function to pass to the metric.
+    cov : func(Y, X, Zs, Vinv, costs)
+        The covariance function.
     """
     # Convert number to array
     if not isinstance(ratios, np.ndarray):

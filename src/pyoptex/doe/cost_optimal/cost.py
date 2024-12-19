@@ -1,8 +1,40 @@
-import numba
-import numpy as np
+"""
+Module containing all the cost functions of the CODEX algorithm
+"""
+
 from functools import wraps
 
+import numba
+import numpy as np
+import pandas as pd
+
+from ..utils.design import decode_design
+
+
 def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=False):
+    """
+    Cost function decorator code.
+
+    Parameters
+    ----------
+    f : func(Y, params) or func(Y)
+        The cost function to be wrapped.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        A list of factors for the design.
+    denormalize : bool
+        Whether to denormalize (and decode) the data before passing it to `f`.
+    decoded : bool
+        Whether to only decode, but not denormalize the data before passing it to `f`.
+    contains_params : bool
+        Whether the cost function requires the CODEX 
+        :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
+        This prevents numba compilation.
+
+    Returns
+    -------
+    fn : func(Y, params)
+        The decorated function
+    """
 
     # Check if parameters are required (prevents direct use of numba.njit compilation)
     if contains_params:
@@ -10,6 +42,7 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
     else:
         @wraps(f)
         def fn1(Y, params):
+            # pylint: disable=unused-argument
             return f(Y)
 
     # Check for denormalization in the cost function
@@ -24,7 +57,7 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
         # Extract categorical factors
         cat_factors = {str(f.name): {float(i): lname for i, lname in enumerate(f.levels)} 
                         for f in factors if f.is_categorical}
-        
+
         # Wrap the function
         @wraps(fn1)
         def fn(Y, params):
@@ -34,9 +67,11 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
             Y = pd.DataFrame(Y, columns=col_names)
             for f, l in cat_factors.items():
                 Y[f] = Y[f].map(l)
-            
+
             return fn1(Y, params)
+
         NOTE = 'This cost function works on denormalized inputs'
+
     elif decoded:
         # Wrap the function
         @wraps(fn1)
@@ -44,22 +79,47 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
             # Decode the design to a dataframe
             Y = decode_design(Y, params.effect_types, coords=params.coords)
             return fn1(Y, params)
-        NOTE = 'This cost function works on decoded categorical inputs'  
+
+        NOTE = 'This cost function works on decoded categorical inputs'
+
     else:
         # Wrap the function
         @wraps(fn1)
         def fn(Y, params):
             return fn1(Y, params)
+
         NOTE = 'This cost function works on normalized (encoded) inputs'
 
     # Extend the documentation with a note on normalization
     if fn.__doc__ is not None:
         params_pos = fn.__doc__.find('    Parameters\n    ---------')
+        # pylint: disable=line-too-long
         fn.__doc__ = fn.__doc__[:params_pos] + f'\n    .. note::\n        {NOTE}\n\n' + fn.__doc__[params_pos:]
 
     return fn
 
 def cost_fn(*args, **kwargs):
+    """
+    Parameters
+    ----------
+    f : func(Y, params) or func(Y)
+        The cost function to be wrapped.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        A list of factors for the design.
+    denormalize : bool
+        Whether to denormalize (and decode) the data before passing it to `f`.
+    decoded : bool
+        Whether to only decode, but not denormalize the data before passing it to `f`.
+    contains_params : bool
+        Whether the cost function requires the CODEX 
+        :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
+        This prevents numba compilation.
+
+    Returns
+    -------
+    fn : func(Y, params)
+        The decorated function
+    """
     if len(args) > 0 and callable(args[0]):
         return __cost_fn(args[0], *args[1:], **kwargs)
     else:
@@ -69,54 +129,63 @@ def cost_fn(*args, **kwargs):
 
 ############################################################
 
-def combine_costs(cost_fn):
+def combine_costs(costs):
     """
     Combine multiple cost functions together.
 
     Parameters
     ----------
-    cost_fn : iterable(func)
+    costs : iterable(func)
         An iterable of cost functions to concatenate
     
     Returns
     -------
-    cost_fn : func
+    cost_fn : func(Y, params)
         The combined cost function for the simulation algorithm.
     """
     def _cost(Y, params):
-        return [c for cf in cost_fn for c in cf(Y, params)]
+        return [c for cf in costs for c in cf(Y, params)]
 
-    _cost.__doc__ = 'This is a combined cost function of:\n* ' + '\n* '.join(cf.__name__ in cost_fn)
+    # pylint: disable=line-too-long
+    _cost.__doc__ = 'This is a combined cost function of:\n* ' + '\n* '.join(cf.__name__ for cf in costs)
 
     return _cost
 
 def discount_cost(costs, factors, max_cost, base_cost=1):
     """
     Create a transition cost function according to the formula C = max(c1, c2, ..., base). 
-    This means that if a harder to vary factor changes, the easier factors comes for free.
+    This means the total transition cost is determined by the most-hard-to-change factor.
     
     Parameters
     ----------
-    costs : np.array(1d)
-        The cost of each factor in effect_types.
-    effect_types : dict or np.array(1d)
-        The type of each effect. If a dictionary, the values are taken as the array.
+    costs : dict(str, float)
+        A dictionary mapping the factor name to the transition cost.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        The factors for the design.
     max_cost : float
-        The maximum cost of this function.
+        The budget available for this cost function.
     base_cost : float
-        The base cost when nothing is altered.
+        The base cost when no factors are changed, i.e., when a run
+        is repeated.
     
     Returns
     -------
-    cost_fn : func
-        The cost function for the simulation algorithm.
+    cost_fn : func(Y, params)
+        The cost function.
     """
     # Expand the costs to categorically encoded
-    costs = np.array([c for f in factors for c in ([costs[str(f.name)]] if f.is_continuous else [costs[str(f.name)]]*(len(f.levels)-1))])
+    costs = np.array([
+        c for f in factors 
+            for c in ([costs[str(f.name)]] 
+            if f.is_continuous 
+            else [costs[str(f.name)]]*(len(f.levels)-1))
+    ])
 
     # Define the transition costs
     @numba.njit
     def _cost(Y):
+        """Internal cost function according to 
+        :py:function:`pyoptex.doe.cost_optimal.cost.discount_cost`"""
         # Initialize costs
         cc = np.zeros(len(Y))
 
@@ -131,49 +200,72 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
             for j in range(old_run.size):
                 if old_run[j] != new_run[j] and costs[j] > c:
                     c = costs[j]
-            
+
             # Set base cost
-            if c < base_cost:
-                c = base_cost
+            c = max(c, base_cost)
 
             # Set the cost
             cc[i] = c
-        
+
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
 
-def transition_discount_cost(costs, factors, max_cost, base_cost=1):
-    return discount_cost({k: v + base_cost for k, v in costs.items()}, factors, max_cost, base_cost)
-
-def additive_effect_trans_cost(costs, factors, max_cost, base_cost=1):
+def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     """
-    Create a transition cost function according to the formula C = c1 + c2 + ... + base. 
-    This means that every factor is independently, and sequentially changed.
-
-    The function can deal with categorical factors, correctly expanding the costs array.
+    Create a transition cost function for a problem where
+    multiple workers can work on the transition between
+    two consecutive runs in parallel. The total transition
+    cost is determined by the most-hard-to-change factor.
     
     Parameters
     ----------
-    costs : np.array(1d)
-        The cost of each factor in effect_types.
-    effect_types : dict or np.array(1d)
-        The type of each effect. If a dictionary, the values are taken as the array.
+    transition_costs : dict(str, float)
+        A dictionary mapping the factor name to the transition cost.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        The factors for the design.
     max_cost : float
-        The max cost of this function.
-    base_cost : float
-        The base cost when nothing is altered.
+        The budget available for this cost function.
+    execution_cost : float
+        the execution cost of a run.
     
     Returns
     -------
-    cost_fn : func
-        The cost function for the simulation algorithm.
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    return discount_cost(
+        {k: v + execution_cost for k, v in transition_costs.items()}, 
+        factors, max_cost, execution_cost
+    )
+
+def additive_cost(costs, factors, max_cost, base_cost=1):
+    """
+    Create a transition cost function according to the formula C = c1 + c2 + ... + base. 
+    This means that every factor is independently, and sequentially changed.
+    
+    Parameters
+    ----------
+    costs : dict(str, float)
+        A dictionary mapping the factor name to the transition cost.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    base_cost : float
+        The base cost when no factors are changed, i.e., when a run
+        is repeated.
+    
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
     """
     # Compute the column starts
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
     costs = np.array([costs[str(f.name)] for f in factors])
-    
+
     # Define the transition costs
     @numba.njit
     def _cost(Y):
@@ -192,13 +284,41 @@ def additive_effect_trans_cost(costs, factors, max_cost, base_cost=1):
             for j in range(colstart.size-1):
                 if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
                     tc += costs[j]
-            
+
             cc[i] = tc
 
         # Return the costs
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
+def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
+    """
+    Create a transition cost function for a problem where
+    only a single worker can work on the transition between
+    two consecutive runs. The total transition
+    cost is determined by the sum of all transition costs.
+    
+    Parameters
+    ----------
+    transition_costs : dict(str, float)
+        A dictionary mapping the factor name to the transition cost.
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    execution_cost : float
+        the execution cost of a run.
+    
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    return additive_cost(
+        {k: v + execution_cost for k, v in transition_costs.items()}, 
+        factors, max_cost, execution_cost
+    )
 
 def fixed_runs_cost(max_cost):
     """
@@ -208,13 +328,13 @@ def fixed_runs_cost(max_cost):
 
     Parameters
     ----------
-    max_cost : float
+    max_cost : int
         The maximum number of runs.
 
     Returns
     -------
-    cost_fn : func
-        The cost function for the simulation algorithm.
+    cost_fn : func(Y, params)
+        The cost function.
     """
     def _cost_fn(Y):
         return [(np.ones(len(Y)), max_cost, np.arange(len(Y)))]
@@ -233,21 +353,21 @@ def max_changes_cost(factor, factors, max_cost):
     Parameters
     ----------
     factor : str or int
-        The index of the factor (in effect_types)
-    effect_types : dict or np.array(1d)
-        The type of each effect. If a dictionary, the values are taken as the array.
-    max_cost : float
+        The name or index of the factor
+    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+        The factors for the design.
+    max_cost : int
         The maximum number of changes in the specified factor.
 
     Returns
     -------
-    cost_fn : func
-        The cost function for the simulation algorithm.
+    cost_fn : func(Y, params)
+        The cost function.
     """
     # Expand factor for categorical variables
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
-    
+
     # Determine the columns of the factor
     if isinstance(factor, str):
         factor = [str(f.name) for f in factors].index(factor)

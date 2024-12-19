@@ -1,11 +1,13 @@
-import numpy as np
+"""
+Module for all accept functions of the CODEX algorithm
+"""
 
 def exponential_accept_rel(m0, m1, T):
     """
     Computes the accept probability as an exponential function of the
     ratio between the new and old metric, and the temperature.
 
-    * ositive metrics: (m1/m0)**(1/T)
+    * Positive metrics: (m1/m0)**(1/T)
     * Negative metrics: (m0/m1)**(1/T)
 
     .. note::
@@ -25,8 +27,10 @@ def exponential_accept_rel(m0, m1, T):
     alpha : float
         The accept probability.
     """
+    # If old metric is zero, always accept
     if m0 == 0:
         return 1
-    else:
-        d = m1/m0 if m0 > 0 else m0/m1
-        return d ** (1/T)
+
+    # Compute accept probability
+    d = m1/m0 if m0 > 0 else m0/m1
+    return d ** (1/T)

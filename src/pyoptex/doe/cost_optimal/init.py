@@ -1,8 +1,12 @@
+"""
+Module for all init functions of the CODEX algorithm
+"""
+
 import numpy as np
 from tqdm import tqdm
 
-from ..utils.design import x2fx
 from ..utils.init import full_factorial, init_single_unconstrained
+
 
 def greedy_cost_minimization(Y, params):
     """
@@ -12,7 +16,7 @@ def greedy_cost_minimization(Y, params):
     ----------
     Y : np.array(2d)
         The design to cost minimize.
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
 
     Returns
@@ -34,14 +38,17 @@ def greedy_cost_minimization(Y, params):
 
         # # Initialize all costs
         costs = [None] * non_chosen.size
-        
+
         # Compute all costs
         for k in range(non_chosen.size):
             Yn[i] = Y[non_chosen[k]]
             costs[k] = params.fn.cost(Yn[:i+1], params)
 
         # Compute the total cost of each operation
-        costs_Y = np.array([np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost]) for cost in costs])
+        costs_Y = np.array([
+            np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost]) 
+            for cost in costs
+        ])
         min_cost_idx = non_chosen[np.argmin(costs_Y)]
 
         # Chose the index
@@ -59,13 +66,14 @@ def init(params, n=1, complete=False):
 
     Parameters
     ----------
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     n : int
-        The number of runs
+        The number of runs to initialize
     complete : bool
-        False means use the coordinates and prior specified in params, otherwise, no
-        coords or prior are used. Can be used to perform a complete sample of the design space.
+        False means use the coordinates and prior specified in params, 
+        otherwise, no coords or prior are used. 
+        Can be used to perform a complete sample of the design space.
     
     Returns
     -------
@@ -77,17 +85,20 @@ def init(params, n=1, complete=False):
     invalid = np.ones(n, dtype=np.bool_)
 
     # Adjust for completeness
-    if not complete:
+    if complete:
+        coords = None
+    else:
         nprior = len(params.prior)
         run[:nprior] = params.prior
         invalid[:nprior] = False
         coords = params.coords
-    else:
-        coords = None
 
     # Loop until all are valid
     while np.any(invalid):
-        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
+        run[invalid] = init_single_unconstrained(
+            params.colstart, coords, run[invalid],
+            params.effect_types
+        )
         invalid[invalid] = params.fn.constraints(run[invalid])
 
     return run
@@ -101,7 +112,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
     Parameters
     ----------
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
         The simulation parameters.
     max_tries : int
         The maximum number of random tries. If all random tries fail, a 
@@ -155,7 +166,8 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         # Drop runs
         keep = np.ones(len(Y), dtype=np.bool_)
         keep[:nprior] = True
-        r = range(nprior, len(Y)) if not reverse else range(len(Y)-1, nprior-1, -1)
+        r = range(nprior, len(Y)) if not reverse \
+                else range(len(Y)-1, nprior-1, -1)
         for i in tqdm(r):
             keep[i] = False
             Xk = X[keep]
@@ -172,20 +184,26 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         costs = params.fn.cost(Y, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
+        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) \
+                and (np.all(cost_Y <= max_cost) or not force_cost_feasible)
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
             if reverse:
+                # Check if within budget
                 if np.all(cost_Y <= max_cost):
+
+                    # Determine which column causes rank deficiency
                     for i in range(1, X.shape[1]+1):
                         if np.linalg.matrix_rank(X[:, :i]) < i:
                             break
+
+                    # pylint: disable=line-too-long
                     raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components')
-                else:
-                    raise ValueError(f'Unable to find a feasible design due to the budget: maximum costs are {max_cost}, design costs are {cost_Y}')
+
+                # pylint: disable=line-too-long
+                raise ValueError(f'Unable to find a feasible design due to the budget: maximum costs are {max_cost}, design costs are {cost_Y}')
             else:
-                reverse = True 
+                reverse = True
 
     return Y
-

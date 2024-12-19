@@ -1,4 +1,9 @@
+"""
+Module for all sample / generated functions of the CODEX algorithm
+"""
+
 import numpy as np
+
 
 def sample_last(state, params):
     """
@@ -7,15 +12,15 @@ def sample_last(state, params):
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The state from which to sample
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
-        The simulation parameters
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The state from which to sample.
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        The simulation parameters.
 
     Returns
     -------
     run : np.array(1d)
-        The new run
+        The newly sampled run.
     """
     # Determine which factor changes
     change = np.random.randint(params.colstart.size - 1)
@@ -34,15 +39,15 @@ def sample_random(state, params):
 
     Parameters
     ----------
-    state : :py:class:`State <cost_optimal_designs.simulation.State>`
-        The state from which to sample
-    params : :py:class:`Parameters <cost_optimal_designs.simulation.Parameters>`
-        The simulation parameters
+    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        The state from which to sample.
+    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        The simulation parameters.
 
     Returns
     -------
     run : np.array(1d)
-        The new run
+        The newly sampled run.
     """
     # Determine which factor changes
     change = np.random.randint(params.colstart.size - 1)

@@ -1,5 +1,9 @@
-import numpy as np
+"""
+Module containing the update formulas for the Vinv updates of the CODEX algorithm
+"""
+
 import numba
+import numpy as np
 
 from ..._profile import profile
 
@@ -70,7 +74,10 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
     """
     # Insert run 'a' in grouping matrices
     Vinvn = add_update_vinv(Vinv, Zs, a, pos, ratios)
-    Zsn = tuple([np.insert(Zi, pos, ai) if Zi is not None else None for Zi, ai in zip(Zs, a)])
+    Zsn = tuple([
+        np.insert(Zi, pos, ai) if Zi is not None else None 
+        for Zi, ai in zip(Zs, a)
+    ])
 
     # Compute updates to Zi
     for i in range(len(Zsn)):
@@ -112,7 +119,10 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
     """
     # Remove run from groupings
     Vinvn = del_vinv_update(Vinv, pos, ratios)
-    Zsn = tuple([np.delete(Zi, pos) if Zi is not None else None for Zi in Zs])
+    Zsn = tuple([
+        np.delete(Zi, pos) if Zi is not None else None 
+        for Zi in Zs
+    ])
 
     # Compute updates to Zi
     for i in range(len(Zsn)):
@@ -148,7 +158,8 @@ def detect_block_end_from_start(groups, start):
     end : int
         The last index (excluded) of the block.
     """
-    end = start + (groups.size - start) - np.searchsorted((groups[start:] == groups[start])[::-1], True)
+    end = start + (groups.size - start) \
+            - np.searchsorted((groups[start:] == groups[start])[::-1], True)
     return end
 
 ###################################

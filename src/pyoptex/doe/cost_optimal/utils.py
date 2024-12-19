@@ -1,14 +1,18 @@
+"""
+Module for all utility functions of the CODEX algorithm
+"""
+
+from collections import namedtuple
+
 import numba
 import numpy as np
 import pandas as pd
-from functools import cached_property
-from collections import namedtuple
 
-from ..constraints import no_constraints
 from ...utils.numba import numba_any_axis1, numba_diff_axis0
+from ..constraints import no_constraints
 from ..utils.design import create_default_coords, encode_design
 
-FunctionSet = namedtuple('FunctionSet', 'Y2X init sample cost metric temp accept restart insert remove constraints', defaults=(None,)*10 + (no_constraints,))
+FunctionSet = namedtuple('FunctionSet', 'Y2X init sample cost metric temp accept restart insert remove constraints optimizers final_optimizers', defaults=(None,)*10 + (no_constraints, (), None))
 Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
 __Factor__ = namedtuple('__Factor__', 'name grouped ratio type min max levels coords', 
@@ -46,22 +50,37 @@ class Factor(__Factor__):
 
     @property
     def mean(self):
+        """
+        Represents the mean of the factor.
+        """
         return (self.min + self.max) / 2
 
     @property
     def scale(self):
+        """
+        Represents the scale of the factor.
+        """
         return (self.max - self.min) / 2
 
     @property
     def is_continuous(self):
+        """
+        Determines if the factor is a continuous factor.
+        """
         return self.type.lower() in ['cont', 'continuous']
 
     @property 
     def is_categorical(self):
+        """
+        Determines if the factor is a categorical factor.
+        """
         return not self.is_continuous
 
     @property
     def coords_(self):
+        """
+        Computes the encoded coordinates of the factor.
+        """
         if self.coords is None:
             if self.is_continuous:
                 if self.levels is not None:
@@ -76,6 +95,20 @@ class Factor(__Factor__):
         return coord
 
     def normalize(self, data):
+        """
+        Normalizes data according to the factor.
+
+        Parameters
+        ----------
+        data : float or np.array(1d) or str or pd.Series
+            A float, numpy array, or pandas series for a continuous factor. 
+            A string, numpy array, or pandas series for a categorical factor.
+            
+        Returns
+        -------
+        norm_data : float, int, np.array(1d) or pd.Series
+            The normalized data.
+        """
         if self.is_continuous:
             return (data - self.mean) / self.scale
         else:
@@ -89,6 +122,20 @@ class Factor(__Factor__):
             return x
 
     def denormalize(self, data):
+        """
+        Denormalizes data according to the factor.
+
+        Parameters
+        ----------
+        data : float or np.array(1d) or str or pd.Series
+            A float, numpy array, or pandas series for a continuous factor. 
+            An int, numpy array, or pandas series for a categorical factor.
+            
+        Returns
+        -------
+        denorm_data : float, int, np.array(1d) or pd.Series
+            The denormalized data.
+        """
         if self.is_continuous:
             return data * self.scale + self.mean
         else:
@@ -111,69 +158,94 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
     Parameters
     ----------
     Yenc : np.array(2d)
-        The categorically encoded design matrix
+        The categorically encoded design matrix.
     colstart : np.array(1d)
-        The start column of each factor
+        The start column of each factor.
     grouped_cols : np.array(1d)
-        A boolean array indicating whether the factor is grouped or not
+        A boolean array indicating whether the factor is grouped or not.
 
     Returns
     -------
     Zs : tuple(np.array(1d) or None)
-        A tuple of grouping matrices or None if the factor is not grouped
+        A tuple of grouping matrices or None if the factor is not grouped.
     """
-    grouped_cols = grouped_cols if grouped_cols is not None else np.ones(colstart.size - 1, dtype=np.bool_)
+    # Determines the grouped columns
+    grouped_cols = grouped_cols if grouped_cols is not None\
+                     else np.ones(colstart.size - 1, dtype=np.bool_)
+    
+    # Initializes the grouping matrices
     Zs = [None] * (colstart.size - 1)
+
+    # Computes each grouping matrix
     for i in range(colstart.size - 1):
+        # Check if grouped
         if grouped_cols[i]:
+            # Determine the borders of the groups
             borders = np.concatenate((
                 np.array([0]), 
                 np.where(numba_any_axis1(numba_diff_axis0(Yenc[:, colstart[i]:colstart[i+1]]) != 0))[0] + 1, 
                 np.array([len(Yenc)])
             ))
+
+            # Determine the groups
             grp = np.repeat(np.arange(len(borders)-1), np.diff(borders))
             Zs[i] = grp
-        else:
-            Zs[i] = None
+
     return tuple(Zs)
 
 @numba.njit
 def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`obs_var_Zs` followed by :py:func:`obs_var_from_Zs`.
+    :py:func:`pyoptex.doe.cost_optimal.utils.obs_var_Zs` 
+    followed by :py:func:`pyoptex.doe.cost_optimal.utils.obs_var_from_Zs`.
 
     Parameters
     ----------
     Yenc : np.array(2d)
-        The categorically encoded design matrix
+        The categorically encoded design matrix.
     colstart : np.array(1d)
-        The start column of each factor
+        The start column of each factor.
     ratios : np.array(1d)
-        The variance ratios of the different groups compared to the variance of epsilon.
+        The variance ratios of the different groups compared to the variance of 
+        the random errors.
     grouped_cols : np.array(1d)
-        A boolean array indicating whether the factor is grouped or not
+        A boolean array indicating whether the factor is grouped or not.
 
     Returns
     -------
     V : np.array(2d)
         The observation covariance matrix.
     """
-    grouped_cols = grouped_cols if grouped_cols is not None else np.ones(colstart.size - 1, dtype=np.bool_)
+    # Determines the grouped columns
+    grouped_cols = grouped_cols if grouped_cols is not None \
+                    else np.ones(colstart.size - 1, dtype=np.bool_)
 
+    # Initiates from random errors
     V = np.eye(len(Yenc))
+
+    # Initializes the variance ratios
     if ratios is None:
         ratios = np.ones(colstart.size - 1)
 
+    # Updates the V-matrix for each factor
     for i in range(colstart.size - 1):
+        # Check if grouped
         if grouped_cols[i]:
+            # Determine the borders of the groups
             borders = np.concatenate((
                 np.array([0]), 
                 np.where(numba_any_axis1(numba_diff_axis0(Yenc[:, colstart[i]:colstart[i+1]]) != 0))[0] + 1, 
                 np.array([len(Yenc)])
             ))
+
+            # Determine the groups
             grp = np.repeat(np.arange(len(borders)-1), np.diff(borders))
+
+            # Compute the grouping matrix
             Z = np.eye(len(borders)-1)[grp]
+
+            # Update the V-matrix
             V += ratios[i] * Z @ Z.T
     
     return V
