@@ -15,8 +15,6 @@ from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.splitk_plot.utils import validate_plot_sizes
 
-# TODO: upgrade I-optimality with weighing of the matrix (also in cost_optimal)
-
 # Set the seed
 set_seed(42)
 
@@ -58,6 +56,9 @@ prior = (
 # Constraints
 constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
+# Define certain groups to optimize
+grps = None # TODO: explain in second example for different type of prior (same old and new plot sizes)
+
 #########################################################################
 
 # Validate variance components are estimable
@@ -72,8 +73,8 @@ fn = default_fn(metric, Y2X, constraints=constraints)
 # Create design
 start_time = time.time()
 Y, state = create_splitk_plot_design(
-    factors, fn, prior=prior, grps=None, 
-    n_tries=n_tries, validate=False
+    factors, fn, prior=prior, grps=grps, 
+    n_tries=n_tries, validate=True
 )
 end_time = time.time()
 

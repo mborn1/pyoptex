@@ -56,9 +56,11 @@ cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, e
 # Define constraints
 constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
+# TODO: create global documentation with examples
+# TODO: upgrade I-optimality with weighing of the matrix (also in cost_optimal)
 # TODO: introduce analysis -- reuse functions and factors
 # TODO: make more helper cost functions
-# TODO: Introduce multiprocessing in the framework
+# TODO: introduce multiprocessing in the framework
 # TODO: what about covariates? -- add decorator like cost function
 # TODO: compile and simplify constraints tree
 
@@ -91,10 +93,12 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 #######################################################################
 
+# Generic evaluation
 from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
 design_heatmap(Y, factors).show()
 plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
+# Specific evaluation
 from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
 print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, fn))
 plot_fraction_of_design_space(Y, factors, fn).show()
