@@ -311,4 +311,3 @@ def _group_update_vinv(Vinv, Zi, b, ratios):
         Vinv[i] -= VR[i] @ (PpDinv[i] @ SV[i])
 
     return Vinv
-

@@ -1,18 +1,22 @@
+"""
+Module containing all the generic model functions
+"""
+
+from collections import Counter
+
 import numpy as np
 import pandas as pd
-from collections import Counter
+
 from .design import x2fx
+
 
 def partial_rsm(nquad, ntfi, nlin):
     """
-    Create a partial response surface model from a number of quadratic,
-    two-factor interactions and linear terms.
+    Creates a partial response surface model from a number of quadratic,
+    two-factor interactions (tfi) and linear terms.
     First come the quadratic terms which can have linear, tfi and quadratic effects.
     Then come the tfi which can only have linear and tfi. Finally, there
     are the linear only effects.
-
-    .. note::
-        The order in which the effects are inserted is determined by nquad, ntfi, nlin.
 
     Parameters
     ----------
@@ -25,7 +29,7 @@ def partial_rsm(nquad, ntfi, nlin):
     
     Returns
     -------
-    model : np.ndarray(2d)
+    model : np.array(2d)
         The model array where each term is a row and the value
         specifies the power. E.g. [1, 0, 2] represents x0 * x2^2.
     """
@@ -55,9 +59,10 @@ def partial_rsm(nquad, ntfi, nlin):
 
 def partial_rsm_names(effects):
     """
-    Creates a partial response surface model :py:func:`partial_rsm` from the
-    provided effects. The effects is a dictionary mapping the column name to
-    one of ('lin', 'tfi', 'quad').
+    Creates a partial response surface model 
+    :py:func:`pyoptex.doe.utils.model.partial_rsm` 
+    from the provided effects. The effects is a dictionary mapping 
+    the column name to one of ('lin', 'tfi', 'quad').
 
     Parameters
     ----------
@@ -84,22 +89,22 @@ def partial_rsm_names(effects):
 
 def encode_model(model, effect_types):
     """
-    Encode the model-matrix according to the effect types.
+    Encodes the model according to the effect types.
     Each continuous variable is encoded as a single column,
-    each categorical variable is encoded,
-    creating n-1 columns (with n the amount of categorical levels).
+    each categorical variable is encoded by creating n-1 columns 
+    (with n the number of categorical levels).
 
     Parameters
     ----------
-    model : np.ndarray(2d)
+    model : np.array(2d)
         The initial model, before encoding
-    effect_types : np.ndarray(1d)
+    effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
 
     Returns
     -------
-    model : np.ndarray(2d)
+    model : np.array(2d)
         The newly encoded model.
     """
     # Number of columns required for encoding
@@ -143,6 +148,22 @@ def encode_model(model, effect_types):
     return model
 
 def model2Y2X(model, factors):
+    """
+    Creates a Y2X function from a model.
+
+    Parameters
+    ----------
+    model : pd.DataFrame
+        The model
+    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+        The list of factors in the design.
+
+    Returns
+    -------
+    Y2X : func(Y)
+        The function transforming the design matrix (Y) to
+        the model matrix (X).
+    """
     assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
 
     # Extract factor parameters
@@ -163,6 +184,27 @@ def model2Y2X(model, factors):
 ################################################
 
 def encode_names(col_names, effect_types):
+    """
+    Encodes the column names according to the categorical
+    expansion of the factors.
+
+    For example, if there is one categorical factor with
+    three levels 'A' and one continuous factor, the encoded
+    names are ['A_0', 'A_1', 'B'].
+
+    Parameters
+    ----------
+    col_names : list(str)
+        The base column names
+    effect_types : np.array(1d)
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+
+    Returns
+    -------
+    enc_names : list(str)
+        The list of encoded column names.
+    """
     lbls = [
         lbl for i in range(len(col_names)) 
             for lbl in (
@@ -173,6 +215,28 @@ def encode_names(col_names, effect_types):
     return lbls
 
 def model2names(model, col_names=None):
+    """
+    Converts the model to parameter names. Each row of the
+    model represents one term. 
+
+    For example, the row [1, 2] with column names ['A', 'B']
+    is converted to 'A * B^2'.
+
+    Parameters
+    ----------
+    model : np.array(2d) or pd.DataFrame
+        The model
+    col_names : None or list(str)
+        The name of each column of the model. If not provided
+        and a dataframe is provided as the model, the names are
+        taken from the model dataframe. If the model is a numpy
+        array, the columns are named as ['1', '2', ...]
+
+    Returns
+    -------
+    param_names : list(str)
+        The names of the parameters in the model.
+    """
     # Convert model to columns
     if isinstance(model, pd.DataFrame):
         col_names = list(model.columns)
@@ -204,6 +268,29 @@ def model2names(model, col_names=None):
     return list(np.vectorize(__comb)(np.arange(model.shape[0])))
 
 def model2encnames(model, effect_types, col_names=None):
+    """
+    Retrieves the names of the encoded parameters. Similar to
+    :py:func:`pyoptex.doe.utils.model.model2names`, but also
+    categorically encodes the necessary factors.
+
+    Parameters
+    ----------
+    model : np.array(2d) or pd.DataFrame
+        The model
+    effect_types : np.array(1d)
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+    col_names : None or list(str)
+        The name of each column of the model. If not provided
+        and a dataframe is provided as the model, the names are
+        taken from the model dataframe. If the model is a numpy
+        array, the columns are named as ['1', '2', ...]
+
+    Returns
+    -------
+    enc_param_names : list(str)
+        The names of the parameters in the model.
+    """
     # Convert model to columns
     if isinstance(model, pd.DataFrame):
         col_names = list(model.columns)

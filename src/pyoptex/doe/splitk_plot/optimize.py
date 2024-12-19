@@ -54,7 +54,6 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
 
             # Extract factor level parameters
             level = params.effect_levels[i]
-            cat_lvl = params.effect_types[i]
             jmp = params.thetas[level]
 
             # Loop over all run-groups

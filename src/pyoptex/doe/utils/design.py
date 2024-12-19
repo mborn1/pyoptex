@@ -1,23 +1,29 @@
+"""
+Module for utility functions related to the design matrices.
+"""
 import numba
 import numpy as np
-import pandas as pd
-from ...utils.numba import numba_take_advanced, numba_all_axis2
+
+from ...utils.numba import numba_all_axis2, numba_take_advanced
+
 
 def create_default_coords(effect_type):
     """
-    Defines the default possible coordinates per effect type. A continuous variable
-    has [-1, 0, 1], a categorical variable has all possible effect encoded coordinates.
+    Defines the default possible coordinates per effect type. 
+    A continuous variable has [-1, 0, 1], a categorical variable 
+    is an array from 1 to the number of categorical levels.
 
     Parameters
     ----------
-    effect_types : np.array(1d)
-        The type of each effect. 1 indicates continuous, higher indicates categorical with
-        that number of levels.
+    effect_type : int
+        The type of the effect. 1 indicates continuous, 
+        higher indicates categorical with that number of levels.
     
     Returns
     -------
-    coords : np.array(2d)
-        The default possible coordinates for the factor.
+    coords : np.array(1d, 1)
+        The default possible coordinates for the factor. Each row
+        represents a coordinate.
     """
     if effect_type == 1:
         return np.array([-1, 0, 1], dtype=np.float64).reshape(-1, 1)
@@ -42,14 +48,14 @@ def x2fx(Yenc, modelenc):
 
     Parameters
     ----------
-    Y : np.array
-        The design matrix. It should be 2D
-    model : np.array
-        The model, specified as in MATLAB.
+    Yenc : np.array(2d)
+        The encoded design matrix.
+    modelenc : np.array(2d)
+        The encoded model, specified as in MATLAB.
 
     Returns
     -------
-    X : np.array
+    X : np.array(2d)
         The model matrix
     """
     Xenc = np.zeros((*Yenc.shape[:-1], modelenc.shape[0]))
@@ -67,8 +73,8 @@ def x2fx(Yenc, modelenc):
 @numba.njit
 def force_Zi_asc(Zi):
     """
-    Force ascending groups. In other words [0, 0, 2, 2, 1, 1]
-    is transformed to [0, 0, 1, 1, 2, 2].
+    Force ascending groups. In other words [0, 0, 2, 1, 1, 1]
+    is transformed to [0, 0, 1, 2, 2, 2].
 
     Parameters
     ----------
@@ -109,9 +115,10 @@ def obs_var_from_Zs(Zs, N, ratios=None):
     Zs : tuple(np.array(1d) or None)
         The tuple of grouping matrices. Can include Nones which are ignored.
     N : int
-        The number of runs.
+        The number of runs. Necessary in case no random groups are present.
     ratios : np.array(1d)
-        The variance ratios of the different groups compared to the variance of epsilon.
+        The variance ratios of the different groups compared to the variance of
+        the random errors.
     
     Returns
     -------
@@ -131,19 +138,23 @@ def encode_design(Y, effect_types, coords=None):
     """
     Encode the design according to the effect types.
     Each categorical factor is encoded using
-    effect-encoding.
+    effect-encoding, unless the coordinates are specified.
+
+    It is the inverse of :py:func:`pyoptex.doe.utils.design.decode_design`
 
     Parameters
     ----------
-    Y : np.ndarray(2d)
-        The current design matrix
-    effect_types : np.ndarray(1d) 
+    Y : np.array(2d)
+        The current design matrix.
+    effect_types : np.array(1d) 
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
+    coords : None or :py:class:`numba.typed.List`(np.array(2d))
+        The possible coordinates for each factor. 
 
     Returns
     -------
-    Yenc : np.ndarray(2d)
+    Yenc : np.array(2d)
         The encoded design-matrix 
     """
     # Compute amount of columns per factor
@@ -176,24 +187,23 @@ def decode_design(Y, effect_types, coords=None):
     """
     Decode the design according to the effect types.
     Each categorical factor is decoded from
-    effect-encoding. The expected input is an
-    effect-encoded design matrix.
+    effect-encoding, unless the coordinates are specified.
 
-    It is the inverse of :py:func:`encode_design`
+    It is the inverse of :py:func:`pyoptex.doe.utils.design.encode_design`
 
     Parameters
     ----------
-    Y : np.ndarray(2d)
-        The current, effect-encoded design matrix.
-    effect_types : np.ndarray(1d) 
+    Y : np.array(2d)
+        The effect-encoded design matrix.
+    effect_types : np.array(1d) 
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
-    coords: List(np.array(2d))
+    coords: None or :py:class:`numba.typed.List`(np.array(2d))
         Coordinates to be used for decoding the categorical variables.
 
     Returns
     -------
-    Ydec : np.ndarray(2d)
+    Ydec : np.array(2d)
         The decoded design-matrix 
     """
     # Initialize dencoding

@@ -1,13 +1,18 @@
+"""
+Module containing all the generic initialization functions
+"""
+
 import numba
 import numpy as np
+
 
 @numba.njit
 def init_single_unconstrained(colstart, coords, run, effect_types):
     """
-    Initialize a run at random. There are three possibilities:
+    Initializes a run at random. There are three possibilities:
     'continuous' which is random between (-1, 1), categorical which is
     a random level, or from coords which selects a random coordinate from
-    `coords`
+    `coords`.
 
     Parameters
     ----------
@@ -46,7 +51,7 @@ def init_single_unconstrained(colstart, coords, run, effect_types):
 
 def full_factorial(colstart, coords, Y=None):
     """
-    Generate a full factorial design.
+    Generates a full factorial design.
 
     Parameters
     ----------

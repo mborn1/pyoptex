@@ -1,12 +1,35 @@
-import plotly.express as px
-import plotly.graph_objects as go
+"""
+Module containing all the generic evaluation functions
+"""
+
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from numba.typed import List
-from .model import model2encnames
+
 from .design import encode_design
+from .model import model2encnames
+
 
 def design_heatmap(Y, factors):
+    """
+    Plots the design as a heatmap. Each factor is normalized
+    to between -1 and 1. The categorical levels are indicated
+    on the design.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        A decoded and denormalized design.
+    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+        The list of factors in the design.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The heatmap of the design as a Plotly figure.
+    """
     # Subselect the factors
     Y = Y.copy()
     col_names = [str(f.name) for f in factors]
@@ -57,6 +80,28 @@ def design_heatmap(Y, factors):
     return fig
 
 def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
+    """
+    Computes the map of correlations for the provided design.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The decoded and denormalized design.
+    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+        The list of factors in the design.
+    Y2X : func(Y)
+        The function to convert the design matrix Y to a
+        model matrix X.
+    model : pd.DataFrame or None
+        The model, used to extract the parameter names.
+    method : 'pearson', 'kendall', or 'spearman'
+        The correlation method to use.
+
+    Returns
+    -------
+    corr : pd.DataFrame
+        The dataframe of correlations.
+    """
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
     
@@ -90,6 +135,30 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     return corr
 
 def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nans=True):
+    """
+    Plots the map of correlations for the provided design.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The decoded and denormalized design.
+    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+        The list of factors in the design.
+    Y2X : func(Y)
+        The function to convert the design matrix Y to a
+        model matrix X.
+    model : pd.DataFrame or None
+        The model, used to extract the parameter names.
+    method : 'pearson', 'kendall', or 'spearman'
+        The correlation method to use.
+    drop_nans : bool
+        Whether to drop rows and columns that are completely nan.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The figure of the map of correlations.
+    """
     # Compute correlation map
     corr = correlation_map(Y, factors, Y2X, model, method)
     

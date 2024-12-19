@@ -146,7 +146,8 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
 
 def plot_fraction_of_design_space(Y, factors, fn, N=10000):
     """
-    Plots the fraction of the design space.
+    Plots the fraction of the design space. One is plotted
+    for each set of a-prior variance components.
 
     Parameters
     ----------
@@ -262,7 +263,8 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
 
 def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     """
-    Plots the parameter estimation covariance matrix.
+    Plots the parameter estimation covariance matrix. One is plotted
+    for each set of a-prior variance components.
 
     Parameters
     ----------

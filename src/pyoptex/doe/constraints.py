@@ -1,38 +1,65 @@
+"""
+Module containing the constraints functions.
+"""
+
 import re
-import numpy as np
+
 import numba
+import numpy as np
 from numba.typed import List
-from .utils.design import encode_design
+
 from ..utils.numba import numba_all_axis1
+from .utils.design import encode_design
+
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
-    Parse a script of constraints using the factor names. It creates a constraint evaluation
-    function capable which returns True if any constraints are violated.
+    Parses a formula of constraints. The function returns an object of type
+    :py:class:`pyoptex.doe.constraints.Col` which can generate a function evaluating
+    either the encoded or non-encoded design matrix.
+    The generated function returns True where the constraints are violated. 
 
     For example, "(`A` > 0) & (`B` < 0)" specifies that if A is larger than 0, B cannot
     be smaller than 0.
+
+    Another example, "(`A` == "L1") & (`B` < 0)" specifies that if A is "L1", B cannot
+    be smaller than 0.
+
+    Use constraint.func() to retrieve a function which can evaluate a decoded design matrix,
+    use constraint.encode() to retrieve a function which can evaluate an encoded design matrix.
+
+    .. note::
+        Parameter `exclude` can invert the function, specifying where the 
+        constraints are upheld.
 
     Parameters
     ----------
     script : str
         The script to parse
-    effect_types : dict
-        The type of each effect mapping the effect name to 1 for continuous or higher for categorical
-        with that many levels.
+    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+        The list of factors in the design.
+    exclude : bool
+        Determines whether the presented formula should be excluded 
+        (= return True when the constraints are violated), or not
+        (= return False when the constraints are violated).
     eps : float
-        The epsilon parameter to be used in the parsing
+        The epsilon parameter to be used in the parsing. this parameter
+        can be used to deal with numerical precision. For example, instead of
+        "`A` > 0", use "`A` > 0 + eps".
 
     Returns
     -------
-    constraint_tree : func
-        The constraint tree which can be used to extract a function for both normal and encoded
-        design matrices using .func() and .encode() respectively.
+    constraint : :py:class:`pyoptex.doe.constraints.Col`
+        The root constraint which can be converted to a function to evaluate
+        either the encoded or decoded design matrix.
     """
     # Extract column names
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
+    colstart = np.concatenate((
+        [0], 
+        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
+    ))
 
     # Function to convert name to column object
     def name2col(m):
@@ -43,15 +70,42 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     script = re.sub(r'"(.*?)"', lambda m: f'Col("{m.group(1)}", None)', script)
     script = re.sub(r'`(.*?)`', name2col, script)
     script = script.replace('^', '**')
-    script = 'Col('.join(x[:x.find(')')] + re.sub(r'[-\.\d]+', lambda m: f'Col({m.group(0)}, None)', x[x.find(')'):]) for x in script.split('Col('))
+    script = 'Col('.join(
+        x[:x.find(')')] + re.sub(r'[-\.\d]+', lambda m: f'Col({m.group(0)}, None)', x[x.find(')'):]) 
+        for x in script.split('Col(')
+    )
     if not exclude:
         script = f'~({script})'
-    tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 'CompCol': CompCol, 
-                         'factors': factors, 'eps': Col(eps, None)})
+    tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 
+                         'CompCol': CompCol, 'factors': factors, 'eps': Col(eps, None)})
     return tree
 
 
 class Col:
+    """
+    The base Column object to represent a constraint. If this object
+    is contained in a variable called `constraint`, use constraint.func()
+    to retrieve a function which can evaluate the specified constraints
+    on a decoded design matrix. Use constraint.encode() to retrieve
+    a function which can evaluate the specified constraints on an encoded
+    design matrix.
+
+    Attributes
+    ----------
+    col : float or int or string
+        Meaning depends on the value of `factor`.
+    factor : None or :py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`
+        If None, this column represents a simple constant and `col`
+        represents the constant value. Otherwise, it represents
+        the column and the attribute `col` represents the index of the
+        factor in the design.
+    colstart : int
+        The start of the column in the encoded design matrix.
+    is_constant : bool
+        Whether this column is a constant
+    is_categorical : bool
+        Whether this is a categorical column
+    """
     CATEGORICAL_MSG = 'Can only perform comparison with categorical columns'
 
     def __init__(self, col, factor, colstart=0):
@@ -68,6 +122,15 @@ class Col:
 
     ##############################################
     def __str__(self):
+        """
+        Retrieves the string representation of a function to evaluate 
+        the decoded, but normalized design matrix.
+
+        Returns
+        -------
+        constraint : str
+            The string representation of the function.
+        """
         if self.is_constant:
             return str(self.col_normalized_)
         elif self.is_categorical:
@@ -82,9 +145,27 @@ class Col:
                 return f'(Y__[:,{self.col}] * {self.factor.scale} + {self.factor.mean})'
 
     def func(self):
+        """
+        Retrieves a function to evaluate the decoded design matrix.
+
+        Returns
+        -------
+        constraint : func(Y)
+            A function which returns True when the constraints are violated
+            for that run. Y is a decoded design, but normalized design matrix.
+        """
         return numba.njit(eval(f'lambda Y__: {str(self)}'))
 
     def _encode(self):
+        """
+        Retrieves the string representation of a function to evaluate 
+        the encoded design matrix.
+
+        Returns
+        -------
+        constraint : str
+            The string representation of the function.
+        """
         if self.is_constant:
             return str(self.col_encoded_)
         elif self.is_categorical:
@@ -99,6 +180,15 @@ class Col:
                 return f'(Y__[:,{self.colstart}] * {self.factor.scale} + {self.factor.mean})'
 
     def encode(self):
+        """
+        Retrieves a function to evaluate the encoded design matrix.
+
+        Returns
+        -------
+        constraint : func(Y)
+            A function which returns True when the constraints are violated
+            for that run. Y is a encoded design design matrix.
+        """
         return numba.njit(eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np}))
 
     ##############################################
@@ -263,5 +353,6 @@ class CompCol(BinaryCol):
         else:
             return f'({self.col._encode()} {self.sep} {self.col2._encode()})'
 
-no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', None)
 
+"""A function always returning False"""
+no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', None)
