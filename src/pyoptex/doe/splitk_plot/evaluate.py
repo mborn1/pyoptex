@@ -1,16 +1,39 @@
+"""
+Module containing all the evaluation functions, specific to the split^k-plot algorithm
+"""
+
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
-import plotly.express as px
-import pandas as pd
-import numpy as np
-from .metric import Aopt, Dopt, Iopt
-from .wrapper import default_fn, create_parameters
-from ..utils.model import encode_names, model2names, encode_model, model2encnames
-from ..utils.design import x2fx, encode_design
-from ..constraints import no_constraints
+
+from ..utils.design import encode_design
+from ..utils.model import model2encnames
+from .metric import Iopt
+from .wrapper import create_parameters
+
 
 def evaluate_metrics(Y, metrics, factors, fn):
+    """
+    Evaluate the design on a set of metrics.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    metrics : list(:py:class:`pyoptex.doe.splitk_plot.metric.Metric`)
+        The list of metrics to evaluate.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+    
+    Returns
+    -------
+    metrics : list(float)
+        The resulting evaluations of the metrics on the design.
+    """
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
@@ -39,7 +62,30 @@ def evaluate_metrics(Y, metrics, factors, fn):
     # Compute the metrics
     return [metric.call(Y, X, params) for metric in metrics]
 
-def fraction_of_design_space(Y, factors, fn, iopt_N=10000, return_params=False):
+def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
+    """
+    Computes the fraction of the design space. It returns an array of relative
+    prediction variances corresponding to the quantiles of np.linspace(0, 1, `N`).
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+    N : int
+        The number of samples to evaluate.
+    return_params : bool
+        Whether to return the created :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`.
+
+    Returns
+    -------
+    pred_var : np.array(2d)
+        The array of relative prediction variances for each of the a-priori variance
+        ratio sets provided.
+    """
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
@@ -61,7 +107,7 @@ def fraction_of_design_space(Y, factors, fn, iopt_N=10000, return_params=False):
     X = params.fn.Y2X(Y)
     
     # Initialize Iopt
-    iopt = Iopt(n=iopt_N, cov=fn.metric.cov)
+    iopt = Iopt(n=N, cov=fn.metric.cov)
     iopt.preinit(params)
     iopt.init(Y, X, params)
 
@@ -71,25 +117,64 @@ def fraction_of_design_space(Y, factors, fn, iopt_N=10000, return_params=False):
     M = X.T @ params.Vinv @ X
 
     # Compute prediction variances
-    pred_var = np.sum(iopt.samples.T * np.linalg.solve(M, np.broadcast_to(iopt.samples.T, (M.shape[0], *iopt.samples.T.shape))), axis=-2)
+    pred_var = np.sum(
+        iopt.samples.T * np.linalg.solve(
+            M, 
+            np.broadcast_to(
+                iopt.samples.T, 
+                (M.shape[0], *iopt.samples.T.shape)
+            )
+        ), axis=-2
+    )
     pred_var = np.sort(pred_var)
 
     if return_params:
         return pred_var, params
     return pred_var
 
-def plot_fraction_of_design_space(Y, factors, fn, iopt_N=10000):
+def plot_fraction_of_design_space(Y, factors, fn, N=10000):
+    """
+    Plots the fraction of the design space.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+    N : int
+        The number of samples to evaluate.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The plotly figure with the fraction of design space plot.
+    """
     # Compute prediction variances
-    pred_var, params = fraction_of_design_space(Y, factors, fn, iopt_N=iopt_N, return_params=True)
+    pred_var, params = fraction_of_design_space(
+        Y, factors, fn, N=N, return_params=True
+    )
 
     # Create the figure
     fig = go.Figure()
     for i, pv in enumerate(pred_var):
         color = DEFAULT_PLOTLY_COLORS[i]
-        name = ', '.join([f'plot {i+1} = {r:.3f}' for i, r in enumerate(params.ratios[i])])
-        fig.add_trace(go.Scatter(x=np.linspace(0, 1, len(pv)), y=pv, marker_color=color, name=name))
-        fig.add_hline(y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}', annotation_font_color=color, 
-                        line_dash='dash', line_width=1, line_color=color, annotation_position='bottom right')
+        name = ', '.join([
+            f'plot {i+1} = {r:.3f}' 
+            for i, r in enumerate(params.ratios[i])
+        ])
+        fig.add_trace(go.Scatter(
+            x=np.linspace(0, 1, len(pv)), 
+            y=pv, marker_color=color, name=name
+        ))
+        fig.add_hline(
+            y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}', 
+            annotation_font_color=color, 
+            line_dash='dash', line_width=1, line_color=color, 
+            annotation_position='bottom right'
+        )
 
     # Set axis
     fig.update_layout(
@@ -103,6 +188,26 @@ def plot_fraction_of_design_space(Y, factors, fn, iopt_N=10000):
     return fig
 
 def estimation_variance_matrix(Y, factors, fn, return_params=False):
+    """
+    Computes the parameter estimation covariance matrix.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+    return_params : bool
+        Whether to return the created :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`.
+
+    Returns
+    -------
+    est_var : np.array(3d)
+        The mutiple parameter estimation covariance matrices for each of the
+        a-priori variance ratio sets.
+    """
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
     
@@ -137,6 +242,26 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
     return Minv
 
 def plot_estimation_variance_matrix(Y, factors, fn, model=None):
+    """
+    Plots the parameter estimation covariance matrix.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+    model : None or pd.DataFrame
+        The model dataframe corresponding to the Y2X function in order
+        to extract the parameter names.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The plotly figure of a heatmap of the parameter estimation covariance matrix.
+    """
     # Compute estimation variance matrix
     Minv, params = estimation_variance_matrix(Y, factors, fn, return_params=True)
 
@@ -171,6 +296,25 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     return fig
 
 def estimation_variance(Y, factors, fn):
+    """
+    Computes the variances of the parameter estimations. This is the diagonal
+    of :py:func:`pyoptex.doe.splitk_plot.evaluate.estimation_variance_matrix`.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors for the design.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The set of functions used to create a cost optimal design.
+
+    Returns
+    -------
+    est_var : np.array(2d)
+        The parameter estimation variances. This is the diagonal of
+        :py:func:`pyoptex.doe.splitk_plot.evaluate.estimation_variance_matrix`
+    """
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, factors, fn)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])

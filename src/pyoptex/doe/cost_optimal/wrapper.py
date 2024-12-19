@@ -31,8 +31,6 @@ def default_fn(
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
-    For an idea on each operators interface (which inputs and outputs) see
-    the examples in the code.
 
     Parameters
     ----------

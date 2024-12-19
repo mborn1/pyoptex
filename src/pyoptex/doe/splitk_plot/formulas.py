@@ -1,5 +1,10 @@
+"""
+Module containing the update formulas for the Vinv updates of the split^k-plot algorithm
+"""
+
 import numba
 import numpy as np
+
 
 @numba.njit
 def compute_update_UD(
@@ -18,15 +23,15 @@ def compute_update_UD(
         The stratum at which the update occurs (0 for the lowest).
     grp : int
         The group within this stratum for which the update occurs.
-    Xi_star : np.array(2d)
-        The new runs after the update.
+    Xi_old : np.array(2d)
+        The old runs after the update.
     X : np.array(2d)
-        The total design matrix X.
+        The new design matrix X (after the update).
     plot_sizes : np.array(1d)
         The size of each stratum b_i.
     c : np.array(2d)
-        The coefficients c (every row specifies one set of a priori variance ratios). The second dimension
-        is added for Bayesian approaches.
+        The coefficients c (every row specifies one set of a priori variance ratios). 
+        The second dimension is added for Bayesian approaches.
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
@@ -138,20 +143,22 @@ def det_update_UD(U, D, Minv):
 
     Parameters
     ----------
-    U : np.array
-        The U matrix in the update
-    D : np.array
+    U : np.array(2d)
+        The U matrix in the update.
+    D : np.array(2d)
         The diagonal D matrix in the update. It is
-        inserted as a 1d array representing the diagonal.
-    Minv: np.array
-        The current inverse of the information matrix.
+        inserted as a 1d array representing the diagonal
+        for each set of a-priori variance ratios.
+    Minv: np.array(3d)
+        The current inverses of the information matrices
+        for each set of a-priori variance ratios.
 
     Returns
     -------
     alpha : float
-        The update factor
-    P : np.array
-        The P matrix of the update
+        The update factor.
+    P : np.array(3d)
+        The P matrix of the update.
     """
     # Create updates
     P = np.zeros((len(D), D.shape[1], D.shape[1]))
@@ -188,20 +195,23 @@ def inv_update_UD(U, D, Minv, P):
 
     Parameters
     ----------
-    U : np.array
+    U : np.array(2d)
         The U matrix in the update
-    D : np.array
+    D : np.array(2d)
         The diagonal D matrix in the update. It is
-        inserted as a 1d array representing the diagonal.
-    Minv: np.array
-        The current inverse of the information matrix.
-    P : np.array
+        inserted as a 1d array representing the diagonal
+        for each set of a-priori variance ratios.
+    Minv: np.array(3d)
+        The current inverses of the information matrices
+        for each set of a-priori variance ratios.
+    P : np.array(3d)
         The P matrix if already pre-computed.
 
     Returns
     -------
-    Mup : np.array
-        The update to the inverse matrix.
+    Mup : np.array(3d)
+        The updates to the inverses of the information
+        matrices.
     """
     Mup = np.zeros_like(Minv)
     for i in range(len(Minv)):
@@ -211,6 +221,10 @@ def inv_update_UD(U, D, Minv, P):
 
 @numba.njit
 def inv_update_UD_no_P(U, D, Minv):
+    """
+    See :py:func:`pyoptex.doe.splitk_plot.formulas.inv_update_UD`,
+    but without precomputing the P-matrix.
+    """
     # Compute P
     P = np.zeros((len(D), D.shape[1], D.shape[1]))
     for j in range(len(D)):

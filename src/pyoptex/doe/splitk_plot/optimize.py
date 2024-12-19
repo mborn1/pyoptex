@@ -1,17 +1,18 @@
-import numba
+"""
+Module for the split^k-plot coordinate-exchange algorithm.
+"""
+
 import numpy as np
 import warnings
 
 from .utils import Update, State
-from .formulas import compute_update_UD
-from .init import initialize_feasible
 from .validation import validate_state
 from ..._profile import profile
 
 @profile
 def optimize(params, max_it=10000, validate=False, eps=1e-4):
     """
-    Optimize a model iteratively using the coordinate exchange algorithm.
+    Optimize a model iteratively using the coordinate-exchange algorithm.
     Only specific groups at each level are updated to allow design augmentation.
 
     Parameters
@@ -23,6 +24,8 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
     validate : bool
         Whether to validate the update formulas at each step. This is used
         to debug.
+    eps : float
+        A relative increase of at least epsilon is required to accept the change.
 
     Returns
     -------

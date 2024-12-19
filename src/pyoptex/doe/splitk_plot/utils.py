@@ -1,8 +1,13 @@
-import numpy as np
-import numba
-import pandas as pd
+"""
+Module for all utility functions of the split^k-plot algorithm
+"""
+
 from collections import namedtuple
-from ..constraints import no_constraints
+
+import numba
+import numpy as np
+import pandas as pd
+
 from ..utils.design import create_default_coords, encode_design
 
 FunctionSet = namedtuple('FunctionSet', 'metric Y2X constraints constraintso init')
@@ -114,18 +119,19 @@ class Factor(__Factor__):
 
 def obs_var_Zs(plot_sizes):
     """
-    Compute the Zs from the plot_sizes for the splitk plot designs.
+    Create the grouping matrices (1D array) for each plot according
+    to the provided plot sizes.
 
     Parameters
     ----------
     plot_sizes : np.array(1d)
         The sizes of each plot. e.g. [3, 4] is a split-plot design
         with 4 plots and 3 runs per plot.
-    
+
     Returns
     -------
-    Zs : tuple(np.array(1d))
-        A tuple of grouping matrices.
+    Zs : tuple(np.array(1d) or None)
+        A tuple of grouping matrices for each plot.
     """
     # Initialize alphas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
@@ -137,21 +143,23 @@ def obs_var_Zs(plot_sizes):
 @numba.njit
 def obs_var(plot_sizes, ratios=None):
     """
-    Compute the observation covariance matrix from the plot sizes and
-    ratios.
+    Directly computes the observation matrix from the design. Is similar to
+    :py:func:`pyoptex.doe.splitk_plot.utils.obs_var_Zs` 
+    followed by :py:func:`pyoptex.doe.utils.design.obs_var_from_Zs`.
 
     Parameters
     ----------
     plot_sizes : np.array(1d)
         The sizes of each plot. e.g. [3, 4] is a split-plot design
         with 4 plots and 3 runs per plot.
-    ratios : np.array(1d) or None
-        The ratios for each of the random effects. This is of size plot_sizes.size - 1.
-    
+    ratios : np.array(1d)
+        The variance ratios of the different groups compared to the variance of 
+        the random errors.
+
     Returns
     -------
     V : np.array(2d)
-        The observation covaraince matrix.
+        The observation covariance matrix.
     """
     # Initialize alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
@@ -171,19 +179,19 @@ def obs_var(plot_sizes, ratios=None):
 
 def level_grps(s0, s1):
     """
-    Determine which groups should be updated per level
+    Determines which groups should be updated per level
     considering the old plot sizes and the new (after augmentation).
 
     Parameters
     ----------
-    s0 : np.array
+    s0 : np.array(1d)
         The initial plot sizes
-    s1 : np.array
+    s1 : np.array(1d)
         The new plot sizes
 
     Returns
     -------
-    grps : list(np.array)
+    grps : list(np.array(1d))
         A list of numpy arrays indicating which groups should
         be updated per level. E.g. grps[0] indicates all level-zero
         groups that should be updated.
@@ -211,27 +219,27 @@ def level_grps(s0, s1):
 def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     """
     Extend an existing design Y with initial plot sizes (`plot_sizes`) to
-    a new design. This function only extends the existing design by adding new
-    runs in the correct positions and forcing the correct level factors.
-
-    It does not perform any optimization or initialization of the new runs
+    a new design with `new_plot_sizes`. This function only extends the 
+    existing design by adding new runs in the correct positions and forcing 
+    the correct factor levels where necessary. It does not perform any 
+    optimization or initialization of the new runs.
 
     Parameters
     ----------
-    Y : np.array
-        The initial design. If all initial plot sizes are zero, a new design is
-        created with all zeros.
-    plot_sizes : np.array
-        The initial plot sizes of the design
-    new_plot_sizes : np.array
-        The new plot sizes after augmentation
-    factors : np.array 
-        The main terms of the design with their level
+    Y : np.array(2d)
+        The initial design. If all initial plot sizes are zero, 
+        a new design is created with all zeros.
+    plot_sizes : np.array(1d)
+        The initial plot sizes of the design.
+    new_plot_sizes : np.array(1d)
+        The new plot sizes after augmentation.
+    effect_levels : np.array(1d)
+        The plot level of each factor.
 
     Returns
     -------
-    Yext : np.array 
-        The extended (feasible) design.
+    Yext : np.array(2d)
+        The extended design.
     """
     # Return full matrix if all zeros
     if np.all(plot_sizes) == 0:
@@ -244,7 +252,10 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     # Add new runs in the correct places
     new_runs = list()
     for i in range(new_plot_sizes.size):
-        g = np.repeat(np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]), np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i])
+        g = np.repeat(
+            np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]), 
+            np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i]
+        )
         new_runs.extend(g)
     Y = np.insert(Y, new_runs, 0, axis=0)
 
@@ -262,9 +273,23 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     
     return Y
 
-def terms_per_level(factors, model):
+def terms_per_plot_level(factors, model):
     """
-    Compute the amount of coefficients to be estimated per split-level.
+    Computes the amount of coefficients to be estimated per plot level.
+
+    Parameters
+    ----------
+    factors : list(:py:class:`pyoptex.doe.spltik_plot.utils.Factor`)
+        The factors of the design.
+    model : pd.DataFrame
+        The model dataframe
+
+    Returns
+    -------
+    nb_terms_per_level : np.array(1d)
+        The number of terms for each plot level. E.g., element
+        zero is the numbe of terms for the easy-to-change degrees
+        of freedom.
     """
     # Reorder model
     assert isinstance(model, pd.DataFrame), 'The model must be a dataframe'
@@ -290,39 +315,64 @@ def terms_per_level(factors, model):
 
     return split_levels
 
-def min_split_levels(split_levels):
+def min_plot_levels(tppl):
     """
-    Compute the minimum amount of split levels from an
-    array containing the amount of terms (or coefficients to be estimated)
-    per split-level
+    Computes the required number of degrees of freedom
+    at each plot level in order to estimate all fixed
+    effects and variances of the random effects.
 
     Parameters
     ----------
-    split_levels : np.array
-        The result of :py:func:`terms_per_level`
+    tppl : np.array(1d)
+        The number of terms per plot level. Is the result
+        of calling 
+        :py:func:`pyoptex.doe.splitk_plot.utils.terms_per_plot_level`.
 
     Returns
     -------
-    req : np.array
-        The absolute minimum amount of runs per shift-level
+    req : np.array(1d)
+        The absolute minimum sized split^k-plot design to fit
+        all fixed effects and estimate all variances of the random
+        effects.
     """
-    req = np.zeros_like(split_levels)
+    req = np.zeros_like(tppl)
 
-    req[-1] = (split_levels[-1] + 1) + 1
-    for i in range(2, split_levels.shape[0] + 1):
-        req[-i] = np.ceil((split_levels[-i] + 1) / np.prod(req[-i+1:]) + 1)
+    req[-1] = (tppl[-1] + 1)
+    for i in range(2, tppl.shape[0] + 1):
+        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(req[-i+1:]) + 1)
 
     return req
 
 def validate_plot_sizes(factors, model):
+    """
+    Validates that this configuration of split-plot sizes
+    can estimate all fixed effects and variances of the random
+    effects.
+
+    Parameters
+    ----------
+    factors : list(:py:class:`pyoptex.doe.spltik_plot.utils.Factor`)
+        The factors of the design.
+    model : pd.DataFrame
+        The model dataframe
+    """
     # Compute plot sizes
     nb_plots = max(f.plot.level for f in factors) + 1
     plot_sizes = np.zeros(nb_plots, dtype=np.int64)
     for f in factors:
         plot_sizes[f.plot.level] = f.plot.size
 
+    # Compute the terms per level
+    tppl = terms_per_plot_level(factors, model)
+
+    # Compute and check the requirements per level
+    req = np.zeros_like(tppl)
+    req[-1] = (tppl[-1] + 1)
+    for i in range(2, tppl.shape[0] + 1):
+        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(plot_sizes[-i+1:]) + 1)
+
     # Validate they are above minimum
-    min_levels = min_split_levels(terms_per_level(factors, model))
-    assert np.all(plot_sizes >= min_levels), f'Make sure the plot sizes are atleast above {min_levels} to estimate variances'
+    min_levels = min_plot_levels(terms_per_plot_level(factors, model))
+    assert np.all(plot_sizes >= req), f'The minimum sized split^k-plot design has sizes {min_levels}'
     
     

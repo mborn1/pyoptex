@@ -21,7 +21,7 @@ class Metric:
     """
     def __init__(self, cov=None):
         """
-        Initializes the metric
+        Creates the metric
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ class Aopt(Metric):
     """
     def __init__(self, cov=None, W=None):
         """
-        Initializes the metric
+        Creates the metric
 
         Parameters
         ----------
@@ -199,7 +199,7 @@ class Iopt(Metric):
     """
     def __init__(self, n=10000, cov=None, complete=True):
         """
-        Initializes the metric
+        Creates the metric
 
         Parameters
         ----------
@@ -305,7 +305,7 @@ class Aliasing(Metric):
     """
     def __init__(self, effects, alias, cov=None, W=None):
         """
-        Initializes the metric
+        Creates the metric
 
         Parameters
         ----------

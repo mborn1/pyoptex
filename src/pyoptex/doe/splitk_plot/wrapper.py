@@ -1,32 +1,104 @@
+"""
+Module for the interface to run the split^k-plot algorithm
+"""
+
 import numpy as np
-import numba
 import pandas as pd
 from numba.typed import List
 from tqdm import tqdm
 
-from .optimize import optimize
-from .init import initialize_feasible
-from .utils import Parameters, FunctionSet, State, Factor, Plot, level_grps, obs_var, extend_design
-from ..utils.design import create_default_coords, encode_design, x2fx, decode_design
-from ..utils.model import encode_model
 from ..constraints import no_constraints
+from ..utils.design import decode_design
+from .init import initialize_feasible
+from .optimize import optimize
+from .utils import (Factor, FunctionSet, Parameters, Plot, State,
+                    extend_design, level_grps, obs_var)
 
-def _compute_cs(plot_sizes, ratios, thetas, thetas_inv):
+
+def _compute_cs(plot_sizes, ratios, thetas):
+    """
+    Computes the c-coefficients of the inverse of the 
+    observation covariance matrix (Vinv).
+
+    Parameters
+    ----------
+    plot_sizes : np.array(1d)
+        The plot sizes.
+    ratios : np.array(2d)
+        Multiple sets of a-priori variance ratios.
+    thetas : np.array(1d)
+        The array of thetas.
+        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    
+    Returns
+    -------
+    cs : np.array(2d)
+        The c-coefficients for each set of a-priori variance ratios.
+    """
     # Compute c-coefficients for all ratios
     c = np.zeros((ratios.shape[0], plot_sizes.size))
     for j, ratio in enumerate(ratios):
         c[j, 0] = 1
         for i in range(1, c.shape[1]):
-            c[j, i] = -ratio[i-1] * np.sum(thetas[:i] * c[j, :i]) / (thetas[0] + np.sum(ratio[:i] * thetas[1:i+1]))
+            c[j, i] = -ratio[i-1] * np.sum(thetas[:i] * c[j, :i])\
+                         / (thetas[0] + np.sum(ratio[:i] * thetas[1:i+1]))
     c = c[:, 1:]
     return c
 
 def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible):
+    """
+    Create a functionset with the default operators. Each
+    operator can be manually overriden by providing the parameter.
+
+    Parameters
+    ----------
+    metric : :py:class:`pyoptex.doe.cost_optimal.metric.Metric`
+        The metric object.
+    Y2X : func
+        The function converting from the design matrix to the
+        model matrix.
+    constraints : func
+        The constraints function, 
+        :py:func:`pyoptex.doe.constraints.no_constraints` 
+        by default.
+    init : func
+        The initialization function,
+        :py:func:`pyoptex.doe.splitk_plot.init.initialize_feasible`
+        by default.
+
+    Returns
+    -------
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        The function set.
+    """
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
 
 def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     """
-    
+    Creates the parameters object by preprocessing the inputs. 
+    This is a utility function to transform each variable 
+    to its correct representation.
+
+    Parameters
+    ----------
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        A set of operators for the algorithm.
+    prior : None or (pd.DataFrame, list(:py:class:`pyoptex.doe.splitk_plot.utils.Plot`)
+        A possible prior design to use for augmentation. Must be 
+        denormalized and decoded. The list of plots represents the configuration
+        of the prior.
+    grps : list(np.array(1d) or None)
+        A list of groups to optimize for each factor. If None, all groups are optimized
+        for that factor.
+    use_formulas : bool
+        Whether to use the internal update formulas or not.
+
+    Returns
+    -------
+    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        The simulation parameters.
     """
     # Assertions
     assert len(factors) > 0, 'At least one factor must be provided'
@@ -48,7 +120,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
             assert plot_sizes[f.plot.level] == f.plot.size, f'Plot sizes at the same plot level must be equal, but are {plot_sizes[f.plot.level]} and {f.plot.size}'
 
         # Fix ratios
-        r = np.sort(f.plot.ratio) if isinstance(f.plot.ratio, tuple) or isinstance(f.plot.ratio, list) \
+        r = np.sort(f.plot.ratio) \
+                if isinstance(f.plot.ratio, tuple) or isinstance(f.plot.ratio, list) \
                 or isinstance(f.plot.ratio, np.ndarray) else [f.plot.ratio]
         if ratios[f.plot.level] is None:
             ratios[f.plot.level] = r
@@ -58,7 +131,10 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     # Align ratios
     nratios = max([len(r) for r in ratios])
     assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
-    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios]).T
+    ratios = np.array([
+        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
+        for ratio in ratios
+    ]).T
 
     # Normalize ratios
     ratios = ratios[:, 1:] / ratios[:, 0]
@@ -70,7 +146,10 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     coords = List([f.coords_ for f in factors])
 
     # Encode the coordinates
-    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
+    colstart = np.concatenate((
+        [0], 
+        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
+    ))
 
     # Alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
@@ -78,7 +157,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/thetas[1:])))
 
     # Compute cs
-    cs = _compute_cs(plot_sizes, ratios, thetas, thetas_inv)
+    cs = _compute_cs(plot_sizes, ratios, thetas)
 
     # Compute Vinv
     Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])  
@@ -132,7 +211,10 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     if grps is None:
         grps = List([lgrps[lvl] for lvl in effect_levels])
     else:
-        grps = List([np.concatenate((grps[i].astype(np.int64), lgrps[effect_levels[i]]), dtype=np.int64) for i in range(len(effect_levels))])
+        grps = List([np.concatenate(
+            (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
+            dtype=np.int64
+        ) for i in range(len(effect_levels))])
     
     # Create the parameters
     params = Parameters(
@@ -147,7 +229,43 @@ def create_splitk_plot_design(
         factors, fn, prior=None, grps=None, use_formulas=True, 
         n_tries=10, max_it=10000, validate=False
     ):
+    """
+    Creates an optimal design for the specified factors, using the functionset.
+
+    Parameters
+    ----------
+    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
+        The list of factors.
+    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+        A set of operators for the algorithm.
+    prior : None or (pd.DataFrame, list(:py:class:`pyoptex.doe.splitk_plot.utils.Plot`)
+        A possible prior design to use for augmentation. Must be 
+        denormalized and decoded. The list of plots represents the configuration
+        of the prior.
+    grps : list(np.array(1d) or None)
+        A list of groups to optimize for each factor. If None, all groups are optimized
+        for that factor.
+    use_formulas : bool
+        Whether to use the internal update formulas or not.
+    n_tries : int
+        The number of random start repetitions. Must be larger than zero.
+    max_it : int
+        The maximum number of iterations per random initialization for the
+        coordinate-exchange algorithm. Prevents infinite loop scenario.
+    validate : bool
+        Whether to validate each state.
+
+    Returns
+    -------
+    Y : pd.DataFrame
+        A pandas dataframe with the best found design. The
+        design is decoded and denormalized.
+    best_state : :py:class:`pyoptex.doe.splitk_plot.utils.State`
+        The state corresponding to the returned design. 
+        Contains the encoded design, model matrix, metric, etc.
+    """
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
+    assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
 
     # Extract the parameters
     params = create_parameters(factors, fn, prior, grps, use_formulas)

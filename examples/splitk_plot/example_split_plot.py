@@ -3,19 +3,19 @@
 # Normal imports
 import numpy as np
 import pandas as pd
-import numba
 import os
 import time
-from numba.typed import List
 
 # Library imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.splitk_plot import create_splitk_plot_design, default_fn, Factor, Plot
 from pyoptex.doe.splitk_plot.metric import Dopt, Iopt, Aopt
-from pyoptex.doe.splitk_plot.cov import cov_time_trend, cov_double_time_trend
+from pyoptex.doe.splitk_plot.cov import cov_double_time_trend
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.splitk_plot.utils import validate_plot_sizes
+
+# TODO: upgrade I-optimality with weighing of the matrix (also in cost_optimal)
 
 # Set the seed
 set_seed(42)
@@ -42,7 +42,7 @@ model = partial_rsm_names({
 Y2X = model2Y2X(model, factors)
 
 # Define the metric
-metric = Dopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
+metric = Aopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 
 # Define prior
 prior = (
@@ -73,7 +73,7 @@ fn = default_fn(metric, Y2X, constraints=constraints)
 start_time = time.time()
 Y, state = create_splitk_plot_design(
     factors, fn, prior=prior, grps=None, 
-    n_tries=n_tries, validate=True
+    n_tries=n_tries, validate=False
 )
 end_time = time.time()
 
@@ -99,5 +99,3 @@ print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, fn))
 plot_fraction_of_design_space(Y, factors, fn).show()
 plot_estimation_variance_matrix(Y, factors, fn, model).show()
 print(estimation_variance(Y, factors, fn))
-
-

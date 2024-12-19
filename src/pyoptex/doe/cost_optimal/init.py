@@ -199,7 +199,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
                             break
 
                     # pylint: disable=line-too-long
-                    raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components')
+                    raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded)')
 
                 # pylint: disable=line-too-long
                 raise ValueError(f'Unable to find a feasible design due to the budget: maximum costs are {max_cost}, design costs are {cost_Y}')

@@ -1,23 +1,54 @@
-import numpy as np
+"""
+Module for all init functions of the split^k-plot algorithm
+"""
+
 import numba
+import numpy as np
 from numba.typed import List
 
+from ..._profile import profile
+from ...utils.numba import numba_all_axis1
 from ..utils.design import encode_design
 from ..utils.init import init_single_unconstrained
-from ...utils.numba import numba_all_axis1
-from ..._profile import profile
+
 
 @numba.njit
-def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, complete=False):
+def __init_unconstrained(effect_types, effect_levels, grps, thetas, 
+                         coords, Y, complete=False):
     """
-    This function generated a random design without considering any design constraints.
+    This function generates a random design without 
+    considering any design constraints.
 
     .. note::
-        See :py:func:`initialize_single` for more information
+        The resulting design matrix `Y` is not encoded.
 
-    .. note::
-        This function is Numba accelerated
+    Parameters
+    ----------
+    effect_types : np.array(1d)
+        The effect types of each factor, representing 
+        a 1 for a continuous factor and the number of 
+        levels for a categorical factor.
+    effect_levels : np.array(1d)
+        The level of each factor.
+    grps : :py:class:`numba.typed.List`(np.array(1d))
+        The groups for each factor to initialize.
+    thetas : np.array(1d)
+        The array of thetas.
+        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    coords : :py:class:`numba.typed.List`(np.array(2d))
+        The coordinates for each factor to use.
+    Y : np.array(2d)
+        The design matrix to be initialized. May contain the
+        some fixed settings if not optimizing all groups.
+        This matrix should not be encoded.
+    complete : bool
+        Whether to use the coordinates for initialization
+        or initialize fully randomly.
 
+    Returns
+    -------
+    Y : np.array(2d)
+        The initialized design matrix.
     """
     ##################################################
     # UNCONSTRAINED DESIGN
@@ -44,7 +75,12 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
                     r = np.random.choice(choices, n, replace=False)
                 else:
                     n_replicates = n // choices.size
-                    r = np.random.permutation(np.concatenate((np.repeat(choices, n_replicates), np.random.choice(choices, n - choices.size * n_replicates))))
+                    r = np.random.permutation(
+                        np.concatenate((
+                            np.repeat(choices, n_replicates), 
+                            np.random.choice(choices, n - choices.size * n_replicates)
+                        ))
+                    )
         else:
             # Extract the possible coordinates
             if typ > 1:
@@ -58,7 +94,10 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
                 r = np.random.choice(choices, n, replace=False)
             else:
                 n_replicates = n // choices.size
-                r = np.random.permutation(np.concatenate((np.repeat(choices, n_replicates), np.random.choice(choices, n - choices.size * n_replicates))))
+                r = np.random.permutation(np.concatenate((
+                    np.repeat(choices, n_replicates), 
+                    np.random.choice(choices, n - choices.size * n_replicates)
+                )))
         
         # Fill design
         for i, grp in enumerate(lgrps):
@@ -66,15 +105,52 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas, coords, Y, c
 
     return Y
 
-# @numba.njit
-def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plot_sizes, constraints, Y, complete=False):
+@numba.njit
+def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, 
+                          plot_sizes, constraints, Y, complete=False):
     """
-    Corrects an unconstrained design randomly to be within the provided constraints
-    It alters the factors starting from the most hard to change factors to the most easy to change
-    until all constraints are met.
+    Corrects a design matrix to be within the `constraints`.
+    It alters the factors starting from the most hard to change factors 
+    to the most easy to change until all constraints are met.
+
+    .. note::
+        The resulting design matrix `Y` is not encoded.
+
+    Parameters
+    ----------
+    effect_types : np.array(1d)
+        The effect types of each factor, representing 
+        a 1 for a continuous factor and the number of 
+        levels for a categorical factor.
+    effect_levels : np.array(1d)
+        The level of each factor.
+    grps : :py:class:`numba.typed.List`(np.array(1d))
+        The groups for each factor to initialize.
+    thetas : np.array(1d)
+        The array of thetas.
+        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
+    coords : :py:class:`numba.typed.List`(np.array(2d))
+        The coordinates for each factor to use.
+    plot_sizes : np.array(1d)
+        The array of plot sizes, starting from the easy-to-change.
+    constraints : func
+        The constraints function, validating the design matrix.
+        Should return True if the constraints are violated.
+    Y : np.array(2d)
+        The design matrix to be initialized. May contain the
+        some fixed settings if not optimizing all groups.
+        This matrix should not be encoded.
+    complete : bool
+        Whether to use the coordinates for initialization
+        or initialize fully randomly.
+
+    Returns
+    -------
+    Y : np.array(2d)
+        The initialized design matrix.
     """
     # Check which runs are invalid
-    invalid_run = constraints(Y)
+    invalid_run = np.ascontiguousarray(constraints(Y))
 
     # Store aggregated values of invalid run per level
     level_all_invalid = [invalid_run]
@@ -97,9 +173,13 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
         for grp in np.where(all_invalid)[0]:
             # Specify which groups to update
             grps_ = [
-                np.array([g for g in grps[col] if g >= grp*jmp/thetas[l] and g < (grp+1)*jmp/thetas[l]], dtype=np.int64) 
+                np.array([
+                    g for g in grps[col] 
+                    if g >= grp*jmp/thetas[l] and g < (grp+1)*jmp/thetas[l]
+                ], dtype=np.int64) 
                 if l < level else (
-                    np.arange(grp, grp+1, dtype=np.int64) if (l == level and grp in grps[col])
+                    np.arange(grp, grp+1, dtype=np.int64) 
+                    if (l == level and grp in grps[col])
                     else np.arange(0, dtype=np.int64)
                 )
                 for col, l in enumerate(effect_levels)
@@ -112,7 +192,8 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
             # Loop until no longer all invalid
             while all_invalid[grp]:
                 # Adjust the design
-                Y = __init_unconstrained(effect_types, effect_levels, grps_, thetas, coords, Y, complete)
+                Y = __init_unconstrained(effect_types, effect_levels, grps_, 
+                                         thetas, coords, Y, complete)
                 # Validate the constraints
                 c = constraints(Y[grp*jmp:(grp+1)*jmp])
                 # Update all invalid
@@ -126,18 +207,20 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, plo
 @profile
 def initialize_feasible(params, complete=False, max_tries=1000):
     """
-    Generate a random initial design for split^k plot problem.
+    Generates a random initial design for a split^k plot design.
     `grps` specifies at each level which level-groups should be
     initialized. This is useful when augmenting an existing design.
 
+    .. note::
+        The resulting design matrix `Y` is not encoded.
+
     Parameters
     ----------
-    params : `pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
         The parameters of the design generation.
     complete : bool
-        Whether to initialize based on the discrete coordinates provided
-        in the `params`, or to initiliaze continuous variables based on the entire
-        range between -1 and 1.
+        Whether to use the coordinates for initialization
+        or initialize fully randomly.
     max_tries : int
         The maximum number of tries to generate a feasible design.
 
@@ -185,12 +268,15 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
         # Check if not in infinite loop
         if tries >= max_tries and not feasible:
-            
-            i = 0
-            while np.linalg.matrix_rank(Xenc[:, :i]) == i:
-                i += 1
 
-            raise ValueError(f'Unable to find a feasible design within the constraints: term {i} is fully correlated to the lower terms')
+            # Determine which column causes rank deficiency
+            for i in range(1, Xenc.shape[1]+1):
+                if np.linalg.matrix_rank(Xenc[:, :i]) < i:
+                    break
+
+            # pylint: disable=line-too-long
+            raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded)')
+
                     
     return Y, (Yenc, Xenc)
 
@@ -201,17 +287,17 @@ def init_random(params, n=1, complete=False):
 
     Parameters
     ----------
-    params : :py:class:`Parameters <splitk_plot.utils.Parameters>`
-        The simulation parameters.
+    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        The parameters of the design generation.
     n : int
         The number of runs
     complete : bool
-        False means use the coordinates and prior specified in params, otherwise, no
-        coords or prior are used. Can be used to perform a complete sample of the design space.
-    
+        Whether to use the coordinates for initialization
+        or initialize fully randomly.
+
     Returns
     -------
-    run : np.array(2d)
+    design : np.array(2d)
         The resulting design.
     """
     # Initialize
@@ -219,10 +305,10 @@ def init_random(params, n=1, complete=False):
     invalid = np.ones(n, dtype=np.bool_)
 
     # Adjust for completeness
-    if not complete:
-        coords = params.coords
-    else:
+    if complete:
         coords = None
+    else:
+        coords = params.coords
 
     # Loop until all are valid
     while np.any(invalid):

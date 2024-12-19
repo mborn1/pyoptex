@@ -1,11 +1,27 @@
-import numpy as np
+"""
+Module for all validation functions of the split^k-plot algorithm
+"""
+
 import warnings
 
-from .utils import obs_var, State
-    
+import numpy as np
+
+
 def validate_state(state, params, eps=1e-6):
+    """
+    Validates that the provided state is correct.
+
+    Parameters
+    ----------
+    state : :py:class:`pyoptex.doe.splitk_plot.utils.State`
+        The state to validate.
+    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        The parameters of the design generation.
+    eps : float
+        The epsilon to use for floating point comparison.
+    """
     # Validate X
-    assert np.all(state.X == params.fn.Y2X(state.Y)), 'X does not match Y2X(Y)'
+    assert np.all(state.X == params.fn.Y2X(state.Y)), '(validation) X does not match Y2X(Y)'
 
     # Validate metric
     metric = params.fn.metric.call(state.Y, state.X, params)
@@ -14,10 +30,11 @@ def validate_state(state, params, eps=1e-6):
         or (np.isinf(metric) and np.isinf(state.metric)):
         warnings.warn(f'Metric is {state.metric}')
     else:
-        assert np.abs((state.metric - metric) / metric) < eps, f'The metric does not match: {state.metric} -- {metric}'
+        assert np.abs((state.metric - metric) / metric) < eps, f'(validation) The metric does not match: {state.metric}, {metric}'
 
     # Validate constraints
-    assert not np.any(params.fn.constraints(state.Y)), f'Constraints are violated'
+    constraints = params.fn.constraints(state.Y)
+    assert not np.any(constraints), f'(validation) Constraints are violated: {constraints}'
 
 # def validate_UD(U, D, Xi_star, runs, unstable_state, params):
 #     # Extract copies

@@ -27,7 +27,7 @@ def evaluate_metrics(Y, metrics, factors, fn):
         The list of metrics to evaluate.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
     
     Returns
@@ -79,7 +79,7 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
         The denormalized, decoded design.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
     N : int
         The number of samples to evaluate.
@@ -154,7 +154,7 @@ def plot_fraction_of_design_space(Y, factors, fn, N=10000):
         The denormalized, decoded design.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
     N : int
         The number of samples to evaluate.
@@ -210,7 +210,7 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
         The denormalized, decoded design.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
     return_params : bool
         Whether to return the created :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
@@ -270,7 +270,7 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
         The denormalized, decoded design.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
     model : None or pd.DataFrame
         The model dataframe corresponding to the Y2X function in order
@@ -325,7 +325,7 @@ def estimation_variance(Y, factors, fn):
         The denormalized, decoded design.
     factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
         The list of factors for the design.
-    fn : `pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
         The set of functions used to create a cost optimal design.
 
     Returns

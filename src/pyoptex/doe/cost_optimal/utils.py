@@ -198,7 +198,7 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     """
     Directly computes the observation matrix from the design. Is similar to
     :py:func:`pyoptex.doe.cost_optimal.utils.obs_var_Zs` 
-    followed by :py:func:`pyoptex.doe.cost_optimal.utils.obs_var_from_Zs`.
+    followed by :py:func:`pyoptex.doe.utils.design.obs_var_from_Zs`.
 
     Parameters
     ----------
