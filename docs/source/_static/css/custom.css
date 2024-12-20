@@ -1,0 +1,11 @@
+.rst-content dl.simple dt {
+    border: none !important;
+    border-left: 3px solid #ccc !important;
+    background: #f0f0f0 !important;
+    color: #555 !important;
+    margin-bottom: 6px !important;
+}
+
+.rst-content dt {
+    padding-left: 0.5em
+}

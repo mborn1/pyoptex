@@ -26,7 +26,7 @@ class Factor(__Factor__):
         self = super(Factor, cls).__new__(cls, *args, **kwargs)
 
         # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cat', 'categorical'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
+        assert self.type in ['cont', 'continuous', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
         if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
             assert all(r >= 0 for r in self.ratio), f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
         else:
@@ -67,7 +67,7 @@ class Factor(__Factor__):
         """
         Determines if the factor is a continuous factor.
         """
-        return self.type.lower() in ['cont', 'continuous']
+        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative']
 
     @property 
     def is_categorical(self):

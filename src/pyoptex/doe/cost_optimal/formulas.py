@@ -94,7 +94,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
 def remove_update_vinv(Vinv, Zs, pos, b, ratios):
     """
     Computes the update to Vinv based on the removal of a row.
-     `b` specifies possible additional group
+    `b` specifies possible additional group
     updates if necessary (e.g. when merging two groups).
 
     Parameters

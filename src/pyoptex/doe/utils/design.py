@@ -149,7 +149,7 @@ def encode_design(Y, effect_types, coords=None):
     effect_types : np.array(1d) 
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
-    coords : None or :py:class:`numba.typed.List`(np.array(2d))
+    coords : None or :py:class:`numba.typed.List` (np.array(2d))
         The possible coordinates for each factor. 
 
     Returns
@@ -198,7 +198,7 @@ def decode_design(Y, effect_types, coords=None):
     effect_types : np.array(1d) 
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
-    coords: None or :py:class:`numba.typed.List`(np.array(2d))
+    coords: None or :py:class:`numba.typed.List` (np.array(2d))
         Coordinates to be used for decoding the categorical variables.
 
     Returns

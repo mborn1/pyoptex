@@ -194,8 +194,6 @@ class Iopt(Metric):
     complete : bool
         Whether to initialize the samples between -1 and 1, 
         or from the given coordinates.
-    initialized_ = bool
-        Boolean indicating whether the metric was already initialized.
     """
     def __init__(self, n=10000, cov=None, complete=True):
         """

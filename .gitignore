@@ -19,6 +19,8 @@ ignore/*
 test.ipynb
 *.csv
 *.lprof
+docs/source/generated/*
+docs/out/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/pycharm,python,matlab
 # Edit at https://www.toptal.com/developers/gitignore?templates=pycharm,python,matlab

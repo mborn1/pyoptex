@@ -54,7 +54,10 @@ execution_cost = 5
 cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, execution_cost)
 
 # Define constraints
-constraints = parse_constraints_script(f'(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
+constraints = parse_constraints_script(
+    f'(`A1` == "L1") & (`E` < -0.5-0.25)', 
+    factors, exclude=True
+)
 
 # TODO: create global documentation with examples
 # TODO: upgrade I-optimality with weighing of the matrix (also in cost_optimal)
@@ -74,7 +77,7 @@ fn = default_fn(nsims, cost_fn, metric, Y2X, constraints=constraints)
 # Create design
 start_time = time.time()
 Y, state = create_cost_optimal_design(
-    factors, fn, nsims=nsims, nreps=nreps, prior=prior, 
+    factors, fn, nsims=nsims, nreps=nreps, prior=prior,
     validate=True
 )
 end_time = time.time()

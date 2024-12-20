@@ -15,7 +15,7 @@ Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_s
 Update = namedtuple('Update', 'level grp runs cols new_coord old_coord Xi_old old_metric')
 State = namedtuple('State', 'Y X metric')
 
-__Plot__ = namedtuple('__Plot__', 'level size ratio', defaults=(1, 1, 1))
+__Plot__ = namedtuple('__Plot__', 'level size ratio', defaults=(0, 1, 1))
 class Plot(__Plot__):
     __slots__ = ()
 
@@ -40,7 +40,7 @@ class Factor(__Factor__):
         self = super(Factor, cls).__new__(cls, *args, **kwargs)
 
         # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cat', 'categorical'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
+        assert self.type in ['cont', 'continuous', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
         if self.is_continuous:
             assert isinstance(self.min, float) or isinstance(self.min, int), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
             assert isinstance(self.max, float) or isinstance(self.max, int), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
@@ -69,7 +69,7 @@ class Factor(__Factor__):
 
     @property
     def is_continuous(self):
-        return self.type.lower() in ['cont', 'continuous']
+        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative']
 
     @property 
     def is_categorical(self):

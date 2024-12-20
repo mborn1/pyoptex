@@ -59,7 +59,7 @@ class Metric:
         params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
             The optimization parameters.
         """
-        raise NotImplementedError('Must implement an _init function when using update formulas')
+        pass
 
     def init(self, Y, X, params):
         """
@@ -101,7 +101,10 @@ class Metric:
         up : float
             The update to the metric.
         """
-        raise NotImplementedError('Must implement an _update function when using update formulas')
+        # Compute from scratch
+        new_metric = self.call(Y, X, params)
+        metric_update = new_metric - update.old_metric
+        return metric_update
 
     def update(self, Y, X, params, update):
         """
@@ -153,7 +156,7 @@ class Metric:
         update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
             The update being applied to the state.
         """
-        raise NotImplementedError('Must implement an _accepted function when using update formulas')
+        pass
 
     def accepted(self, Y, X, params, update):
         """
@@ -261,7 +264,7 @@ class Dopt(Metric):
 
         # Compute D-optimality
         return np.power(
-            np.product(np.maximum(np.linalg.det(M), 0)), 
+            np.product(np.maximum(np.linalg.det(M), 0)),
             1/(X.shape[1] * len(params.Vinv))
         )
 

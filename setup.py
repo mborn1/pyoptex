@@ -31,11 +31,9 @@ setuptools.setup(
     ],
     extras_require={
         'dev': [
-            'sphinx~=4.4',
-            'docutils<0.18',
-            'numpydoc==1.2',
-            'pydata_sphinx_theme==0.7',
-            'sphinx-copybutton==0.5'
+            'sphinx==7.1.2',
+            'sphinx-rtd-theme==1.3.0rc1',
+            'sphinx-copybutton==0.5.2'
         ],
         'examples': [
             'openpyxl==3.0.10'

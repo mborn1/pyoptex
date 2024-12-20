@@ -188,8 +188,8 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     return params
 
-def create_cost_optimal_design(factors, fn, prior=None, nreps=1, 
-                               use_formulas=True, **kwargs):
+def create_cost_optimal_design(factors, fn, prior=None, nreps=10, 
+                               use_formulas=True, nsims=7500, validate=True):
     """
     Creates an optimal design for the specified factors, using the functionset.
 
@@ -227,7 +227,7 @@ def create_cost_optimal_design(factors, fn, prior=None, nreps=1,
     params = create_parameters(factors, fn, prior, use_formulas)
 
     # Simulation
-    best_state = simulate(params, **kwargs)
+    best_state = simulate(params, nsims=nsims, validate=validate)
     try:
         for i in range(nreps-1):
             try:
