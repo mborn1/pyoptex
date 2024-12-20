@@ -1,13 +1,28 @@
 # Configuration file for the Sphinx documentation builder.
 
+import datetime
+import pathlib
+import sys
+
+sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
+from pyoptex import __version__ as lib_version
+
 # -- Project information
 
-project = 'Pyoptex'
-copyright = '2025, Mathias Born'
+project = 'PyOptEx'
+copyright = '2024, Mathias Born'
 author = 'Mathias Born'
 
-release = '0.1'
-version = '0.1.0'
+release = lib_version
+version = lib_version.split('-')[0]
+
+rst_epilog = f"""
+.. |version| replace:: {version}
+
+.. |release| replace:: {release}
+
+.. |date| replace:: {format(datetime.datetime.now(), '%B %d, %Y')}
+"""
 
 # -- General configuration
 

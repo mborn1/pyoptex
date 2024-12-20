@@ -1,6 +1,10 @@
 Welcome to PyOptEx documentation!
 ===================================
 
+**Date**: |date|
+
+**Version**: |release|
+
 .. role:: raw-html(raw)
    :format: html
 

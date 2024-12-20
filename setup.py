@@ -1,14 +1,18 @@
-import setuptools
 import site
+import re
+import setuptools
 
 site.ENABLE_USER_SITE = 1
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+with open("src/pyoptex/__init__.py", "r", encoding="utf-8") as f:
+    version = re.search(r'__version__ = [\'"](.*)[\'"]', f.read()).group(1)
+
 setuptools.setup(
     name="pyoptex",
-    version="0.0.1",
+    version=version,
     author="Mathias Born",
     author_email="mathiasborn2@gmail.be",
     description="",
