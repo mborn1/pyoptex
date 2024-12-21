@@ -14,7 +14,7 @@ copyright = '2024, Mathias Born'
 author = 'Mathias Born'
 
 release = lib_version
-version = lib_version.split('-')[0]
+version = lib_version
 
 rst_epilog = f"""
 .. |version| replace:: {version}
