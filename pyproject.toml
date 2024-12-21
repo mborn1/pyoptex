@@ -37,6 +37,6 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/mborn1/pyoptex"
-Documentation = "https://github.com/mborn1/pyoptex"
+Documentation = "https://pyoptex.readthedocs.io/en/latest/"
 Repository = "https://github.com/mborn1/pyoptex"
 Issues = "https://github.com/mborn1/pyoptex/issues"
