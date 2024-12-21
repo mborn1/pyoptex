@@ -5,7 +5,6 @@
 | Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyoptex.svg)](https://pypi.org/project/pyoptex/) [![PyPI Downloads](https://img.shields.io/pypi/dm/pyoptex.svg?label=PyPI%20downloads)](https://pypi.org/project/pyoptex/) |
 | Meta | [![License - BSD 3-Clause](https://img.shields.io/pypi/l/pyoptex.svg)](https://github.com/mborn1/pyoptex/blob/main/LICENSE) [![docs](https://img.shields.io/readthedocs/pyoptex)](https://readthedocs.org/projects/pyoptex/badge/?version=latest) |
 
-
 Welcome! PyOptEx is a Python package to create experimental designs.
 The focus is on accessibility for both engineers from industry using design
 of experiments, and researchers willing to develop new criteria or
@@ -32,16 +31,16 @@ pip install pyoptex
 ```
 
 ## Documentation
-The documentation for this package can be found at [here](http://example.com)
+The documentation for this package can be found at [here](https://pyoptex.readthedocs.io/en/latest/)
 
-## Your first design
-See the documentation on [Your first design](http://example.com)
-
-## Authors
-Mathias Born
+## Create your first design
+See the documentation on [Your first design](https://pyoptex.readthedocs.io/en/latest/quickstart.html)
 
 ## License
 BSD-3 clause, meaning you can use and alter it for any purpose,
 open-source or commercial!
 However, any open-source contributions to this project are much
 appreciated by the community.
+
+## Contributing
+Any ideas, bugs and features requests can be added as an [issue](https://github.com/mborn1/pyoptex/issues). Any direct code contributions can be added via pull requests.
