@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools >= 44.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyoptex"
+dynamic = ["version"]
+authors = [
+  { name="Mathias Born", email="mathiasborn2@gmail.com" },
+]
+description = "Flexible and accessible design of experiments in Python. Provides industry with an easy package to create designs based with limited expert knowledge. Provides researchers with the ability to easily create new criteria and design structures."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+license = {file = "LICENSE"}
+dependencies = [
+    "numba~=0.55",
+    "numpy~=1.21",
+    "tqdm~=4.64",
+    "scipy~=1.8",
+    "pandas~=1.5",
+    "plotly~=5.22",
+    "openpyxl~=3.0",
+]
+keywords = ["python", "flexible", "accessible", "data-analysis", "design-of-experiments", "pyoptex", "innovation"]
+
+[project.optional-dependencies]
+dev = [
+  "sphinx==7.1.2",
+  "sphinx-rtd-theme==1.3.0rc1",
+  "sphinx-copybutton==0.5.2"
+]
+
+[project.urls]
+Homepage = "https://github.com/mborn1/pyoptex"
+Documentation = "https://github.com/mborn1/pyoptex"
+Repository = "https://github.com/mborn1/pyoptex"
+Issues = "https://github.com/mborn1/pyoptex/issues"
