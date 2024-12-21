@@ -15,6 +15,8 @@ money and time as a resource and optimize for the available budget.
 In case the design structure is not predetermined by the physicalities of the
 experiment, cost-optimal experiments also generate significantly better designs.
 
+**_NOTE:_**  This package does not have a release version yet and is still under active development.
+
 ## Getting started
 
 Install this package using pip
