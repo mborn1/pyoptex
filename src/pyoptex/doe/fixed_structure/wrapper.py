@@ -42,7 +42,7 @@ def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible
     """
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
 
-def create_parameters(factors, fn, nruns, prior=None, grps=None):
+def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=None):
     """
     Creates the parameters object by preprocessing the inputs. 
     This is a utility function to transform each variable 
@@ -54,6 +54,8 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
         The list of factors.
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         A set of operators for the algorithm.
+    block_effects : list(:py:class:`RandomEffect <pyoptex.doe.fixed_structure.utils.RandomEffect>`)
+        Any additional blocking effects, not assigned to a factor.
     prior : None
         Not implemented yet.
     grps : None
@@ -73,6 +75,8 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
             assert len(f.re.Z) == nruns, f'Factor {i} with name {f.name} does not have enough runs as random effect'
     assert prior is None, f'Priors have not yet been implemented'
     assert grps is None, f'Grouped optimization has not yet been implemented'
+    for i, be in enumerate(block_effects):
+        assert len(be.Z) == nruns, f'Blocking effect {i} does not have the correct length: {len(be.Z)}. Should be the number of runs {nruns}'
 
     # Extract the random effects
     re = []
@@ -82,7 +86,7 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
 
     # Extract the plot sizes
     ratios = []
-    for r in re:
+    for r in re + block_effects:
         # Extract ratios
         r = np.sort(r.ratio) \
                 if isinstance(r.ratio, (tuple, list, np.ndarray))\
@@ -100,6 +104,10 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
             for ratio in ratios
         ]).T
 
+    # Split regular and blocking ratios
+    be_ratios = ratios[:, -len(block_effects):]
+    ratios = ratios[:, :len(block_effects)]
+
     # Extract parameter arrays
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
@@ -115,10 +123,21 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
     # Compute Zs and Vinv
     if len(re) > 0:
         Zs = np.array([np.array(r.Z) for r in re], dtype=np.int64)
-        Vinv = np.linalg.inv(np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios]))
+        V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios])
     else:
         Zs = np.empty((0, 0), dtype=np.int64)
-        Vinv = np.expand_dims(np.eye(nruns), 0)
+        V = np.expand_dims(np.eye(nruns), 0)
+
+    # Augment V with the random blocking effects
+    if len(block_effects) > 0:
+        beZs = np.array([np.array(be.Z) for be in block_effects], dtype=np.int64)
+        V += np.array([
+            obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) 
+            for r in be_ratios
+        ])
+        
+    # Invert V
+    Vinv = np.linalg.inv(Vinv)
         
     # Define which groups to optimize
     lgrps = [np.arange(nruns)] + [np.arange(np.max(Z)+1) for Z in Zs]

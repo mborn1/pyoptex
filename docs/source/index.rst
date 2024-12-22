@@ -5,9 +5,6 @@ Welcome to PyOptEx documentation!
 
 **Version**: |release|
 
-.. role:: raw-html(raw)
-   :format: html
-
 PyOptEx (or Python Optimal Experiments) is a package designed to create
 optimal designs for experiments with Python. The package designed to be
 as intuitive as possible, making it accessible also to non-statisticians. 
@@ -20,16 +17,26 @@ new metrics (criteria) and test them.
 
 To generate experimental designs, there are two main options:
 
-* :raw-html:`<strong>Split<sup>k</sup>-plot</strong>`: These designs
-  can be used to create fully randomized
-  designs with a fixed number of runs, or a split-plot design with any number
-  of strata of hard-to-change factors. The optimization algorithm is the 
-  coordinate-exchange algorithm and it uses the update formulas described in
+* **Fixed structure**: These designs have a fixed number of runs
+  and fixed randomization structure known upfront. Well-known designs
+  include split-plot, strip-plot, and regular staggered-level designs.
+  A specialization is also included for split\ :sup:`k`\ -plot designs
+  using the update formulas as described in 
   `Born and Goos (2025) <https://www.sciencedirect.com/science/article/pii/S0167947324001129>`_.
-* :raw-html:`Cost-optimal designs`: These designs can be used to optimize
-  for a given cost function. Instead of specifying the number of runs, the
-  user specifies a cost function and a maximum budget and the algorithm
-  decides automatically on the number of runs, randomization structure, etc.
+  Go to :ref:`qc_first_design` and :ref:`qc_splitk` for an example respectively.
+* **Cost-optimal designs**: These design generation algorithms follow
+  a new DoE philosophy. Instead of fixing the number of runs and randomization
+  structure, the algorithm optimizes directly on the underlying resource
+  constraints. The user must only specify a budget and a function which
+  computes the resource consumption of a design. Go to :ref:`qc_cost` for
+  an example. Currently, only one such algorithm is implemented: CODEX.
+
+.. figure:: /assets/img/pyoptex_overview.svg
+  :width: 400
+  :alt: Pyoptex package overview
+  :align: center
+
+  The overview of the PyOptEx package.
 
 See the :ref:`quickstart` for more information on how to generate different kinds of
 designs. See :ref:`customization` for a more detailed explanation on how to tune and 

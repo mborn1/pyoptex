@@ -1,3 +1,19 @@
+.. |link-qc-pre| raw:: html
+
+  <a href="https://github.com/mborn1/pyoptex/blob/
+
+.. |link-qc-mid0| raw:: html
+
+  /examples/quickstart/
+
+.. |link-qc-mid1| raw:: html
+
+  ">
+
+.. |link-qc-post| raw:: html
+
+  </a>
+
 .. _quickstart:
 
 Quickstart
@@ -65,15 +81,14 @@ Create your first design
 ------------------------
 
 We will start by creating a fully randomized D-optimal design 
-with 20 runs and one categorical and two continuous factors 
+with 20 runs, one categorical and two continuous factors, 
 using the coordinate-exchange algorithm. We are using the
-pyoptex.splitk_plot submodule for this since a fully randomized
-design is actually a split-plot design, but with only one stratum.
-Namely, the easy-to-change factors. 
+:py:mod:`fixed_structure <pyoptex.doe.fixed_structure>` submodule 
+for this.
 
 .. note::
-   The Python script for the generation of such a design can be
-   found in :ref:`TODO`.
+  The complete Python script for the generation of such a design can be
+  found in |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_fs.py\ |link-qc-mid1|\ example_randomized_fs.py\ |link-qc-post|.
 
 Start by importing the necessary modules
 
@@ -82,16 +97,16 @@ Start by importing the necessary modules
 >>> import time
 >>> 
 >>> # PyOptEx imports
->>> from pyoptex.doe.splitk_plot import create_splitk_plot_design, default_fn, Factor, Plot
->>> from pyoptex.doe.splitk_plot.metric import Dopt
+>>> from pyoptex._seed import set_seed
 >>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.doe.fixed_structure import (
+>>>     Factor, create_fixed_structure_design, create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.fixed_structure.metric import Dopt
 
-As noted before, a fully randomized design is a split-plot design
-with only a single stratum. The plot has a size of 20, which is
-the number of runs
+We define the number of runs
 
->>> plot = Plot(size=20)
->>> nruns = plot.size
+>>> nruns = 20
 
 Next, we define the factors for our experiment. We have one categorical
 factor A with levels L1, L2, and L3. Next we also define two continuous
@@ -100,9 +115,9 @@ by specifying the `min` and `max` properties, we can define C in the
 range [2, 5].
 
 >>> factors = [
->>>     Factor(name='A', plot=plot, type='categorical', levels=['L1', 'L2', 'L3']),
->>>     Factor(name='B', plot=plot, type='continuous'),
->>>     Factor(name='C', plot=plot, type='continuous', min=2, max=5),
+>>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('B', type='continuous'),
+>>>     Factor('C', type='continuous', min=2, max=5),
 >>> ]
 
 .. note::
@@ -147,19 +162,18 @@ Finally, we are ready to generate a design using the following
 code snippet.
 
 >>> # Parameter initialization
->>> n_tries = 1000
+>>> n_tries = 10
 >>> 
 >>> # Create the set of operators
 >>> fn = default_fn(metric, Y2X)
+>>> params = create_parameters(factors, fn, nruns)
 >>> 
 >>> # Create design
 >>> start_time = time.time()
->>> Y, state = create_splitk_plot_design(
->>>     factors, fn, n_tries=n_tries, 
->>> )
+>>> Y, state = create_fixed_structure_design(params, n_tries=n_tries)
 >>> end_time = time.time()
 
-The function :py:func:`create_splitk_plot_design <pyoptex.doe.splitk_plot.wrapper.create_splitk_plot_design>` 
+The function :py:func:`create_fixed_structure_design <pyoptex.doe.fixed_structure.wrapper.create_fixed_structure_design>` 
 returns a dataframe `Y` containing the design, and the final internal
 state of the algorithm which contains the encoded design matrix, model matrix,
 and metric value.
@@ -167,7 +181,7 @@ and metric value.
 We can write the design to a csv
 
 >>> root = os.path.split(__file__)[0]
->>> Y.to_csv(os.path.join(root, 'example_randomized.csv'), index=False)
+>>> Y.to_csv(os.path.join(root, 'example_randomized_fs.csv'), index=False)
 
 And we can print the final metric, execution time and design to the
 console.
@@ -179,25 +193,51 @@ console.
 
 More information on how to evaluate the design in :ref:`qc_evaluation`.
 
+.. _qc_splitk:
+
 Creating a split\ :sup:`k`\ -plot design
 ----------------------------------------
 
 What if the factor A was actually a component that was hard-to-change?
 In such a scenario, design of experiments literature recommends
-the use of an actual split-plot design, where the factor A is no longer
-reset with every run.
+the use of a split-plot design, where the factor A is no longer
+reset with every run. We will create a split-plot design
+with 5 whole plots and 4 runs per whole plot.
 
 .. note::
-   The Python script for the generation of such a design can be
-   found in :ref:`TODO`.
+  A split-plot design with only one stratum, the easy-to-change stratum
+  is also a fully randomized design. Because of the update formulas,
+  creating a randomized design with the
+  :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
+  may be faster.
+  Such an example script may be found in
+  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_sp.py\ |link-qc-mid1|\ example_randomized_sp.py\ |link-qc-post|
 
-The adjustments from :ref:`qc_first_design` are quite simple. First,
-we require an additional import
+.. note::
+  The Python script for the generation of such a design can be
+  found in 
+  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_splitplot_sp.py\ |link-qc-mid1|\ example_splitplot_sp.py\ |link-qc-post|.
 
+To create a split-plot design, first,
+we require the imports again.
+
+>>> # Python imports
+>>> import os
+>>> import time
 >>> import numpy as np
+>>> 
+>>> # PyOptEx imports
+>>> from pyoptex._seed import set_seed
+>>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.doe.fixed_structure import Factor
+>>> from pyoptex.doe.fixed_structure.splitk_plot import (
+>>>     create_splitk_plot_design, default_fn, create_parameters, Plot
+>>> )
+>>> from pyoptex.doe.fixed_structure.splitk_plot.metric import Dopt
 
-Next, instead of having one plot, we now have two: the easy-to-change
-plot, and the hard-to-change plot.
+Note that we now import most from :py:mod:`splitk_plot <pyoptex.doe.fixed_structure.splitk_plot>`
+instead of :py:mod:`fixed_structure <pyoptex.doe.fixed_structure>`.
+Next, we define the hard-to-change and easy-to-change plot (or stratum).
 
 >>> etc = Plot(level=0, size=4)
 >>> htc = Plot(level=1, size=5, ratio=0.1)
@@ -211,16 +251,32 @@ plot, and the hard-to-change plot.
    however, a Bayesian approach is also possible. See :ref:`cust_bayesian_ratio`
    for more information.
 
-Finally, the factors now specify which plot they are on
+We specify the factors with the stratum they are in.
 
 >>> factors = [
->>>     Factor(name='A', plot=htc, type='categorical', levels=['L1', 'L2', 'L3']),
->>>     Factor(name='B', plot=etc, type='continuous'),
->>>     Factor(name='C', plot=etc, type='continuous', min=2, max=5),
+>>>     Factor('A', htc, type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('B', etc, type='continuous'),
+>>>     Factor('C', etc, type='continuous', min=2, max=5),
 >>> ]
 
-The rest of the script remains the same. You have now created a
-D-optimal split-plot design.
+And like in :ref:`qc_first_design`, we define the optimization metric
+as D-optimality
+
+>>> metric = Dopt()
+
+Finally, we generate the split-plot design.
+
+>>> # Parameter initialization
+>>> n_tries = 10
+>>> 
+>>> # Create the set of operators
+>>> fn = default_fn(metric, Y2X)
+>>> params = create_parameters(factors, fn)
+>>> 
+>>> # Create design
+>>> start_time = time.time()
+>>> Y, state = create_splitk_plot_design(params, n_tries=n_tries)
+>>> end_time = time.time()
 
 .. note::
    Adding more plots is as easy as specifying higher levels and assigning
@@ -230,6 +286,96 @@ D-optimal split-plot design.
    >>> `vhtc = Plot(level=2)`.
 
 More information on how to evaluate the design in :ref:`qc_evaluation`.
+
+.. note::
+  While a split-plot design can also be created using
+  :py:func:`create_fixed_structure_design <pyoptex.doe.fixed_structure.wrapper.create_fixed_structure_design>`,
+  using :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
+  is generally faster due to the update formulas.
+
+Creating other fixed structure designs
+--------------------------------------
+
+Not every design is either randomized or a split-plot design.
+For instance, a strip-plot design defines multiple non-sequential runs
+to be grouped together. For any scenario where the randomization
+structure does not depend on the design and the number of runs is fixed,
+you can use the :py:func:`create_fixed_structure_design <pyoptex.doe.fixed_structure.wrapper.create_fixed_structure_design>`.
+
+Let's create a simple strip-plot design with 5 plots and 4 runs per plot.
+
+.. note::
+  The Python script for the generation of such a design can be
+  found in 
+  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_strip_plot_fs.py\ |link-qc-mid1|\ example_strip_plot_fs.py\ |link-qc-post|.
+
+Like all previous examples, we start with the imports
+
+>>> # Python imports
+>>> import os
+>>> import time
+>>> import numpy as np
+>>> 
+>>> # PyOptEx imports
+>>> from pyoptex._seed import set_seed
+>>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.doe.fixed_structure import (
+>>>     Factor, RandomEffect, create_fixed_structure_design, 
+>>>     create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.fixed_structure.metric import Dopt
+
+Next, we define the random effect for a strip-plot design.
+
+>>> nruns = 20
+>>> nplots = 5
+>>> re = RandomEffect(np.tile(np.arange(nplots), nruns//nplots), ratio=0.1)
+
+Next, define the factors. Note that we assign A to the first
+random effect.
+
+>>> factors = [
+>>>     Factor('A', re, type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('B', type='continuous'),
+>>>     Factor('C', type='continuous', min=2, max=5),
+>>> ]
+
+Finally, we compute the design
+
+>>> # Create a partial response surface model
+>>> model = partial_rsm_names({
+>>>     'A': 'tfi',
+>>>     'B': 'quad',
+>>>     'C': 'quad',
+>>> })
+>>> Y2X = model2Y2X(model, factors)
+>>> 
+>>> # Define the metric
+>>> metric = Dopt()
+>>> 
+>>> # Parameter initialization
+>>> n_tries = 10
+>>> 
+>>> # Create the set of operators
+>>> fn = default_fn(metric, Y2X)
+>>> params = create_parameters(factors, fn, nruns)
+>>> 
+>>> # Create design
+>>> start_time = time.time()
+>>> Y, state = create_fixed_structure_design(params, n_tries=n_tries)
+>>> end_time = time.time()
+
+You will now notice that the resulting design
+has the same setting of factor A for runs
+[1, 5, 9, 13, 17], the first plot of the strip-plot design
+
+.. note::
+  If you want to force certain level constraints like in a
+  strip-plot design, but you do not want any random effect
+  associated, simply set the ratio of the random effect
+  to zero.
+
+.. _qc_cost:
 
 Creating a cost-optimal design
 ------------------------------
@@ -276,13 +422,22 @@ a technician may not want to dissassemble and reassemble the product the
 exact same way. This leads to a mismatch between what the experimenter desired,
 and what was actually executed.
 
-An example
-^^^^^^^^^^
+An example (CODEX)
+^^^^^^^^^^^^^^^^^^
 
 Let's create a design with one categorical factor and three continuous
-factors. The categorical factor is hard-to-change and has four levels
-L1, L2, L3, and L4. The three continuous factors are easy-to-change. We will
+factors. The categorical factor A is hard-to-change and has four levels
+L1, L2, L3, and L4. The three continuous factors, E, F, and G, are easy-to-change. We will
 optimize for I-optimality with a full response surface model.
+
+As we are dealing with hard-to-change factors, our limiting resource
+is time. We will be using 3 days of 4 hours each, for a total of 720 minutes.
+To reset factor A, we require 2 hours. To reset any of the factors E, F, or G,
+we require only a single minute (they are easy-to-vary). The execution cost of a single
+run is 5 minutes. Some times, multiple factors are reset simultaneously. In this
+case, we assume that the transition cost is determined by the most-hard-to-change factor.
+Such a scenario arises when multiple workers or technicians can work in parallel on their
+own task.
 
 First start with the necessary imports
 
@@ -292,23 +447,26 @@ First start with the necessary imports
 >>> 
 >>> # PyOptEx imports
 >>> from pyoptex._seed import set_seed
->>> from pyoptex.doe.cost_optimal import create_cost_optimal_design, default_fn, Factor
 >>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.doe.cost_optimal import Factor
 >>> from pyoptex.doe.cost_optimal.metric import Iopt
 >>> from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
+>>> from pyoptex.doe.cost_optimal.codex import (
+>>>     create_cost_optimal_codex_design, default_fn, create_parameters
+>>> )
 
 Then we define the factors. We define factor A as categorical, and the other
-three factors E, F, G as continuous and easy-to-vary by setting the `group` 
+three factors E, F, G are continuous and easy-to-vary by setting the `group` 
 parameter to `False`. Easy-to-change parameters are assumed to be reset
 with every run, no matter the factor level. 
 Factor F is also considered to be between [2, 5] instead
 of the default [-1, 1].
 
 >>> factors = [
->>>     Factor(name='A', type='categorical', levels=['L1', 'L2', 'L3', 'L4']),
->>>     Factor(name='E', type='continuous', grouped=False),
->>>     Factor(name='F', type='continuous', grouped=False, min=2, max=5),
->>>     Factor(name='G', type='continuous', grouped=False),
+>>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3', 'L4']),
+>>>     Factor('E', type='continuous', grouped=False),
+>>>     Factor('F', type='continuous', grouped=False, min=2, max=5),
+>>>     Factor('G', type='continuous', grouped=False),
 >>> ]
 
 .. note::
@@ -319,7 +477,7 @@ of the default [-1, 1].
 
 Next, we define the response surface model. Every continuous factor is
 added with their main effect, two-factor interactions, and quadratic effect.
-The categorical factor is only added as a main effect and two-factor interactions.
+The categorical factor is only added as a main effect and two-factor interaction.
 Similar to :ref:`qc_first_design`, the second command converts the matrix of the
 model to a callable.
 
@@ -341,11 +499,7 @@ We must also specify the optimization criterion. In this case, I-optimality.
 .. note::
    Any optimization metric can be used. See :ref:`cust_metric` for more information.
 
-Finally, we specify the cost function which determine the constraints. The maximum
-budget for the experiment is 3 days of 4 hours each, for a total of 720 minutes.
-To reset factor A, we require 2 hours. To reset any of the factors E, F, or G,
-we require only a single minute (they are easy-to-vary). The execution cost of a single
-run is 5 minutes. Finally, we create the cost function using the
+We create the cost function using the
 :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`
 helper function. This cost function defines that the cost of transition between two
 consecutive runs is equal to the transition cost of the most-hard-to-change factor.
@@ -369,26 +523,27 @@ own task.
 Finally, we can generate the design
 
 >>> # Simulation parameters
->>> nsims = 1000
+>>> nsims = 10
 >>> nreps = 1
 >>> fn = default_fn(nsims, cost_fn, metric, Y2X)
+>>> params = create_parameters(factors, fn)
 >>> 
 >>> # Create design
 >>> start_time = time.time()
->>> Y, state = create_cost_optimal_design(
->>>     factors, fn, nsims=nsims, nreps=nreps
+>>> Y, state = create_cost_optimal_codex_design(
+>>>     params, nsims=nsims, nreps=nreps
 >>> )
 >>> end_time = time.time()
 
 Similar to :ref:`qc_first_design`, 
-:py:func:`create_cost_optimal_design <pyoptex.doe.cost_optimal.wrapper.create_cost_optimal_design>`
+:py:func:`create_cost_optimal_codex_design <pyoptex.doe.cost_optimal.codex.wrapper.create_cost_optimal_codex_design>`
 returns the design `Y` and the corresponding internal state
 with the encoded design matrix, model matrix, metric, cost, etc.
 
 We can write the design to a csv
 
 >>> root = os.path.split(__file__)[0]
->>> Y.to_csv(os.path.join(root, f'example_design.csv'), index=False)
+>>> Y.to_csv(os.path.join(root, f'example_cost_optimal_codex.csv'), index=False)
 
 And we can print the resulting metric, cost, number of experiments and
 execution time to the console.
@@ -418,25 +573,34 @@ plots the color map on correlations for the design.
 >>> plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 The next evaluations depend on how the design should be interpreted.
-Is it a split\ :sup:`k`\ -plot design, or a generalized staggered-level design
-(cost-optimal design).
+Is it a fixed structure design, or a cost-optimal design
+(generalized staggered-level design).
 Depending on the type, the imports are different.
 
-For a split\ :sup:`k`\ -plot design
+For a fixed structure design
 
->>> from pyoptex.doe.splitk_plot.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
+>>> from pyoptex.doe.fixed_structure.evaluate import (
+>>>     evaluate_metrics, plot_fraction_of_design_space, 
+>>>     plot_estimation_variance_matrix, estimation_variance
+>>> )
 
-For a generalized staggered-level design (or cost-optimal design) 
+For a cost-optimal design (generalized staggered-level design) 
 
->>> from pyoptex.doe.cost_optimal.evaluate import evaluate_metrics, plot_fraction_of_design_space, plot_estimation_variance_matrix, estimation_variance
+>>> from pyoptex.doe.cost_optimal.evaluate import (
+>>>     evaluate_metrics, plot_fraction_of_design_space, 
+>>>     plot_estimation_variance_matrix, estimation_variance
+>>> )
 
 Once imported, we can evaluate the design. The first command prints the metric value
 for the different provided metrics to the console. The second command
 plots a fraction of design space plot. The third command plots the covariance
 matrix of the parameter estimates. Finally, the last commands prints the variances
-of the parameter estimates to the console.
+of the parameter estimates to the console. 
 
->>> print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], factors, fn))
->>> plot_fraction_of_design_space(Y, factors, fn).show()
->>> plot_estimation_variance_matrix(Y, factors, fn, model).show()
->>> print(estimation_variance(Y, factors, fn))
+The `params` are the simulation parameters which are passed to the
+design generation functions.
+
+>>> print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
+>>> plot_fraction_of_design_space(Y, params).show()
+>>> plot_estimation_variance_matrix(Y, params, model).show()
+>>> print(estimation_variance(Y, params))

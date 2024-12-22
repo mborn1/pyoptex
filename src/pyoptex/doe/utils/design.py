@@ -103,7 +103,7 @@ def force_Zi_asc(Zi):
 
     return Zi
 
-def obs_var_from_Zs(Zs, N, ratios=None):
+def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
     """
     Computes the observation covariance matrix from the different groupings.
     Computed as V = I + sum(ratio * Zi Zi.T) (where Zi is the expanded grouping
@@ -119,15 +119,22 @@ def obs_var_from_Zs(Zs, N, ratios=None):
     ratios : np.array(1d)
         The variance ratios of the different groups compared to the variance of
         the random errors.
+    include_error : bool
+        Whether to include the random errors or not.
     
     Returns
     -------
     V : np.array(2d)
         The observation covariance matrix.
     """
-    V = np.eye(N)
+    if include_error:
+        V = np.eye(N)
+    else:
+        V = np.zeros((N, N))
+
     if ratios is None:
         ratios = np.ones(len(Zs))
+        
     Zs = [np.eye(Zi[-1]+1)[Zi] for Zi in Zs if Zi is not None]
     return V + sum(ratios[i] * Zs[i] @ Zs[i].T for i in range(len(Zs)))
 
