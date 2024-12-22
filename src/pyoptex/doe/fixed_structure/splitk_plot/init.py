@@ -6,10 +6,9 @@ import numba
 import numpy as np
 from numba.typed import List
 
-from ..._profile import profile
-from ...utils.numba import numba_all_axis1
-from ..utils.design import encode_design
-from ..utils.init import init_single_unconstrained
+from ...._profile import profile
+from ....utils.numba import numba_all_axis1
+from ...utils.design import encode_design
 
 
 @numba.njit
@@ -279,40 +278,3 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
                     
     return Y, (Yenc, Xenc)
-
-def init_random(params, n=1, complete=False):
-    """
-    Initialize a design with `n` randomly sampled runs. They must
-    be within the constraints.
-
-    Parameters
-    ----------
-    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-        The parameters of the design generation.
-    n : int
-        The number of runs
-    complete : bool
-        Whether to use the coordinates for initialization
-        or initialize fully randomly.
-
-    Returns
-    -------
-    design : np.array(2d)
-        The resulting design.
-    """
-    # Initialize
-    run = np.zeros((n, params.colstart[-1]), dtype=np.float64)
-    invalid = np.ones(n, dtype=np.bool_)
-
-    # Adjust for completeness
-    if complete:
-        coords = None
-    else:
-        coords = params.coords
-
-    # Loop until all are valid
-    while np.any(invalid):
-        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
-        invalid[invalid] = params.fn.constraints(run[invalid])
-
-    return run

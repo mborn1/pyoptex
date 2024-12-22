@@ -7,12 +7,12 @@ import pandas as pd
 from numba.typed import List
 from tqdm import tqdm
 
-from ..constraints import no_constraints
-from ..utils.design import decode_design
+from ...constraints import no_constraints
+from ...utils.design import decode_design
+from ..utils import Factor, FunctionSet, State
 from .init import initialize_feasible
 from .optimize import optimize
-from .utils import (Factor, FunctionSet, Parameters, Plot, State,
-                    extend_design, level_grps, obs_var)
+from .utils import (Parameters, Plot, extend_design, level_grps, obs_var, obs_var_Zs)
 
 
 def _compute_cs(plot_sizes, ratios, thetas):
@@ -104,29 +104,34 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     assert len(factors) > 0, 'At least one factor must be provided'
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
+        assert isinstance(f.re, Plot), f'Factor {i} with name {f.name} does not have a Plot as random effect'
     if prior is not None:
         assert isinstance(prior[0], pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
-    assert min(f.plot.level for f in factors) == 0, f'The plots must start from level 0 (easy-to-change factors)'
+    assert min(f.re.level for f in factors) == 0, f'The plots must start from level 0 (easy-to-change factors)'
 
     # Extract the plot sizes
-    nb_plots = max(f.plot.level for f in factors) + 1
+    nb_plots = max(f.re.level for f in factors) + 1
     plot_sizes = np.ones(nb_plots, dtype=np.int64) * -1
     ratios = [None] * nb_plots
     for f in factors:
         # Fix plot sizes
-        if plot_sizes[f.plot.level] == -1:
-            plot_sizes[f.plot.level] = f.plot.size
+        if plot_sizes[f.re.level] == -1:
+            plot_sizes[f.re.level] = f.re.size
         else:
-            assert plot_sizes[f.plot.level] == f.plot.size, f'Plot sizes at the same plot level must be equal, but are {plot_sizes[f.plot.level]} and {f.plot.size}'
+            assert plot_sizes[f.re.level] == f.re.size, f'Plot sizes at the same plot level must be equal, but are {plot_sizes[f.re.level]} and {f.re.size}'
 
         # Fix ratios
-        r = np.sort(f.plot.ratio) \
-                if isinstance(f.plot.ratio, tuple) or isinstance(f.plot.ratio, list) \
-                or isinstance(f.plot.ratio, np.ndarray) else [f.plot.ratio]
-        if ratios[f.plot.level] is None:
-            ratios[f.plot.level] = r
+        r = np.sort(f.re.ratio) \
+                if isinstance(f.re.ratio, tuple) or isinstance(f.re.ratio, list) \
+                or isinstance(f.re.ratio, np.ndarray) else [f.re.ratio]
+        if ratios[f.re.level] is None:
+            ratios[f.re.level] = r
         else:
-            assert all(i==j for i, j in zip(ratios[f.plot.level], r)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.plot.level]} and {r}'
+            assert all(i==j for i, j in zip(ratios[f.re.level], r)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.re.level]} and {r}'
+    assert not any(r is None for r in ratios), 'Must specify every integer level in the interval [0, nb_plots)'
+
+    # Compute number of runs
+    nruns = np.prod(plot_sizes)
 
     # Align ratios
     nratios = max([len(r) for r in ratios])
@@ -137,12 +142,12 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     ]).T
 
     # Normalize ratios
-    ratios = ratios[:, 1:] / ratios[:, 0]
+    ratios = ratios[:, 1:] / ratios[:, 0:1]
 
     # Extract parameter arrays
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    effect_levels = np.array([f.plot.level for f in factors])
+    effect_levels = np.array([f.re.level for f in factors])
     coords = List([f.coords_ for f in factors])
 
     # Encode the coordinates
@@ -158,6 +163,9 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
     # Compute cs
     cs = _compute_cs(plot_sizes, ratios, thetas)
+
+    # Compute Zs
+    Zs = obs_var_Zs(plot_sizes)
 
     # Compute Vinv
     Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])  
@@ -195,8 +203,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         assert not np.any(fn.constraintso(prior)), 'Prior contains constraint violating runs'
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
-            if f.plot.level != 0:
-                p = prior[:, i].reshape(alphas_old[f.plot.level], -1)
+            if f.re.level != 0:
+                p = prior[:, i].reshape(alphas_old[f.re.level], -1)
                 assert np.all(np.all(p == np.expand_dims(p[:, 0], 1), axis=1)), f'Prior is not a split-plot design for factor {f.name}'
 
         # Augment the design
@@ -218,35 +226,21 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     
     # Create the parameters
     params = Parameters(
-        fn, effect_types, effect_levels, grps, plot_sizes, ratios, 
-        coords, prior, colstart, cs, alphas, thetas, thetas_inv, Vinv,
+        fn, factors, nruns, effect_types, effect_levels, grps, ratios, 
+        coords, prior, colstart, Zs, Vinv, plot_sizes, cs, alphas, thetas, thetas_inv,
         use_formulas
     )
     
     return params
 
-def create_splitk_plot_design(
-        factors, fn, prior=None, grps=None, use_formulas=True, 
-        n_tries=10, max_it=10000, validate=False
-    ):
+def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     """
     Creates an optimal design for the specified factors, using the functionset.
 
     Parameters
     ----------
-    factors : list(:py:class:`pyoptex.doe.splitk_plot.utils.Factor`)
-        The list of factors.
-    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
-        A set of operators for the algorithm.
-    prior : None or (pd.DataFrame, list(:py:class:`pyoptex.doe.splitk_plot.utils.Plot`)
-        A possible prior design to use for augmentation. Must be 
-        denormalized and decoded. The list of plots represents the configuration
-        of the prior.
-    grps : list(np.array(1d) or None)
-        A list of groups to optimize for each factor. If None, all groups are optimized
-        for that factor.
-    use_formulas : bool
-        Whether to use the internal update formulas or not.
+    params : :py:class:`pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters`)
+        The simulation parameters.
     n_tries : int
         The number of random start repetitions. Must be larger than zero.
     max_it : int
@@ -267,16 +261,13 @@ def create_splitk_plot_design(
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
     assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
 
-    # Extract the parameters
-    params = create_parameters(factors, fn, prior, grps, use_formulas)
-
     # Pre initialize metric
     params.fn.metric.preinit(params)
 
     # Main loop
     best_metric = -np.inf
     best_state = None
-    for i in tqdm(range(n_tries)):
+    for _ in tqdm(range(n_tries)):
 
         # Optimize the design
         Y, state = optimize(params, max_it, validate=validate)
@@ -288,8 +279,8 @@ def create_splitk_plot_design(
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in factors])
-    for f in factors:
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+    for f in params.factors:
         Y[str(f.name)] = f.denormalize(Y[str(f.name)])
 
     return Y, best_state

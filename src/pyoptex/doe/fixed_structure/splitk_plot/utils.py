@@ -8,12 +8,10 @@ import numba
 import numpy as np
 import pandas as pd
 
-from ..utils.design import create_default_coords, encode_design
+from ..utils import Parameters as Parameterso, RandomEffect as RandomEffect
 
-FunctionSet = namedtuple('FunctionSet', 'metric Y2X constraints constraintso init')
-Parameters = namedtuple('Parameters', 'fn effect_types effect_levels grps plot_sizes ratios coords prior colstart c alphas thetas thetas_inv Vinv compute_update')
+Parameters = namedtuple('Parameters', ' '.join(Parameterso._fields) + ' plot_sizes c alphas thetas thetas_inv compute_update')
 Update = namedtuple('Update', 'level grp runs cols new_coord old_coord Xi_old old_metric')
-State = namedtuple('State', 'Y X metric')
 
 __Plot__ = namedtuple('__Plot__', 'level size ratio', defaults=(0, 1, 1))
 class Plot(__Plot__):
@@ -29,93 +27,7 @@ class Plot(__Plot__):
             assert self.ratio >= 0, f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
         return self
 
-__Factor__ = namedtuple('__Factor__', 'name plot type min max levels coords', 
-                        defaults=(None, None, 'cont', -1, 1, None, None))
-class Factor(__Factor__):
-    __slots__ = ()
-
-    def __new__(cls, *args, **kwargs):
-
-        # Create the object
-        self = super(Factor, cls).__new__(cls, *args, **kwargs)
-
-        # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
-        if self.is_continuous:
-            assert isinstance(self.min, float) or isinstance(self.min, int), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
-            assert isinstance(self.max, float) or isinstance(self.max, int), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
-            assert self.min < self.max, f'Factor {self.name} must have a lower minimum than maximum, but is {self.min} vs. {self.max}'
-            assert self.coords is None, f'Cannot specify coordinates for continuous factors, but factor {self.name} has {self.coords}. Please specify the levels'
-            assert self.levels is None or len(self.levels) >= 2, f'A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}'
-        else:
-            assert len(self.levels) >= 2, f'A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}'
-            if self.coords is not None:
-                coords = np.array(self.coords)
-                assert len(coords.shape) == 2, f'Factor {self.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions'
-                assert coords.shape[0] == len(self.levels), f'Factor {self.name} requires one encoding for every level, but has {len(self.levels)} levels and {coords.shape[0]} encodings'
-                assert coords.shape[1] == len(self.levels) - 1, f'Factor {self.name} has N levels and requires N-1 dummy columns, but has {len(self.levels)} levels and {coords.shape[1]} dummy columns'
-                assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Factor {self.name} does not have a valid (full rank) encoding'
-        assert isinstance(self.plot, Plot), f'Factor {self.name} does not have a Plot object as plot parameter'
-
-        return self
-
-    @property
-    def mean(self):
-        return (self.min + self.max) / 2
-
-    @property
-    def scale(self):
-        return (self.max - self.min) / 2
-
-    @property
-    def is_continuous(self):
-        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative']
-
-    @property 
-    def is_categorical(self):
-        return not self.is_continuous
-
-    @property
-    def coords_(self):
-        if self.coords is None:
-            if self.is_continuous:
-                if self.levels is not None:
-                    coord = self.normalize(np.array(self.levels))
-                else:
-                    coord = create_default_coords(1)
-            else:
-                coord = create_default_coords(len(self.levels))
-                coord = encode_design(coord, np.array([len(self.levels)]))
-        else:
-            coord = np.array(self.coords).astype(np.float64)
-        return coord
-
-    def normalize(self, data):
-        if self.is_continuous:
-            return (data - self.mean) / self.scale
-        else:
-            m = {lname: i for i, lname in enumerate(self.levels)}
-            if isinstance(data, str):
-                x = m[data]
-            else:
-                x = pd.Series(data).map(m)
-                if isinstance(data, np.ndarray):
-                    x = x.to_numpy()
-            return x
-
-    def denormalize(self, data):
-        if self.is_continuous:
-            return data * self.scale + self.mean
-        else:
-            m = {i: lname for i, lname in enumerate(self.levels)}
-            if isinstance(data, int) or isinstance(data, float):
-                x = m[int(data)]
-            else:
-                x = pd.Series(data).astype(int).map(m)
-                if isinstance(data, np.ndarray):
-                    x = x.to_numpy()
-            return x
-
+################################################
 
 def obs_var_Zs(plot_sizes):
     """
@@ -297,7 +209,7 @@ def terms_per_plot_level(factors, model):
     model = model[col_names].to_numpy()
 
     # Initialize
-    plot_levels = np.array([f.plot.level for f in factors])
+    plot_levels = np.array([f.re.level for f in factors])
     max_split_level = np.max(plot_levels)
     split_levels = np.zeros(max_split_level+1, np.int64)
 
@@ -357,10 +269,10 @@ def validate_plot_sizes(factors, model):
         The model dataframe
     """
     # Compute plot sizes
-    nb_plots = max(f.plot.level for f in factors) + 1
+    nb_plots = max(f.re.level for f in factors) + 1
     plot_sizes = np.zeros(nb_plots, dtype=np.int64)
     for f in factors:
-        plot_sizes[f.plot.level] = f.plot.size
+        plot_sizes[f.re.level] = f.re.size
 
     # Compute the terms per level
     tppl = terms_per_plot_level(factors, model)
@@ -374,5 +286,3 @@ def validate_plot_sizes(factors, model):
     # Validate they are above minimum
     min_levels = min_plot_levels(terms_per_plot_level(factors, model))
     assert np.all(plot_sizes >= req), f'The minimum sized split^k-plot design has sizes {min_levels}'
-    
-    

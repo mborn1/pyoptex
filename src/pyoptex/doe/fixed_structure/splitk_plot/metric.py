@@ -6,44 +6,22 @@ import warnings
 
 import numpy as np
 
-from ..utils.comp import outer_integral
-from .cov import no_cov
+from ..metric import (
+    Dopt as Dopto, 
+    Aopt as Aopto, 
+    Iopt as Iopto
+)
 from .formulas import (compute_update_UD, det_update_UD, inv_update_UD,
                        inv_update_UD_no_P)
-from .init import init_random
 
 
-class Metric:
+class SplitkPlotMetricMixin:
     """
-    The base class for a metric
-
-    Attributes
-    ----------
-    cov : func(Y, X)
-        A function computing the covariate parameters
-        and potential extra random effects.
+    The base mixin class for a splitk_plot metric.
+    To be used in multiple inheritance together with
+    :py:class:`pyoptex.doe.fixed_structure.metric.Metric` as
+    `class MyCustomMetric(SplitkPlotMetricMixin, Metric)`.
     """
-    def __init__(self, cov=None):
-        """
-        Creates the metric
-
-        Parameters
-        ----------
-        cov : func(Y, X)
-            The covariance function
-        """
-        self.cov = cov or no_cov
-
-    def preinit(self, params):
-        """
-        Pre-initializes the metric
-
-        Parameters
-        ----------
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        """
-        pass
 
     def _init(self, Y, X, params):
         """
@@ -76,7 +54,8 @@ class Metric:
             The optimization parameters.
         """
         if params.compute_update:
-            self._init(Y, X, params)
+            return self._init(Y, X, params)
+        return super().init(Y, X, params)
 
     def _update(self, Y, X, params, update):
         """
@@ -177,33 +156,8 @@ class Metric:
         if params.compute_update:
             return self._accepted(Y, X, params, update)
 
-    def call(self, Y, X, params):
-        """
-        Computes the criterion for the provided
-        design and model matrices.
 
-        .. note::
-            The metric is maximized in the algorithm,
-            so the in case of minimization, the negative
-            value should be returned.
-
-        Parameters
-        ----------
-        Y : np.array(2d)
-            The updated design matrix.
-        X : np.array(2d)
-            The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        
-        Returns
-        -------
-        metric : float
-            The result metric (to be maximized).
-        """
-        raise NotImplementedError('Must implement a call function')
-
-class Dopt(Metric):
+class Dopt(SplitkPlotMetricMixin, Dopto):
     """
     The D-optimality criterion.
     Computes the geometric mean in case multiple Vinv are provided.
@@ -236,37 +190,6 @@ class Dopt(Metric):
         self.P = None
         self.U = None
         self.D = None
-
-    def call(self, Y, X, params):
-        """
-        Computes the D-optimality criterion.
-        Computes the geometric mean in case multiple Vinv are provided.
-
-        Parameters
-        ----------
-        Y : np.array(2d)
-            The updated design matrix.
-        X : np.array(2d)
-            The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        
-        Returns
-        -------
-        metric : float
-            The D-optimality criterion value.
-        """
-        # Covariate expansion
-        _, X = self.cov(Y, X)
-
-        # Compute information matrix
-        M = X.T @ params.Vinv @ X
-
-        # Compute D-optimality
-        return np.power(
-            np.product(np.maximum(np.linalg.det(M), 0)),
-            1/(X.shape[1] * len(params.Vinv))
-        )
 
     def _init(self, Y, X, params):
         """
@@ -361,7 +284,7 @@ class Dopt(Metric):
             warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
             raise e
  
-class Aopt(Metric):
+class Aopt(SplitkPlotMetricMixin, Aopto):
     """
     The A-optimality criterion.
     Computes the average trace if multiple Vinv are provided.
@@ -371,6 +294,8 @@ class Aopt(Metric):
     cov : func(Y, X)
         A function computing the covariate parameters
         and potential extra random effects.
+    W : None or np.array(1d)
+        The weights for computing A-optimality.
     Minv : np.array(3d)
         The inverses of the information matrices.
     Mup : np.array(3d)
@@ -387,52 +312,9 @@ class Aopt(Metric):
         cov : func(Y, X)
             The covariance function.
         """
-        super().__init__(cov)
-        self.W = W
+        super().__init__(W, cov)
         self.Minv = None
         self.Mup = None
-
-    def call(self, Y, X, params):
-        """
-        Computes the A-optimality criterion.
-        Computes the average trace if multiple Vinv are provided.
-
-        Parameters
-        ----------
-        Y : np.array(2d)
-            The updated design matrix.
-        X : np.array(2d)
-            The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        
-        Returns
-        -------
-        metric : float
-            The negative of the A-optimality criterion value.
-        """
-        # Covariate expansion
-        _, X = self.cov(Y, X)
-
-        # Compute information matrix
-        M = X.T @ params.Vinv @ X
-
-        # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(X) >= X.shape[1]:
-            # Extrace variances
-            Minv = np.linalg.inv(M)
-            diag = np.array([np.diag(m) for m in Minv])
-
-            # Weight
-            if self.W is not None:
-                diag *= self.W
-
-            # Compute average
-            trace = np.mean(np.sum(diag, axis=-1))
-
-            # Invert for minimization
-            return -trace
-        return -np.inf
 
     def _init(self, Y, X, params):
         """
@@ -533,7 +415,7 @@ class Aopt(Metric):
         # Update Minv
         self.Minv -= self.Mup
 
-class Iopt(Metric):
+class Iopt(SplitkPlotMetricMixin, Iopto):
     """
     The I-optimality criterion.
     Computes the average (average) prediction variance if multiple Vinv are provided.
@@ -566,69 +448,9 @@ class Iopt(Metric):
             randomly initialize the samples to generate the
             moments matrix.
         """
-        super().__init__(cov)
-        self.complete = complete
-        self.moments = None
-        self.n = n
+        super().__init__(n, cov, complete)
         self.Minv = None
         self.Mup = None
-
-    def preinit(self, params):
-        """
-        Pre-initializes the metric
-
-        Parameters
-        ----------
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        """
-        # Create the random samples
-        samples = init_random(params, self.n, complete=self.complete)
-        self.samples = params.fn.Y2X(samples)
-
-        # Expand covariates
-        _, self.samples = self.cov(samples, self.samples, random=True)
-
-        # Compute moments matrix and normalization factor
-        self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
-
-    def call(self, Y, X, params):
-        """
-        Computes the I-optimality criterion.
-        Computes the average (average) prediction variance if 
-        multiple Vinv are provided.
-
-        Parameters
-        ----------
-        Y : np.array(2d)
-            The updated design matrix.
-        X : np.array(2d)
-            The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
-            The optimization parameters.
-        
-        Returns
-        -------
-        metric : float
-            The negative of the I-optimality criterion value.
-        """
-        # Covariate expansion
-        _, X = self.cov(Y, X)
-
-        # Apply covariates
-        M = X.T @ params.Vinv @ X
-
-        # Check if invertible (more stable than relying on inverse)
-        if np.linalg.matrix_rank(X) >= X.shape[1]:
-            # Compute average trace (normalized)
-            trace = np.mean(np.trace(np.linalg.solve(
-                M, 
-                np.broadcast_to(self.moments, (params.Vinv.shape[0], *self.moments.shape))
-            ), axis1=-2, axis2=-1))
-
-            # Invert for minimization
-            return -trace 
-        return -np.inf 
 
     def _init(self, Y, X, params):
         """

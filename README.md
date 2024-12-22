@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyoptex.svg)](https://pypi.org/project/pyoptex/) [![PyPI Downloads](https://img.shields.io/pypi/dm/pyoptex.svg?label=PyPI%20downloads)](https://pypi.org/project/pyoptex/) |
-| Meta | [![License - BSD 3-Clause](https://img.shields.io/pypi/l/pyoptex.svg)](https://github.com/mborn1/pyoptex/blob/main/LICENSE) [![docs](https://img.shields.io/readthedocs/pyoptex)](https://readthedocs.org/projects/pyoptex/badge/?version=latest) |
+| Meta | [![License - BSD 3-Clause](https://img.shields.io/pypi/l/pyoptex.svg)](https://github.com/mborn1/pyoptex/blob/main/LICENSE) [![docs](https://img.shields.io/readthedocs/pyoptex)](https://pyoptex.readthedocs.io/en/latest/) |
 
 Welcome! PyOptEx is a Python package to create experimental designs.
 The focus is on accessibility for both engineers from industry using design
