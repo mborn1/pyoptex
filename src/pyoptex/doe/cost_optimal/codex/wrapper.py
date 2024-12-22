@@ -9,7 +9,8 @@ from numba.typed import List
 from ...constraints import no_constraints
 from ...utils.design import decode_design, encode_design
 from ..init import init_feasible
-from ..utils import Factor, FunctionSet, Parameters
+from ..utils import Factor, Parameters
+from .utils import FunctionSet
 from .accept import exponential_accept_rel
 from .insert import insert_optimal
 from .remove import remove_optimal_onebyone
@@ -86,7 +87,7 @@ def default_fn(
 
     Returns
     -------
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`pyoptex.doe.cost_optimal.codex.utils.FunctionSet`
         The function set.
     """
     # Set default objects
@@ -97,8 +98,9 @@ def default_fn(
 
     # Return the function set
     return FunctionSet(
-        Y2X, init, sample, cost, metric, temperature,
-        accept, restart, insert, remove, constraints.encode(),
+        Y2X, init, cost, metric, constraints.encode(), 
+        sample, temperature,
+        accept, restart, insert, remove, 
         optimizers, final_optimizers
     )
 
@@ -112,7 +114,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     ----------
     factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The list of factors.
-    fn : :py:class:`FunctionSet <pyoptex.doe.cost_optimal.utils.FunctionSet>`
+    fn : :py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
         A set of operators for the algorithm.
     prior : None or pd.DataFrame
         A possible prior design to use for augmentation. Must be 

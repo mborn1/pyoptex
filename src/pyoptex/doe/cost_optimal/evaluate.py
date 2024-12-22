@@ -253,7 +253,7 @@ def plot_estimation_variance_matrix(Y, params, model=None):
         The plotly figure of a heatmap of the parameter estimation covariance matrix.
     """
     # Compute estimation variance matrix
-    Minv, params = estimation_variance_matrix(Y, params)
+    Minv = estimation_variance_matrix(Y, params)
 
     # Determine the encoded column names
     if model is None:

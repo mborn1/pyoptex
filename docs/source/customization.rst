@@ -67,17 +67,17 @@ Metrics or optimization criteria can also be fully customized, which can be
 interesting for researchers who which to develop such a new criterion.
 The method to create a new metric depends on which algorithm it targets
 
-Split\ :sup:`k`\ -plot design
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Fixed structure design
+^^^^^^^^^^^^^^^^^^^^^^
 
 The easiest way to create a new criterion is to ignore any potential
-update formulas. First, import the :py:class:`interface <pyoptex.doe.splitk_plot.metric.Metric>` 
+update formulas. First, import the :py:class:`interface <pyoptex.doe.fixed_structure.metric.Metric>` 
 which should be extended
 
->>> from pyoptex.doe.splitk_plot.metric import Metric
+>>> from pyoptex.doe.fixed_structure.metric import Metric
 
 The user is required to implement the 
-:py:func:`call <pyoptex.doe.splitk_plot.metric.Metric.call>` function.
+:py:func:`call <pyoptex.doe.fixed_structure.metric.Metric.call>` function.
 The example below implements the D-optimal criterion for the first
 set of a-priori variance ratios.
 
@@ -101,26 +101,46 @@ We first compute the information matix, and then compute :math:`|M|^{1/p}`, with
     in :ref:`cust_bayesian_ratio`.
 
 If the criterion requires some pre-initialization, this can be coded in the
-:py:func:`preinint <pyoptex.doe.splitk_plot.metric.Metric.preinit>` function.
+:py:func:`preinint <pyoptex.doe.fixed_structure.metric.Metric.preinit>` function.
 For instance, the I-optimal criterion is required to compute the moments matrix
 and this does not change with the current design.
 
-If the user has fully developed a criterion and wishes to improve the
-execution speed of the algorithm, it is possible to devise update formulas.
-In this case, the user should implement three additional functions:
-:py:func:`_init <pyoptex.doe.splitk_plot.metric.Metric._init>`, 
-:py:func:`_update <pyoptex.doe.splitk_plot.metric.Metric._update>`, 
-and :py:func:`_accepted <pyoptex.doe.splitk_plot.metric.Metric._accepted>`.
+.. warning::
+    The above examples never considered any potential covariate function
+    such as a time trend. Without update formulas, the `call` function
+    should first call
+    
+    >>> Y, X = self.cov(Y, X)
 
-The first after the initialization of a random design. For example in D-optimality, 
-the user can initialize the inverse of the information matrix using.
+Split\ :sup:`k`\ -plot design
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Split\ :sup:`k`\ -plot designs are specialized versions of the fixed structure
+designs. They permit the use of update formulas.
+
+The best way to create a split\ :sup:`k`\ -plot metric is to
+extend from a fixed_structure metric as follows
+
+>>> from pyoptex.doe.fixed_structure.splitk_plot import SplitkPlotMetricMixin
+>>> 
+>>> class CustomSplitkMetric(SplitkPlotMetricMixin, CustomMetric):
+>>>     pass
+
+By default, the metric does not yet use update formulas. In order to
+do so, the user should implement three additional functions:
+:py:func:`_init <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin._init>`, 
+:py:func:`_update <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin._update>`, 
+and :py:func:`_accepted <pyoptex.fixed_structure.doe.splitk_plot.metric.SplitkPlotMetricMixin._accepted>`.
+
+The first function occurs after the initialization of a random design. 
+For example in D-optimality, the user can initialize the inverse of the information matrix using.
 
 >>> def _init(self, Y, X, params):
 >>>     M = X.T @ params.Vinv @ X
 >>>     self.Minv = np.linalg.inv(M)
 
 Next, whenever an update is made to a coordinate from the coordinate-exchange
-algorithm, the :py:func:`_update <pyoptex.doe.splitk_plot.metric.Metric._update>`
+algorithm, the :py:func:`_update <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin._update>`
 function is called. This function computes the update to the metric, given the
 update.
 
@@ -148,14 +168,14 @@ These formulas rely on the fact that any coordinate update to the
 information matrix can be expressed as :math:`M^* = M + U^T D U`. In order to
 do so, a subfunction was developed which creates the matrices `U` and `D`.
 Next, we check for an update to the determinant using
-:py:func:`det_update_UD <pyoptex.doe.splitk_plot.formulas.det_update_UD>`.
+:py:func:`det_update_UD <pyoptex.doe.fixed_structure.splitk_plot.formulas.det_update_UD>`.
 Finally, we determine what the update to the D-criterion would be in case the
 proposed coordinate-exchange would be applied. For I-optimality, the
-subfunction :py:func:`inv_update_UD_no_P <pyoptex.doe.splitk_plot.formulas.inv_update_UD_no_P>`
+subfunction :py:func:`inv_update_UD_no_P <pyoptex.doe.fixed_structure.splitk_plot.formulas.inv_update_UD_no_P>`
 can be used. 
 
 If the update is accepted by the coordinate-exchange algorithm, the 
-:py:func:`_accepted <pyoptex.doe.splitk_plot.metric.Metric._accepted>` function
+:py:func:`_accepted <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin._accepted>` function
 is called, and we should update our internal caches. In the D-optimality case,
 we should update our `Minv` parameter.
 
@@ -168,17 +188,11 @@ we should update our `Minv` parameter.
 
 Note that some times, update formulas of the above form can be unstable.
 In such a case, the design can be created by passing
-`use_formulas=False` to :py:func:`create_splitk_plot_design <pyoptex.doe.splitk_plot.wrapper.create_splitk_plot_design>`
+`use_formulas=False` to :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
 
 .. warning::
-    The above examples never considered any potential covariate function
-    such as a time trend. Without update formulas, the `call` function
-    should first call
-    
-    >>> Y, X = self.cov(Y, X)
-
-    When using update formulas, the exact implementation depends on the
-    update formula. See the pre-implemented metrics for inspiration.
+    The above update formulas also never considered any covariate function.
+    The exact implementation depends on the criterion.
 
 Cost-optimal design
 ^^^^^^^^^^^^^^^^^^^
@@ -307,7 +321,7 @@ Some times, certain combinations of factor levels are impossible. These impossib
 combinations can be accounted for by a constraints function. The function is
 expressed as a script which should return true if the constraints are violated
 (by default, or if `exclude=True`) or return true if the constraints are met 
-(if `exclude=False`)
+(if `exclude=False`).
 
 For example, when factor A is level 1, B cannot be smaller than 2
 
@@ -323,7 +337,7 @@ or
 >>> )
 
 These constraints should be added to the 
-:py:class:`FunctionSet <pyoptex.doe.cost_optimal.utils.FunctionSet>`
+:py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
 via the `constraints` parameter in
 :py:func:`default_fn <pyoptex.doe.cost_optimal.wrapper.default_fn>`
 
@@ -337,13 +351,13 @@ expected to be important. Such variables, or additional random effects can be
 added by means of a covariate function. The exact interface depends on which
 algorithm the covariate function targets.
 
-The covariance function is added as a parameter to the criterion. Assume the covariance
+The covariate function is added as a parameter to the criterion. Assume the covariate
 function is called `cov`.
 
 >>> metric = Dopt(cov=cov)
 
-An example of a preimplemented covariance function is
-:py:func:`time trend (splitk plot) <pyoptex.doe.splitk_plot.cov.cov_time_trend>`
+An example of a preimplemented covariate function is
+:py:func:`time trend (splitk plot) <pyoptex.doe.fixed_structure.cov.cov_time_trend>`
 
 >>> metric = Dopt(cov=cov_time_trend(5, 20))
 
@@ -351,10 +365,10 @@ An example of a preimplemented covariance function is
     The inputs of the covariate functions are encoded design matrices.
 
 
-Split\ :sup:`k`\ -plot design
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Fixed structure design
+^^^^^^^^^^^^^^^^^^^^^^
 
-A covariance function is a function which alters the design and model matrix
+A covariate function is a function which alters the design and model matrix
 before computing the optimization criterion. For example, a time trend can be
 added as follows. Assume that we want a time trend for a design with
 20 runs, which are spread over 5 days (or 5 distinct time points).
@@ -420,7 +434,7 @@ is expressed in minutes). The `random` parameter again specifies whether
 the augmentation should be for random samples, such as those used to compute
 the moments matrix in I-optimality, or for the actual design.
 
-In contrast to a split\ :sup:`k`\ -plot design, the covariate function of
+In contrast to a fixed structure design, the covariate function of
 a cost-optimal design can also add additional random effects by altering
 `Zs` and `Vinv`. Look at :py:func:`cov_block <pyoptex.doe.cost_optimal.cov.cov_block>`
 on how to add an additional blocking effect based on the cumulative cost (e.g. time).
@@ -431,6 +445,12 @@ Design augmentation
 -------------------
 
 Design can be augmented in many ways by specifying a prior design.
+
+Fixed structure design
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning::
+  This is yet to be implemented for generic, fixed structure designs.
 
 Split\ :sup:`k`\ -plot design
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -449,12 +469,12 @@ design. For example, assume one cateforical factor A and two continuous factors 
 >>> )
 
 The prior is a tuple with as the first element the denormalized prior dataframe.
-The second element is a list of :py:class:`Plot <pyoptex.doe.splitk_plot.utils.Plot>`
+The second element is a list of :py:class:`Plot <pyoptex.doe.fixed_structure.splitk_plot.utils.Plot>`
 objects defining the structure of the prior design. For example, the above prior is 
 a split-plot design with 2 whole plots, and two runs per whole plot.
 
 We can now use the 
-:py:func:`create_splitk_plot_design <pyoptex.doe.splitk_plot.wrapper.create_splitk_plot_design>`
+:py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
 to augment this design to any other split\ :sup:`k`\ -plot design. For example,
 augmenting to 4 whole plots with 2 runs per whole plot simply adds 2 additional
 whole plots. 
@@ -583,6 +603,10 @@ be evaluated. For example
 
 for a cost-optimal design or
 
+>>> re = RandomEffect(Z, ratio=[0.1, 10])
+
+for a fixed structure design or
+
 >>> plot = Plot(level=1, size=5, ratio=[0.1, 10])
 
 for a split\ :sup:`k`\ -plot design.
@@ -590,8 +614,7 @@ for a split\ :sup:`k`\ -plot design.
 .. note::
     The ratios specified by the user must all be of equal size or just
     a single value. In case of a collection, two ratios
-    must be specified per factor for the cost-optimal, and two per plot for
-    the split\ :sup:`k`\ -plot design.
+    must be specified per factor, random effect, or plot.
 
     The following options are feasible, given the factor from above
 
@@ -611,13 +634,13 @@ with its first dimension the same size as the number of sets of variance ratios.
 
 .. _cust_cost_optimal_operator:
 
-Custom cost-optimal operators
-------------------------------------
+Custom cost-optimal operators (CODEX)
+-------------------------------------
 
 Each operator of the cost-optimal design algorithm can be
 customized. Look at the source code for each of the default
 operators to have an idea of the necessary inputs and outputs.
 
 Any custom operator can be provided by specifying it during the
-:py:class:`FunctionSet <pyoptex.doe.cost_optimal.utils.FunctionSet>`
-creation with :py:func:`default_fn <pyoptex.doe.cost_optimal.wrapper.default_fn>`.
+:py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
+creation with :py:func:`default_fn <pyoptex.doe.cost_optimal.codex.wrapper.default_fn>`.
