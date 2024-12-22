@@ -4,13 +4,13 @@ Module for all insert functions of the CODEX algorithm
 
 import numpy as np
 
-from ..._profile import profile
-from ...utils.numba import numba_insert_axis0
-from ..utils.design import force_Zi_asc, obs_var_from_Zs
+from ...._profile import profile
+from ....utils.numba import numba_insert_axis0
+from ...utils.design import force_Zi_asc, obs_var_from_Zs
 from .formulas import (NO_UPDATE, detect_block_end_from_start,
                        insert_update_vinv)
 from .simulation import State
-from .utils import obs_var_Zs
+from ..utils import obs_var_Zs
 
 
 def groups_insert(Yn, Zs, pos, colstart):
@@ -82,16 +82,16 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         The new run to be added to the design.
     pos : int
         The position at which to insert the new run.
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     new_X : np.array(1, 1d)
         The model matrix part of that run = x2fx(new_run)
     
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after inserting the run at that position.
     """
     # Compute new X
@@ -139,14 +139,14 @@ def insert_last(new_run, state, params):
     ----------
     new_run : np.array(1, 1d)
         The new run to be added to the design.
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after inserting the run at the last position.
     """
     # Insert in last position
@@ -162,14 +162,14 @@ def insert_optimal(new_run, state, params):
     ----------
     new_run : np.array(1, 1d)
         The new run to be added to the design.
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after inserting the run.
     """
     # Compute new X

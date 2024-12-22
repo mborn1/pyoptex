@@ -1,5 +1,5 @@
 """
-Module for all utility functions of the CODEX algorithm
+Module for all utility functions of the cost optimal designs
 """
 
 from collections import namedtuple
@@ -13,7 +13,7 @@ from ..constraints import no_constraints
 from ..utils.design import create_default_coords, encode_design
 
 FunctionSet = namedtuple('FunctionSet', 'Y2X init sample cost metric temp accept restart insert remove constraints optimizers final_optimizers', defaults=(None,)*10 + (no_constraints, (), None))
-Parameters = namedtuple('Parameters', 'fn colstart coords ratios effect_types grouped_cols prior stats use_formulas')
+Parameters = namedtuple('Parameters', 'fn factors colstart coords ratios effect_types grouped_cols prior stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
 __Factor__ = namedtuple('__Factor__', 'name grouped ratio type min max levels coords', 
                         defaults=(None, True, 1, 'cont', -1, 1, None, None))
@@ -197,8 +197,8 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
 def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`pyoptex.doe.cost_optimal.utils.obs_var_Zs` 
-    followed by :py:func:`pyoptex.doe.utils.design.obs_var_from_Zs`.
+    :py:func:`obs_var_Zs <pyoptex.doe.cost_optimal.utils.obs_var_Zs>` 
+    followed by :py:func:`obs_var_from_Zs <pyoptex.doe.utils.design.obs_var_from_Zs>`.
 
     Parameters
     ----------
@@ -249,4 +249,3 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
             V += ratios[i] * Z @ Z.T
     
     return V
-

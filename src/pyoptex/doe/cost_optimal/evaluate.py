@@ -12,10 +12,9 @@ from ..utils.design import encode_design, obs_var_from_Zs
 from ..utils.model import model2encnames
 from .metric import Iopt
 from .utils import obs_var_Zs
-from .wrapper import create_parameters
 
 
-def evaluate_metrics(Y, metrics, factors, fn):
+def evaluate_metrics(Y, params, metrics):
     """
     Evaluate the design on a set of metrics.
 
@@ -23,12 +22,10 @@ def evaluate_metrics(Y, metrics, factors, fn):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    metrics : list(:py:class:`pyoptex.doe.cost_optimal.metric.Metric`)
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+    metrics : list(:py:class:`Metric <pyoptex.doe.cost_optimal.metric.Metric>`)
         The list of metrics to evaluate.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
     
     Returns
     -------
@@ -38,15 +35,12 @@ def evaluate_metrics(Y, metrics, factors, fn):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
-    # Create the design parameters
-    params = create_parameters(factors, fn)
-
     # Normalize Y
-    for f in factors:
+    for f in params.factors:
         Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    col_names = [str(f.name) for f in factors]
+    col_names = [str(f.name) for f in params.factors]
     Y = Y[col_names].to_numpy()
 
     # Encode the design
@@ -68,7 +62,7 @@ def evaluate_metrics(Y, metrics, factors, fn):
     # Compute the metrics
     return [metric.call(Y, X, Zs, Vinv, costs) for metric in metrics]
 
-def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
+def fraction_of_design_space(Y, params, N=10000):
     """
     Computes the fraction of the design space. It returns an array of relative
     prediction variances corresponding to the quantiles of np.linspace(0, 1, `N`).
@@ -77,14 +71,10 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
     N : int
         The number of samples to evaluate.
-    return_params : bool
-        Whether to return the created :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
 
     Returns
     -------
@@ -95,15 +85,12 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
-    # Create the design parameters
-    params = create_parameters(factors, fn)
-
     # Normalize Y
-    for f in factors:
+    for f in params.factors:
         Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    col_names = [str(f.name) for f in factors]
+    col_names = [str(f.name) for f in params.factors]
     Y = Y[col_names].to_numpy()
 
     # Encode the design
@@ -119,7 +106,7 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
     costs = params.fn.cost(Y, params)
 
     # Initialize Iopt
-    iopt = Iopt(n=N, cov=fn.metric.cov)
+    iopt = Iopt(n=N, cov=params.fn.metric.cov)
     iopt.init(params)
 
     # Compute information matrix
@@ -140,11 +127,9 @@ def fraction_of_design_space(Y, factors, fn, N=10000, return_params=False):
     )
     pred_var = np.sort(pred_var)
 
-    if return_params:
-        return pred_var, params
     return pred_var
 
-def plot_fraction_of_design_space(Y, factors, fn, N=10000):
+def plot_fraction_of_design_space(Y, params, N=10000):
     """
     Plots the fraction of the design space. One is plotted
     for each set of a-prior variance components.
@@ -153,10 +138,8 @@ def plot_fraction_of_design_space(Y, factors, fn, N=10000):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
     N : int
         The number of samples to evaluate.
 
@@ -166,9 +149,7 @@ def plot_fraction_of_design_space(Y, factors, fn, N=10000):
         The plotly figure with the fraction of design space plot.
     """
     # Compute prediction variances
-    pred_var, params = fraction_of_design_space(
-        Y, factors, fn, N=N, return_params=True
-    )
+    pred_var = fraction_of_design_space(Y, params, N=N)
 
     # Create the figure
     fig = go.Figure()
@@ -176,7 +157,7 @@ def plot_fraction_of_design_space(Y, factors, fn, N=10000):
         color = DEFAULT_PLOTLY_COLORS[i]
         name = ', '.join([
             f'{str(f.name)}={r:.3f}' 
-            for f, r in zip(factors, params.ratios[i]) 
+            for f, r in zip(params.factors, params.ratios[i]) 
             if f.grouped
         ])
         fig.add_trace(go.Scatter(
@@ -201,7 +182,7 @@ def plot_fraction_of_design_space(Y, factors, fn, N=10000):
 
     return fig
 
-def estimation_variance_matrix(Y, factors, fn, return_params=False):
+def estimation_variance_matrix(Y, params):
     """
     Computes the parameter estimation covariance matrix.
 
@@ -209,12 +190,8 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
-    return_params : bool
-        Whether to return the created :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
 
     Returns
     -------
@@ -225,15 +202,12 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
 
-    # Create the design parameters
-    params = create_parameters(factors, fn)
-
     # Normalize Y
-    for f in factors:
+    for f in params.factors:
         Y[str(f.name)] = f.normalize(Y[str(f.name)])
 
     # Transform Y to numpy
-    col_names = [str(f.name) for f in factors]
+    col_names = [str(f.name) for f in params.factors]
     Y = Y[col_names].to_numpy()
 
     # Encode the design
@@ -249,19 +223,16 @@ def estimation_variance_matrix(Y, factors, fn, return_params=False):
     costs = params.fn.cost(Y, params)
 
     # Compute information matrix
-    if fn.metric.cov is not None:
-        _, X, _, Vinv = fn.metric.cov(Y, X, Zs, Vinv, costs)
+    if params.fn.metric.cov is not None:
+        _, X, _, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
     M = X.T @ Vinv @ X
 
     # Compute inverse of information matrix
     Minv = np.linalg.inv(M)
 
-    # Create figure
-    if return_params:
-        return Minv, params
     return Minv
 
-def plot_estimation_variance_matrix(Y, factors, fn, model=None):
+def plot_estimation_variance_matrix(Y, params, model=None):
     """
     Plots the parameter estimation covariance matrix. One is plotted
     for each set of a-prior variance components.
@@ -270,10 +241,8 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
     model : None or pd.DataFrame
         The model dataframe corresponding to the Y2X function in order
         to extract the parameter names.
@@ -284,13 +253,13 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
         The plotly figure of a heatmap of the parameter estimation covariance matrix.
     """
     # Compute estimation variance matrix
-    Minv, params = estimation_variance_matrix(Y, factors, fn, return_params=True)
+    Minv, params = estimation_variance_matrix(Y, params)
 
     # Determine the encoded column names
     if model is None:
         encoded_colnames = np.arange(Minv.shape[-1])
     else:
-        col_names = [str(f.name) for f in factors]
+        col_names = [str(f.name) for f in params.factors]
         encoded_colnames = model2encnames(model[col_names], params.effect_types)
         if len(encoded_colnames) < Minv.shape[-1]:
             encoded_colnames.extend([f'cov_{i}' for i in range(Minv.shape[-1] - len(encoded_colnames))])
@@ -299,7 +268,7 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
         vertical_spacing=0.07,
         subplot_titles=[
-            'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(factors, params.ratios[i]) if f.grouped])
+            'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(params.factors, params.ratios[i]) if f.grouped])
             for i in range(len(Minv))
         ]
     )
@@ -316,26 +285,24 @@ def plot_estimation_variance_matrix(Y, factors, fn, model=None):
     # Return the plot
     return fig
 
-def estimation_variance(Y, factors, fn):
+def estimation_variance(Y, params):
     """
     Computes the variances of the parameter estimations. This is the diagonal
-    of :py:func:`pyoptex.doe.cost_optimal.evaluate.estimation_variance_matrix`.
+    of :py:func:`estimation_variance_matrix <pyoptex.doe.cost_optimal.evaluate.estimation_variance_matrix>`.
 
     Parameters
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors for the design.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        The set of functions used to create a cost optimal design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
 
     Returns
     -------
     est_var : np.array(2d)
         The parameter estimation variances. This is the diagonal of
-        :py:func:`pyoptex.doe.cost_optimal.evaluate.estimation_variance_matrix`
+        :py:func:`estimation_variance_matrix <pyoptex.doe.cost_optimal.evaluate.estimation_variance_matrix>`
     """
     # Compute estimation variance matrix
-    Minv = estimation_variance_matrix(Y, factors, fn)
+    Minv = estimation_variance_matrix(Y, params)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])

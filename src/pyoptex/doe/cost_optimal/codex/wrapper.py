@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 from numba.typed import List
 
-from ..constraints import no_constraints
-from ..utils.design import decode_design, encode_design
+from ...constraints import no_constraints
+from ...utils.design import decode_design, encode_design
+from ..init import init_feasible
+from ..utils import Factor, FunctionSet, Parameters
 from .accept import exponential_accept_rel
-from .init import init_feasible
 from .insert import insert_optimal
 from .remove import remove_optimal_onebyone
 from .restart import RestartEveryNFailed
@@ -17,7 +18,6 @@ from .sample import sample_random
 from .simulation import simulate
 from .temperature import LinearTemperature
 from .optimization import CEOptimizer, CEStructOptimizer
-from .utils import Factor, FunctionSet, Parameters
 
 
 def default_fn(
@@ -110,9 +110,9 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     Parameters
     ----------
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The list of factors.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
+    fn : :py:class:`FunctionSet <pyoptex.doe.cost_optimal.utils.FunctionSet>`
         A set of operators for the algorithm.
     prior : None or pd.DataFrame
         A possible prior design to use for augmentation. Must be 
@@ -122,7 +122,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     Returns
     -------
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     """
     # Initial input validation
@@ -175,7 +175,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     
     # Create the parameters
     params = Parameters(
-        fn, colstart, coords, ratios, effect_types, 
+        fn, factors, colstart, coords, ratios, effect_types, 
         grouped_cols, prior, {}, use_formulas
     )
 
@@ -188,24 +188,16 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     return params
 
-def create_cost_optimal_design(factors, fn, prior=None, nreps=10, 
-                               use_formulas=True, nsims=7500, validate=True):
+def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True):
     """
-    Creates an optimal design for the specified factors, using the functionset.
+    Creates an optimal design for the specified factors, using the CODEX algorithm.
 
     Parameters
     ----------
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
-        The list of factors.
-    fn : :py:class:`pyoptex.doe.cost_optimal.utils.FunctionSet`
-        A set of operators for the algorithm.
-    prior : None or pd.DataFrame
-        A possible prior design to use for augmentation. Must be 
-        denormalized and decoded.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
     nreps : int
         The number of random start repetitions. Must be larger than zero.
-    use_formulas : bool
-        Whether to use the internal update formulas or not.
     nsims : int
         The number of simulations (annealing steps) to run the algorithm for.
     validate : bool
@@ -216,22 +208,19 @@ def create_cost_optimal_design(factors, fn, prior=None, nreps=10,
     Y : pd.DataFrame
         A pandas dataframe with the best found design. The
         design is decoded and denormalized.
-    best_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state corresponding to the returned design. 
         Contains the encoded design, model matrix, 
         costs, metric, etc.
     """
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
-    # Extract the parameters
-    params = create_parameters(factors, fn, prior, use_formulas)
-
     # Simulation
     best_state = simulate(params, nsims=nsims, validate=validate)
     try:
         for i in range(nreps-1):
             try:
-                state = simulate(params, **kwargs)
+                state = simulate(params, nreps=nreps, nsims=nsims, validate=validate)
                 if state.metric > best_state.metric:
                     best_state = state
             except ValueError as e:
@@ -241,8 +230,8 @@ def create_cost_optimal_design(factors, fn, prior=None, nreps=10,
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in factors])
-    for f in factors:
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+    for f in params.factors:
         Y[str(f.name)] = f.denormalize(Y[str(f.name)])
     return Y, best_state
 

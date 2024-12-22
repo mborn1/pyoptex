@@ -4,13 +4,13 @@ Module for all optimizaters of the CODEX algorithm
 
 import numpy as np
 
-from ..._profile import profile
-from ...utils.numba import numba_any_axis1, numba_diff_axis0
-from ..utils.design import force_Zi_asc, obs_var_from_Zs
-from ..utils.init import full_factorial
+from ...._profile import profile
+from ....utils.numba import numba_any_axis1, numba_diff_axis0
+from ...utils.design import force_Zi_asc, obs_var_from_Zs
+from ...utils.init import full_factorial
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
-from .utils import obs_var_Zs
+from ..utils import obs_var_Zs
 
 
 def adapt_group(groups, factor, row_start, row_end):
@@ -78,7 +78,7 @@ def adapt_group(groups, factor, row_start, row_end):
 def adapt_groups(groups, Y, colstart, row_start, row_end):
     """
     Detects which groups should be adapted for each factor
-    according to :py:func:`pyoptex.doe.cost_optimal.optimization.adapt_group`.
+    according to :py:func:`adapt_group <pyoptex.doe.cost_optimal.codex.optimization.adapt_group>`.
 
     Parameters
     ----------
@@ -141,14 +141,14 @@ class Optimizer:
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state from which to sample.
-        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters.
 
         Returns
         -------
-        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
         raise NotImplementedError('_call function must be implemented for optimizer')
@@ -159,14 +159,14 @@ class Optimizer:
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state from which to sample.
-        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters.
 
         Returns
         -------
-        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
         self.i += 1
@@ -184,14 +184,14 @@ def ce_optimizer(state, params):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to sample.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -303,14 +303,14 @@ class CEOptimizer(Optimizer):
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state from which to sample.
-        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters.
 
         Returns
         -------
-        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
         return ce_optimizer(state, params)
@@ -326,14 +326,14 @@ def ce_struct_optimizer(state, params):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to sample.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -459,14 +459,14 @@ class CEStructOptimizer(Optimizer):
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state from which to sample.
-        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters.
 
         Returns
         -------
-        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
         return ce_struct_optimizer(state, params)
@@ -481,14 +481,14 @@ def pe_optimizer(state, params):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to sample.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after optimization.
     """
     nprior = len(params.prior)
@@ -603,14 +603,14 @@ class PEOptimizer(Optimizer):
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state from which to sample.
-        params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters.
 
         Returns
         -------
-        new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
         return pe_optimizer(state, params)

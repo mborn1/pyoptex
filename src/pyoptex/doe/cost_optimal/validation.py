@@ -1,5 +1,5 @@
 """
-Module for all validation functions of the CODEX algorithm
+Module for all validation functions of the cost optimal designs.
 """
 
 import warnings
@@ -17,9 +17,9 @@ def validate_state(state, params, eps=1e-6):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     eps : float
         Epsilon for the numerical comparisons.

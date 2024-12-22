@@ -1,5 +1,5 @@
 """
-Module containing all the cost functions of the CODEX algorithm
+Module containing all the cost functions of the cost optimal designs
 """
 
 from functools import wraps
@@ -19,7 +19,7 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
     ----------
     f : func(Y, params) or func(Y)
         The cost function to be wrapped.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         A list of factors for the design.
     denormalize : bool
         Whether to denormalize (and decode) the data before passing it to `f`.
@@ -27,7 +27,7 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
         Whether to only decode, but not denormalize the data before passing it to `f`.
     contains_params : bool
         Whether the cost function requires the CODEX 
-        :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
+        :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`.
         This prevents numba compilation.
 
     Returns
@@ -104,15 +104,15 @@ def cost_fn(*args, **kwargs):
     ----------
     f : func(Y, params) or func(Y)
         The cost function to be wrapped.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         A list of factors for the design.
     denormalize : bool
         Whether to denormalize (and decode) the data before passing it to `f`.
     decoded : bool
         Whether to only decode, but not denormalize the data before passing it to `f`.
     contains_params : bool
-        Whether the cost function requires the CODEX 
-        :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`.
+        Whether the cost function requires the
+        :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`.
         This prevents numba compilation.
 
     Returns
@@ -160,7 +160,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     ----------
     costs : dict(str, float)
         A dictionary mapping the factor name to the transition cost.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
     max_cost : float
         The budget available for this cost function.
@@ -222,7 +222,7 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     ----------
     transition_costs : dict(str, float)
         A dictionary mapping the factor name to the transition cost.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
     max_cost : float
         The budget available for this cost function.
@@ -248,7 +248,7 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
     ----------
     costs : dict(str, float)
         A dictionary mapping the factor name to the transition cost.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
     max_cost : float
         The budget available for this cost function.
@@ -303,7 +303,7 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     ----------
     transition_costs : dict(str, float)
         A dictionary mapping the factor name to the transition cost.
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
     max_cost : float
         The budget available for this cost function.
@@ -354,7 +354,7 @@ def max_changes_cost(factor, factors, max_cost):
     ----------
     factor : str or int
         The name or index of the factor
-    factors : list(:py:class:`pyoptex.doe.cost_optimal.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
     max_cost : int
         The maximum number of changes in the specified factor.

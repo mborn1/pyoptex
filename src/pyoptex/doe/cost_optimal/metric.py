@@ -1,5 +1,5 @@
 """
-Module for all metrics of the CODEX algorithm
+Module for all metrics of the cost optimal designs.
 """
 
 import numpy as np
@@ -36,7 +36,7 @@ class Metric:
 
         Parameters
         ----------
-        params : `pyoptex.doe.cost_optimal.utils.Parameter`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters
         """
         pass
@@ -224,7 +224,7 @@ class Iopt(Metric):
 
         Parameters
         ----------
-        params : `pyoptex.doe.cost_optimal.utils.Parameter`
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
             The simulation parameters
         """
         if not self.initialized_:

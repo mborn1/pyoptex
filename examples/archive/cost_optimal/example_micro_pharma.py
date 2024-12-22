@@ -64,7 +64,7 @@ nsims = 5000
 nreps = 1
 
 # Create the set of operators
-from pyoptex.doe.cost_optimal.remove import remove_optimal_onebyone_prevent
+from pyoptex.doe.cost_optimal.codex.remove import remove_optimal_onebyone_prevent
 fn = default_fn(nsims, cost_fn, metric, constraints=constraints,
                 remove=remove_optimal_onebyone_prevent)
 

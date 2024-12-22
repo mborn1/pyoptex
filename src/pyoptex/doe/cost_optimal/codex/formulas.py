@@ -5,7 +5,7 @@ Module containing the update formulas for the Vinv updates of the CODEX algorith
 import numba
 import numpy as np
 
-from ..._profile import profile
+from ...._profile import profile
 
 # Variable in a to indicate no update is necessary
 NO_UPDATE = -1

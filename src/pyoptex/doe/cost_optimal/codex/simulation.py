@@ -5,10 +5,10 @@ Module for simulation function of the CODEX algorithm
 import numpy as np
 from tqdm import tqdm
 
-from ..._profile import profile
-from ..utils.design import obs_var_from_Zs
-from .utils import State, obs_var_Zs
-from .validation import validate_state
+from ...._profile import profile
+from ...utils.design import obs_var_from_Zs
+from ..utils import State, obs_var_Zs
+from ..validation import validate_state
 
 
 @profile
@@ -19,7 +19,7 @@ def simulate(params, nsims=100, validate=False):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     nsims : int
         The number of simulation iterations, accepted or rejected.
@@ -28,7 +28,7 @@ def simulate(params, nsims=100, validate=False):
 
     Returns
     -------
-    best_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The best found state containing the encoded design matrix, 
         model matrix, costs, metric, etc.
     """

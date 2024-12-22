@@ -1,5 +1,5 @@
 """
-Module for all init functions of the CODEX algorithm
+Module for all init functions of the cost optimal designs
 """
 
 import numpy as np
@@ -16,7 +16,7 @@ def greedy_cost_minimization(Y, params):
     ----------
     Y : np.array(2d)
         The design to cost minimize.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
@@ -66,7 +66,7 @@ def init(params, n=1, complete=False):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     n : int
         The number of runs to initialize
@@ -112,7 +112,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     max_tries : int
         The maximum number of random tries. If all random tries fail, a 

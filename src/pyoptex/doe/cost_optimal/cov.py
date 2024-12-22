@@ -1,5 +1,5 @@
 """
-Module containing all the covariate functions of the CODEX algorithm
+Module containing all the covariate functions of the cost optimal designs
 """
 
 import numpy as np

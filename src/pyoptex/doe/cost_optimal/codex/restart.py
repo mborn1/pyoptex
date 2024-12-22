@@ -54,14 +54,14 @@ class RestartEveryNFailed:
 
         Parameters
         ----------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The state accepted or rejected state.
-        best_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The best state until now.
 
         Returns
         -------
-        state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+        state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             Either the `state` or `best_state`.
         """
         if self.i > self.max_it:

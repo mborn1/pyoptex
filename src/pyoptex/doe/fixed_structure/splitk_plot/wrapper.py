@@ -239,7 +239,7 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
 
     Parameters
     ----------
-    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`)
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
         The simulation parameters.
     n_tries : int
         The number of random start repetitions. Must be larger than zero.

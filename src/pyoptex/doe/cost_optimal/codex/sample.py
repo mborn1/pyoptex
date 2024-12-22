@@ -12,9 +12,9 @@ def sample_last(state, params):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to sample.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
@@ -39,9 +39,9 @@ def sample_random(state, params):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The state from which to sample.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns

@@ -5,7 +5,7 @@ import plotly.express as px
 from pyoptex.doe.utils.model import partial_rsm_names
 from pyoptex.doe.utils.design import x2fx, obs_var_from_Zs
 from pyoptex.doe.cost_optimal.metric import Aliasing
-from pyoptex.doe.cost_optimal.wrapper import create_parameters, default_fn
+from pyoptex.doe.cost_optimal.codex.wrapper import create_parameters, default_fn
 
 # Get root folder
 root = os.path.split(__file__)[0]

@@ -4,11 +4,11 @@ Module for all metrics of the CODEX algorithm
 
 import numpy as np
 
-from ..._profile import profile
-from ..utils.design import force_Zi_asc, obs_var_from_Zs
+from ...._profile import profile
+from ...utils.design import force_Zi_asc, obs_var_from_Zs
 from .formulas import detect_block_end_from_start, remove_update_vinv
 from .simulation import State
-from .utils import obs_var_Zs
+from ..utils import obs_var_Zs
 
 
 def groups_remove(Yn, Zs, pos, colstart):
@@ -63,16 +63,16 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
-        The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
+        The state from which to sample.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     prevent_insert : bool
         Whether to prevent the removal of the recently inserted run.
 
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after inserting the run.
     """
     nprior = len(params.prior)
@@ -167,19 +167,20 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
 def remove_optimal_onebyone_prevent(state, params):
     """
-    Similar to :py:func:`pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone`, 
+    Similar to 
+    :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.codex.remove.remove_optimal_onebyone>`, 
     but with prevent_insert = True.
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
-        The state from which to start.
-    params : :py:class:`pyoptex.doe.cost_optimal.utils.Parameters`
+    state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
+        The state from which to sample.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
 
     Returns
     -------
-    new_state : :py:class:`pyoptex.doe.cost_optimal.utils.State`
+    new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The new state after inserting the run.
     """
     return remove_optimal_onebyone(state, params, prevent_insert=True)
