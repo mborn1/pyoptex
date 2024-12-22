@@ -56,8 +56,8 @@ def obs_var_Zs(plot_sizes):
 def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`pyoptex.doe.splitk_plot.utils.obs_var_Zs` 
-    followed by :py:func:`pyoptex.doe.utils.design.obs_var_from_Zs`.
+    :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>` 
+    followed by :py:func:`obs_var_from_Zs <pyoptex.doe.utils.design.obs_var_from_Zs>`.
 
     Parameters
     ----------
@@ -191,7 +191,7 @@ def terms_per_plot_level(factors, model):
 
     Parameters
     ----------
-    factors : list(:py:class:`pyoptex.doe.spltik_plot.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.fixed_structure.utils.Factor>`)
         The factors of the design.
     model : pd.DataFrame
         The model dataframe
@@ -238,7 +238,7 @@ def min_plot_levels(tppl):
     tppl : np.array(1d)
         The number of terms per plot level. Is the result
         of calling 
-        :py:func:`pyoptex.doe.splitk_plot.utils.terms_per_plot_level`.
+        :py:func:`terms_per_plot_level <pyoptex.doe.fixed_structure.splitk_plot.utils.terms_per_plot_level>`.
 
     Returns
     -------
@@ -263,7 +263,7 @@ def validate_plot_sizes(factors, model):
 
     Parameters
     ----------
-    factors : list(:py:class:`pyoptex.doe.spltik_plot.utils.Factor`)
+    factors : list(:py:class:`Factor pyoptex.doe.fixed_structure.utils.Factor`)
         The factors of the design.
     model : pd.DataFrame
         The model dataframe

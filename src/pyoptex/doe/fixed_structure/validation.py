@@ -1,5 +1,5 @@
 """
-Module for all validation functions of the split^k-plot algorithm
+Module for all validation functions of the generic coordinate-exchange algorithm
 """
 
 import warnings
@@ -13,9 +13,9 @@ def validate_state(state, params, eps=1e-6):
 
     Parameters
     ----------
-    state : :py:class:`pyoptex.doe.splitk_plot.utils.State`
+    state : :py:class:`State <pyoptex.doe.fixed_structure.utils.State>`
         The state to validate.
-    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The parameters of the design generation.
     eps : float
         The epsilon to use for floating point comparison.

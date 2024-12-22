@@ -15,7 +15,7 @@ from pyoptex.doe.fixed_structure import (
     create_parameters, default_fn
 )
 from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
-from pyoptex.doe.fixed_structure.metric import Dopt
+from pyoptex.doe.fixed_structure.metric import Dopt, Iopt, Aopt
 
 # Set the seed
 set_seed(42)
@@ -24,7 +24,7 @@ set_seed(42)
 nruns = 20
 nplots = 5
 assert nruns//nplots == nruns/nplots, 'Number of runs must be integer divisable by the number of plots'
-re = RandomEffect(np.tile(np.arange(nplots), nruns//nplots), ratio=0.1)
+re = RandomEffect(np.tile(np.arange(nplots), nruns//nplots), ratio=[0.1, 10])
 
 # Define the factors
 factors = [
@@ -71,3 +71,18 @@ print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
 print(f'Execution time: {end_time - start_time:.3f}')
 print(Y)
+
+#########################################################################
+
+from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+design_heatmap(Y, factors).show()
+plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
+
+from pyoptex.doe.fixed_structure.evaluate import (
+    evaluate_metrics, plot_fraction_of_design_space, 
+    plot_estimation_variance_matrix, estimation_variance
+)
+print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
+plot_fraction_of_design_space(Y, params).show()
+plot_estimation_variance_matrix(Y, params, model).show()
+print(estimation_variance(Y, params))

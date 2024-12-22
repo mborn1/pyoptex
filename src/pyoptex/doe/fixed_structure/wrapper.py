@@ -1,5 +1,5 @@
 """
-Module for the interface to run the split^k-plot algorithm
+Module for the interface to run the generic coordinate-exchange algorithm
 """
 
 import numpy as np
@@ -21,23 +21,23 @@ def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible
 
     Parameters
     ----------
-    metric : :py:class:`pyoptex.doe.cost_optimal.metric.Metric`
+    metric : :py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`
         The metric object.
     Y2X : func
         The function converting from the design matrix to the
         model matrix.
     constraints : func
         The constraints function, 
-        :py:func:`pyoptex.doe.constraints.no_constraints` 
+        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>` 
         by default.
     init : func
         The initialization function,
-        :py:func:`pyoptex.doe.splitk_plot.init.initialize_feasible`
+        :py:func:`initialize_feasible <pyoptex.doe.fixed_structure.init.initialize_feasible>`
         by default.
 
     Returns
     -------
-    fn : :py:class:`pyoptex.doe.splitk_plot.utils.FunctionSet`
+    fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
@@ -50,10 +50,9 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
 
     Parameters
     ----------
-    factors : list(:pcs, alphas, thetas, thetas_inv,
-        use_formulasy:class:`pyoptex.doe.fixed_structure.utils.Factor`)
+    factors : list(:py:class:`Factor <pyoptex.doe.fixed_structure.utils.Factor>`)
         The list of factors.
-    fn : :py:class:`pyoptex.doe.fixed_structure.utils.FunctionSet`
+    fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         A set of operators for the algorithm.
     prior : None
         Not implemented yet.
@@ -62,7 +61,7 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
 
     Returns
     -------
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
     """
     # Assertions
@@ -135,11 +134,11 @@ def create_parameters(factors, fn, nruns, prior=None, grps=None):
 
 def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=False):
     """
-    Creates an optimal design for the specified factors, using the functionset.
+    Creates an optimal design for the specified factors, using the parameters.
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters`)
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`)
         The simulation parameters.
     n_tries : int
         The number of random start repetitions. Must be larger than zero.
@@ -154,7 +153,7 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     Y : pd.DataFrame
         A pandas dataframe with the best found design. The
         design is decoded and denormalized.
-    best_state : :py:class:`pyoptex.doe.splitk_plot.utils.State`
+    best_state : :py:class:`State <pyoptex.doe.fixed_structure.utils.State>`
         The state corresponding to the returned design. 
         Contains the encoded design, model matrix, metric, etc.
     """

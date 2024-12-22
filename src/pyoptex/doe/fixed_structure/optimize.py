@@ -1,5 +1,5 @@
 """
-Module for the split^k-plot coordinate-exchange algorithm.
+Module for the generic coordinate-exchange algorithm.
 """
 
 import numpy as np
@@ -17,7 +17,7 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
 
     Parameters
     ----------
-    params : `pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The parameters of the design generation.
     max_it : int
         The maximum number of iterations to prevent potential infinite loops.
@@ -31,7 +31,7 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
     -------
     Y : np.array(2d)
         The generated design
-    state : `pyoptex.doe.splitk_plot.utils.State`
+    state : :py:class:`State <pyoptex.doe.fixed_structure.utils.State>`
         The state according to the generated design.
     """
     # Initialize a design

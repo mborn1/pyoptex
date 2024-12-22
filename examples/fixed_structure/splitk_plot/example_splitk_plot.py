@@ -100,7 +100,7 @@ from pyoptex.doe.fixed_structure.evaluate import (
     evaluate_metrics, plot_fraction_of_design_space, 
     plot_estimation_variance_matrix, estimation_variance
 )
-print(evaluate_metrics(Y, [metric, Dopt(), Iopt(), Aopt()], params))
+print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 plot_fraction_of_design_space(Y, params).show()
 plot_estimation_variance_matrix(Y, params, model).show()
 print(estimation_variance(Y, params))

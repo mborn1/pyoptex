@@ -1,5 +1,5 @@
 """
-Module for all utility functions of the split^k-plot algorithm
+Module for all utility functions of the generic coordinate-exchange algorithm
 """
 
 from collections import namedtuple

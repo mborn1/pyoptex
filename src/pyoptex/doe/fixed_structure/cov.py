@@ -1,5 +1,5 @@
 """
-Module containing all the covariate functions of the split^k-plot algorithm
+Module containing all the covariate functions for fixed structures.
 """
 
 import numpy as np

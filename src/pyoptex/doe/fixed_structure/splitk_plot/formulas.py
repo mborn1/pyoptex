@@ -222,7 +222,7 @@ def inv_update_UD(U, D, Minv, P):
 @numba.njit
 def inv_update_UD_no_P(U, D, Minv):
     """
-    See :py:func:`pyoptex.doe.splitk_plot.formulas.inv_update_UD`,
+    See :py:func:`inv_update_UD <pyoptex.doe.splitk_plot.formulas.inv_update_UD>`,
     but without precomputing the P-matrix.
     """
     # Compute P

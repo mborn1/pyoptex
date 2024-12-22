@@ -1,5 +1,5 @@
 """
-Module for all metrics of the split^k-plot algorithm
+Module for all metrics of fixed structure designs.
 """
 
 import numpy as np
@@ -36,7 +36,7 @@ class Metric:
 
         Parameters
         ----------
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
         pass
@@ -52,7 +52,7 @@ class Metric:
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
         pass
@@ -73,7 +73,7 @@ class Metric:
             The updated design matrix.
         X : np.array(2d)
             The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         
         Returns
@@ -106,7 +106,7 @@ class Dopt(Metric):
             The updated design matrix.
         X : np.array(2d)
             The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         
         Returns
@@ -164,7 +164,7 @@ class Aopt(Metric):
             The updated design matrix.
         X : np.array(2d)
             The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         
         Returns
@@ -202,16 +202,15 @@ class Iopt(Metric):
 
     Attributes
     ----------
+    cov : func(Y, X)
+        A function computing the covariate parameters
+        and potential extra random effects.
     moments : np.array(2d)
         The moments matrix.
     samples : np.array(2d)
         The covariate expanded samples for the moments matrix.
     n : int
         The number of samples.
-    Minv : np.array(3d)
-        The inverse of the information matrix. Used as a cache.
-    Mup : np.array(3d)
-        The update to the inverse of the information matrix. Used as a cache.
     """
     def __init__(self, n=10000, cov=None, complete=True):
         """
@@ -239,7 +238,7 @@ class Iopt(Metric):
 
         Parameters
         ----------
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
         # Create the random samples
@@ -264,7 +263,7 @@ class Iopt(Metric):
             The updated design matrix.
         X : np.array(2d)
             The updated model matrix.
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         
         Returns

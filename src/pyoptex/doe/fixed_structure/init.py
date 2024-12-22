@@ -1,5 +1,5 @@
 """
-Module for all init functions of the split^k-plot algorithm
+Module for all init functions of fixed structure.
 """
 
 import numba
@@ -29,10 +29,12 @@ def __init_unconstrained(effect_types, effect_levels, grps,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List`(np.array(1d))
+    grps : :py:class:`numba.typed.List` (np.array(1d))
         The groups for each factor to initialize.
-    coords : :py:class:`numba.typed.List`(np.array(2d))
+    coords : :py:class:`numba.typed.List` (np.array(2d))
         The coordinates for each factor to use.
+    Zs : np.array(2d)
+        Every grouping vector Z stacked vertically.
     Y : np.array(2d)
         The design matrix to be initialized. May contain the
         some fixed settings if not optimizing all groups.
@@ -123,18 +125,15 @@ def __correct_constraints(effect_types, effect_levels, grps, coords,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List`(np.array(1d))
+    grps : :py:class:`numba.typed.List` (np.array(1d))
         The groups for each factor to initialize.
-    thetas : np.array(1d)
-        The array of thetas.
-        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : :py:class:`numba.typed.List`(np.array(2d))
+    coords : :py:class:`numba.typed.List` (np.array(2d))
         The coordinates for each factor to use.
-    plot_sizes : np.array(1d)
-        The array of plot sizes, starting from the easy-to-change.
     constraints : func
         The constraints function, validating the design matrix.
         Should return True if the constraints are violated.
+    Zs : np.array(2d)
+        Every grouping vector Z stacked vertically.
     Y : np.array(2d)
         The design matrix to be initialized. May contain the
         some fixed settings if not optimizing all groups.
@@ -210,7 +209,7 @@ def __correct_constraints(effect_types, effect_levels, grps, coords,
 @profile
 def initialize_feasible(params, complete=False, max_tries=1000):
     """
-    Generates a random initial design for a split^k plot design.
+    Generates a random initial design for a generic design.
     `grps` specifies at each level which level-groups should be
     initialized. This is useful when augmenting an existing design.
 
@@ -219,7 +218,7 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The parameters of the design generation.
     complete : bool
         Whether to use the coordinates for initialization
@@ -289,7 +288,7 @@ def init_random(params, n=1, complete=False):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The parameters of the design generation.
     n : int
         The number of runs

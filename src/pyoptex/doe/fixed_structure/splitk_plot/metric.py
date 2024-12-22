@@ -19,7 +19,7 @@ class SplitkPlotMetricMixin:
     """
     The base mixin class for a splitk_plot metric.
     To be used in multiple inheritance together with
-    :py:class:`pyoptex.doe.fixed_structure.metric.Metric` as
+    :py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>` as
     `class MyCustomMetric(SplitkPlotMetricMixin, Metric)`.
     """
 
@@ -34,7 +34,7 @@ class SplitkPlotMetricMixin:
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
         """
         pass
@@ -50,7 +50,7 @@ class SplitkPlotMetricMixin:
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
         """
         if params.compute_update:
@@ -70,9 +70,9 @@ class SplitkPlotMetricMixin:
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
 
         Returns
@@ -97,9 +97,9 @@ class SplitkPlotMetricMixin:
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
 
         Returns
@@ -130,9 +130,9 @@ class SplitkPlotMetricMixin:
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
         """
         pass
@@ -148,9 +148,9 @@ class SplitkPlotMetricMixin:
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
         """
         if params.compute_update:
@@ -202,7 +202,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
         """
         # Covariate expansion
@@ -224,9 +224,9 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
 
         Returns
@@ -272,9 +272,9 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
         """
         # Update Minv
@@ -327,7 +327,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
         """
         # Covariate expansion
@@ -349,9 +349,9 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
 
         Returns
@@ -407,9 +407,9 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
         """
         # Update Minv
@@ -463,7 +463,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
             The design matrix
         X : np.array(2d)
             The model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
         """
         # Covariate expansion
@@ -485,9 +485,9 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
 
         Returns
@@ -536,9 +536,9 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
             The updated design matrix
         X : np.array(2d)
             The updated model matrix
-        params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
             The optimization parameters.
-        update : :py:class:`pyoptex.doe.splitk_plot.utils.Update`
+        update : :py:class:`Update <pyoptex.doe.fixed_structure.splitk_plot.utils.Update>`
             The update being applied to the state.
         """
         # Update Minv

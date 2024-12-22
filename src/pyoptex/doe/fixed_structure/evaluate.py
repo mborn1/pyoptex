@@ -1,5 +1,5 @@
 """
-Module containing all the evaluation functions, specific to the split^k-plot algorithm
+Module containing all the evaluation functions for fixed structure designs.
 """
 
 import numpy as np
@@ -13,7 +13,7 @@ from ..utils.model import model2encnames
 from .metric import Iopt
 
 
-def evaluate_metrics(Y, metrics, params):
+def evaluate_metrics(Y, params, metrics):
     """
     Evaluate the design on a set of metrics.
 
@@ -21,10 +21,10 @@ def evaluate_metrics(Y, metrics, params):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    metrics : list(:py:class:`pyoptex.doe.splitk_plot.metric.Metric`)
-        The list of metrics to evaluate.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
+    metrics : list(:py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`)
+        The list of metrics to evaluate.
     
     Returns
     -------
@@ -65,7 +65,7 @@ def fraction_of_design_space(Y, params, N=10000):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
     N : int
         The number of samples to evaluate.
@@ -126,7 +126,7 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
     N : int
         The number of samples to evaluate.
@@ -177,7 +177,7 @@ def estimation_variance_matrix(Y, params):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
 
     Returns
@@ -222,7 +222,7 @@ def plot_estimation_variance_matrix(Y, params, model=None):
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
     model : None or pd.DataFrame
         The model dataframe corresponding to the Y2X function in order
@@ -269,20 +269,20 @@ def plot_estimation_variance_matrix(Y, params, model=None):
 def estimation_variance(Y, params):
     """
     Computes the variances of the parameter estimations. This is the diagonal
-    of :py:func:`pyoptex.doe.splitk_plot.evaluate.estimation_variance_matrix`.
+    of :py:func:`estimation_variance_matrix <pyoptex.doe.fixed_structure.evaluate.estimation_variance_matrix>`.
 
     Parameters
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`pyoptex.doe.fixed_structure.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
         The simulation parameters.
 
     Returns
     -------
     est_var : np.array(2d)
         The parameter estimation variances. This is the diagonal of
-        :py:func:`pyoptex.doe.splitk_plot.evaluate.estimation_variance_matrix`
+        :py:func:`estimation_variance_matrix <pyoptex.doe.fixed_structure.evaluate.estimation_variance_matrix>`
     """
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)

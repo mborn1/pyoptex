@@ -29,12 +29,12 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List`(np.array(1d))
+    grps : :py:class:`numba.typed.List` (np.array(1d))
         The groups for each factor to initialize.
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : :py:class:`numba.typed.List`(np.array(2d))
+    coords : :py:class:`numba.typed.List` (np.array(2d))
         The coordinates for each factor to use.
     Y : np.array(2d)
         The design matrix to be initialized. May contain the
@@ -123,12 +123,12 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List`(np.array(1d))
+    grps : :py:class:`numba.typed.List` (np.array(1d))
         The groups for each factor to initialize.
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : :py:class:`numba.typed.List`(np.array(2d))
+    coords : :py:class:`numba.typed.List` (np.array(2d))
         The coordinates for each factor to use.
     plot_sizes : np.array(1d)
         The array of plot sizes, starting from the easy-to-change.
@@ -215,7 +215,7 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
     Parameters
     ----------
-    params : :py:class:`pyoptex.doe.splitk_plot.utils.Parameters`
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
         The parameters of the design generation.
     complete : bool
         Whether to use the coordinates for initialization
