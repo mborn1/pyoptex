@@ -57,6 +57,7 @@ Contents
    quickstart
    customization
    performance
+   example_scenarios
 
 
 .. toctree::
