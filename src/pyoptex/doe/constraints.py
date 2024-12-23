@@ -382,7 +382,5 @@ def mixture_constraints(names, factors):
     mixture_constraint : :py:class:`pyoptex.doe.constraints.Col`
         The mixture constraint.
     """
-    # TODO: problem with scaling of the factors
-    # ((((Y__[:,0] * 1.0 + 0.0) + (Y__[:,1] * 1.0 + 0.0)) + (Y__[:,2] * 3.0 + 2.0)) > (1 + 1e-06))
-    script = ' + '.join(f'`{name}`' for name in names) + ' > 1 + eps'
+    script = ' + '.join(f'`{name}`' for name in names) + f' > 1 + eps'
     return parse_constraints_script(script, factors)

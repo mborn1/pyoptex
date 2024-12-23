@@ -7,56 +7,64 @@ import numpy as np
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
-from pyoptex.doe.cost_optimal import Factor, cost_fn
-from pyoptex.doe.cost_optimal.metric import Dopt
+from pyoptex.doe.cost_optimal import Factor
+from pyoptex.doe.cost_optimal.metric import Aliasing
+from pyoptex.doe.cost_optimal.cost import fixed_runs_cost
 from pyoptex.doe.cost_optimal.codex import (
     create_cost_optimal_codex_design, default_fn, create_parameters
 )
-
-# TODO: fix this notebook
 
 # Set the seed
 set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('X1', type='continuous', grouped=False, min=-1, max=1, levels=[-1, 0, 1]),
-    Factor('X2', type='continuous', grouped=False, min=6, max=36, levels=np.linspace(6, 36, 11)),
-    Factor('X3', type='continuous', grouped=False, min=12, max=36, levels=np.linspace(12, 36, 9)),
+    Factor('A', type='continuous', grouped=False),
+    Factor('B', type='continuous', grouped=False),
+    Factor('C', type='continuous', grouped=False),
+    Factor('D', type='continuous', grouped=False),
+    Factor('E', type='continuous', grouped=False),
+    Factor('F', type='continuous', grouped=False),
 ]
 
 # Create a partial response surface model
 model = partial_rsm_names({
-    'X1': 'quad',
-    'X2': 'quad',
-    'X3': 'quad',
+    'A': 'quad',
+    'B': 'quad',
+    'C': 'quad',
+    'D': 'quad',
+    'E': 'quad',
+    'F': 'quad',
 })
 Y2X = model2Y2X(model, factors)
 
-# Define the criterion for optimization
-metric = Dopt()
+# Define the weights (equal weights on main, two-factor and quadratic aliasing)
+# Minimize aliasing of main effects to full response surface design
+n1, n2 = len(factors), len(model)-2*len(factors)-1
+w1, w2 = 1/((n1+1)*(n1+1)), 1/((n2+n1)*(n1+1))
+W = np.block([
+    [ w1 * np.ones(( 1, 1)), w1 * np.ones(( 1, n1)), w2 * np.ones(( 1, n2)), w2 * np.zeros(( 1, n1))], # Intercept
+    [ w1 * np.ones((n1, 1)), w1 * np.ones((n1, n1)), w2 * np.ones((n1, n2)), w2 *  np.ones((n1, n1))], # Main effects
+])
 
-# Define the constraints
-constraints = parse_constraints_script(
-    f'(`X2` <= `X3`)', 
-    factors, exclude=False
-)
+# Set variances to zero (only interested in aliasing as an example)
+W[np.arange(len(W)), np.arange(len(W))] = 0
 
-# Cost function
-max_units = 150
-@cost_fn(denormalize=False, decoded=False, contains_params=False)
-def cost(Y):
-    units = 2 + (Y[:, 0] + 1) * 6
-    return [(units, max_units, np.arange(len(Y)))]
+# Define the metric
+main_effects = np.arange(len(factors)+1) # The indices of the main effects in the model, and intercept
+metric = Aliasing(effects=main_effects, alias=np.arange(len(model)), W=W)
+
+# 30 runs maximum
+nruns = 30
+cost_fn = fixed_runs_cost(nruns)
 
 #######################################################################
 
 # Simulation parameters
 nsims = 10
 nreps = 1
-fn = default_fn(nsims, factors, cost, metric, Y2X, constraints=constraints)
+fn = default_fn(nsims, factors, cost_fn, metric, Y2X)
 params = create_parameters(factors, fn)
 
 # Create design
@@ -70,10 +78,16 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_micro_pharma.csv'), index=False)
+Y.to_csv(os.path.join(root, f'example_approx_omars.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
 print(f'Cost: {state.cost_Y}')
 print(f'Number of experiments: {len(state.Y)}')
 print(f'Execution time: {end_time - start_time:.3f}')
+
+#######################################################################
+
+# Specific evaluation
+from pyoptex.doe.cost_optimal.evaluate import plot_estimation_variance_matrix
+plot_estimation_variance_matrix(Y, params, model).show()

@@ -536,7 +536,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
 
-def fixed_runs_cost(max_cost):
+def fixed_runs_cost(max_runs):
     """
     Cost function to deal with a fixed maximum number of experiments.
     The maximum cost is supposed to be the number of runs, and this cost function
@@ -544,7 +544,7 @@ def fixed_runs_cost(max_cost):
 
     Parameters
     ----------
-    max_cost : int
+    max_runs : int
         The maximum number of runs.
 
     Returns
@@ -553,11 +553,11 @@ def fixed_runs_cost(max_cost):
         The cost function.
     """
     def _cost_fn(Y):
-        return [(np.ones(len(Y)), max_cost, np.arange(len(Y)))]
+        return [(np.ones(len(Y)), max_runs, np.arange(len(Y)))]
 
     return cost_fn(_cost_fn, denormalize=False, decoded=False, contains_params=False)
 
-def max_changes_cost(factor, factors, max_cost):
+def max_changes_cost(factor, factors, max_changes):
     """
     Cost function to deal with a fixed maximum number of changes in a specific factor.
     The maximum cost is supposed to be the number of changes, and this cost function
@@ -572,7 +572,7 @@ def max_changes_cost(factor, factors, max_cost):
         The name or index of the factor
     factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
         The factors for the design.
-    max_cost : int
+    max_changes : int
         The maximum number of changes in the specified factor.
 
     Returns
@@ -593,6 +593,6 @@ def max_changes_cost(factor, factors, max_cost):
     def _cost_fn(Y):
         changes = np.zeros(len(Y))
         changes[1:] = np.any(np.diff(Y[:, factor], axis=0), axis=1).astype(int)
-        return [(changes, max_cost, np.arange(len(Y)))]
+        return [(changes, max_changes, np.arange(len(Y)))]
 
     return cost_fn(_cost_fn, denormalize=False, decoded=False, contains_params=False)

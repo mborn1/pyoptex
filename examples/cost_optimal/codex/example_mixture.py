@@ -62,11 +62,14 @@ Y, state = create_cost_optimal_codex_design(
 )
 end_time = time.time()
 
+# Add the final mixture components
+Y['C'] = 1 - Y.sum(axis=1)
+
 #######################################################################
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_mixture.csv'), index=False)
+Y.round(2).to_csv(os.path.join(root, f'example_mixture.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

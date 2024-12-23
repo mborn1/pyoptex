@@ -61,25 +61,16 @@ class Factor(__Factor__):
         # Check for a mixture component
         if self.type in ('mixt', 'mixture'):
             # Alter default minimum and maximum
-            if self.min == -1 and self.max == 1:
-                smin, smax = 0, 1
-            else:
-                smin, smax = self.min, self.max
-                assert self.min > 0, 'Minimum for a mixture component must be larger than zero'
-                assert self.max > 0, 'Maximum for a mixture component must be larger than zero'
-
-            # Compute the difference
-            diff = smax - smin
+            assert (self.min == -1 and self.max == 1), 'Cannot specify a minimum and maximum for mixture components. Use levels parameters to specify minimum and maximum consumption per run'
 
             # Define default coordinates as positive
             levels = self.levels if self.levels is not None \
-                     else np.array([smin, (smin + smax) / 2, smax])
+                     else np.array([0, 0.5, 1])
             
             # Transform to a new factor
             return Factor(
                 self.name, self.re, 'cont_mixture', 
-                smin - diff, # Creates a min such that "min" is encoded to 0
-                smax, levels, self.coords
+                self.min, self.max, levels, self.coords
             )
 
         # Validate the object creation

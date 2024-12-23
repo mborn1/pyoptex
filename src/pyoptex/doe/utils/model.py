@@ -187,11 +187,80 @@ def model2Y2X(model, factors):
 
 def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp='_mixture_comp_'):
     """
+    Creates a Scheffe model with potential process effects and
+    potential cross-terms between the mixture effects and process effects.
+
+    A mixture model with N components is fully defined by N-1 components.
+    Therefore, the `mixture_effects` parameter should include all but one
+    mixture components as the first element, and the degree as the second element.
+    For example, a mixture with three components is specified by two
+    factors A and B. The degree specifies wether to only include all main effects,
+    or also interactions between the components.
+
+    Examples:
+
+    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_) 
+      
+      .. math::
+        
+        \sum_{k=1}^3 \\beta_k x_k
+    * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
+      
+      .. math::
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+    * process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+        \\alpha_0 + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'lin'], process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+      
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+      
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
+      
+      .. math::
+
+        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
     
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
+      
+      .. math::
+
+        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 [\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \sum_{i=1}^2 [\sum_{k=1}^2 \sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \sum_{k=1}^2 z_k^2
+      
     .. warning::
         This function is only to see the model used by
         :py:func:`mixtureY2X <pyoptex.doe.utils.model.mixtureY2X>`.
         Do not use this with :py:func:`model2Y2X <pyoptex.doe.utils.model.model2Y2X>`.
+
+    Parameters
+    ----------
+    mixture_effects : tuple(list(str), str)
+        The mixture effects is a tuple with as first element the names of the mixture
+        components, and as second element the model order. All but one mixture
+        component should be specified, e.g., a mixture with three components A, B, and
+        C should only specify A and B in the `factors` list and as a first element here.
+        The model order is either 'lin' or 'tfi'.
+    process_effects : dict(str, str)
+        Maps the process variable names to their order. The order can be
+        'lin', 'tfi', 'quad.
+    cross_order : str or None
+        The cross order which is either None, 'lin', or 'tfi'
+    mcomp : str
+        The name of the last mixture component.
+
+    Returns
+    -------
+    model : pd.DataFrame
+        A dataframe with the Scheffe model with process variables.
     """
     # Split in effects and order
     me, mo = mixture_effects
@@ -282,9 +351,76 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
 def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None):
     """
-    Creates a mixture model Y2X function. 
+    Creates a Scheffe model Y2X with potential process effects and
+    potential cross-terms between the mixture effects and process effects.
 
-    TODO: note Scheffe model. Note which components to specify
+    A mixture model with N components is fully defined by N-1 components.
+    Therefore, the `mixture_effects` parameter should include all but one
+    mixture components as the first element, and the degree as the second element.
+    For example, a mixture with three components is specified by two
+    factors A and B. The degree specifies wether to only include all main effects,
+    or also interactions between the components.
+
+    Examples:
+
+    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_) 
+      
+      .. math::
+        
+        \sum_{k=1}^3 \\beta_k x_k
+    * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
+      
+      .. math::
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+    * process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+        \\alpha_0 + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'lin'], process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+      
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
+      
+      .. math::
+      
+        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
+      
+      .. math::
+
+        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+    
+    * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
+      
+      .. math::
+
+        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 [\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \sum_{i=1}^2 [\sum_{k=1}^2 \sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \sum_{k=1}^2 z_k^2
+
+    Parameters
+    ----------
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors of the experiment.
+    mixture_effects : tuple(list(str), str)
+        The mixture effects is a tuple with as first element the names of the mixture
+        components, and as second element the model order. All but one mixture
+        component should be specified, e.g., a mixture with three components A, B, and
+        C should only specify A and B in the `factors` list and as a first element here.
+        The model order is either 'lin' or 'tfi'.
+    process_effects : dict(str, str)
+        Maps the process variable names to their order. The order can be
+        'lin', 'tfi', 'quad.
+    cross_order : str or None
+        The cross order which is either None, 'lin', or 'tfi'
+
+    Returns
+    -------
+    Y2X : func(Y)
+        The function transforming the design matrix (Y) to
+        the model matrix (X).
     """
     # Validation
     assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), f'Mixture factors must be of type mixture'

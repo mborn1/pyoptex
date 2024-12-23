@@ -59,10 +59,6 @@ constraints = parse_constraints_script(
     factors, exclude=True
 )
 
-# TODO: clean up the examples + write multiple case-scenarios
-    # TODO: fix transition costs with a callable to include scaling / asymmetry
-    # TODO: cost scenarios: regular (all-inclusive, evaluation), scaled, asymmetric, multi/single worker, fully customized (see paper 3), mixture (ingredient), micro_pharma (paper), approx_omars, (split plot size dependent?) 
-    # TODO: splitk scenarios: regular (all-inclusive, evaluation), prior augmentation, fixed column for constraints, split-level augmentation
 # TODO: what about covariates? -- add decorator like cost function
 
 #######################################################################
