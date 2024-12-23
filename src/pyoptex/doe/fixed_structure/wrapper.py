@@ -7,20 +7,22 @@ import pandas as pd
 from numba.typed import List
 from tqdm import tqdm
 
-from ..constraints import no_constraints
+from ..constraints import no_constraints, mixture_constraints
 from ..utils.design import decode_design, obs_var_from_Zs
 from .utils import (Factor, RandomEffect, FunctionSet, State, Parameters)
 from .init import initialize_feasible
 from .optimize import optimize
 
 
-def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible):
+def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
 
     Parameters
     ----------
+    factors : list(:py:class:`Factor <pyoptex.doe.fixed_stucture.utils.Factor>`)
+        The factors of the experiment.
     metric : :py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`
         The metric object.
     Y2X : func
@@ -40,6 +42,25 @@ def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
+
+    # Check if factors contain mixtures
+    if any(f.is_mixture for f in factors):
+        # Create the mixture constraints
+        mix_constr = mixture_constraints(
+            [str(f.name) for f in factors if f.is_mixture], 
+            factors
+        )
+
+        # Add the mixture constraints
+        if constraints is None:
+            constraints = mix_constr
+        else:
+            constraints = constraints | mix_constr
+
+    # Default to no constraints
+    if constraints is None:
+        constraints = no_constraints
+
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
 
 def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=None):
@@ -86,7 +107,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
     # Extract the plot sizes
     ratios = []
-    for r in re + block_effects:
+    for r in re + list(block_effects):
         # Extract ratios
         r = np.sort(r.ratio) \
                 if isinstance(r.ratio, (tuple, list, np.ndarray))\
@@ -104,9 +125,13 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             for ratio in ratios
         ]).T
 
-    # Split regular and blocking ratios
-    be_ratios = ratios[:, -len(block_effects):]
-    ratios = ratios[:, :len(block_effects)]
+        # Split regular and blocking ratios
+        be_ratios = ratios[:, -len(block_effects):]
+        ratios = ratios[:, :len(block_effects)]
+    else:
+
+        # No blocking ratios
+        be_ratios = []
 
     # Extract parameter arrays
     col_names = [str(f.name) for f in factors]
@@ -137,7 +162,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         ])
         
     # Invert V
-    Vinv = np.linalg.inv(Vinv)
+    Vinv = np.linalg.inv(V)
         
     # Define which groups to optimize
     lgrps = [np.arange(nruns)] + [np.arange(np.max(Z)+1) for Z in Zs]

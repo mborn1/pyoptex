@@ -356,3 +356,33 @@ class CompCol(BinaryCol):
 
 """A function always returning False"""
 no_constraints = Col('np.zeros(len(Y__), dtype=np.bool_)', None)
+
+def mixture_constraints(names, factors):
+    """
+    Create the mixture constraints based on the names of the
+    mixture factors.
+    
+    .. note::
+        The number of names is
+        the number of mixture components minus 1. The final mixture
+        component is never explicitely specified.
+
+        E.g. if A + B + C = 1, only ('A', 'B'), ('A', 'C'), or
+        ('B', 'C') is specified.
+
+    Parameters
+    ----------
+    names : list(str)
+        The names of the mixture components.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors of the experiment.
+    
+    Returns
+    -------
+    mixture_constraint : :py:class:`pyoptex.doe.constraints.Col`
+        The mixture constraint.
+    """
+    # TODO: problem with scaling of the factors
+    # ((((Y__[:,0] * 1.0 + 0.0) + (Y__[:,1] * 1.0 + 0.0)) + (Y__[:,2] * 3.0 + 2.0)) > (1 + 1e-06))
+    script = ' + '.join(f'`{name}`' for name in names) + ' > 1 + eps'
+    return parse_constraints_script(script, factors)

@@ -53,7 +53,7 @@ constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', fac
 n_tries = 10
 
 # Create the set of operators
-fn = default_fn(metric, Y2X, constraints=constraints)
+fn = default_fn(factors, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn, nruns)
 
 # Create design

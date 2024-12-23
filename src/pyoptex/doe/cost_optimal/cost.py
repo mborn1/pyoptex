@@ -188,6 +188,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
         :py:function:`pyoptex.doe.cost_optimal.cost.discount_cost`"""
         # Initialize costs
         cc = np.zeros(len(Y))
+        cc[0] = base_cost
 
         # Loop for each cost
         for i in range(1, len(Y)):
@@ -271,8 +272,9 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
     def _cost(Y):
         # Initialize the costs
         cc = np.zeros(len(Y))
+        cc[0] = base_cost
 
-        for i in range(len(Y)):
+        for i in range(1, len(Y)):
             # Base cost of a run
             tc = base_cost
 
@@ -319,6 +321,220 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         {k: v + execution_cost for k, v in transition_costs.items()}, 
         factors, max_cost, execution_cost
     )
+
+def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
+    """
+    Create a transition cost function for a problem where
+    multiple workers can work on the transition between
+    two consecutive runs in parallel. The total transition
+    cost is determined by the most-hard-to-change factor.
+    The transition cost is determined by scaling the
+    transition cost between start and stop with a base cost.
+    See the parameters for more information.
+    
+    Parameters
+    ----------
+    transition_costs : dict(str, tuple(float, float, float, float) or float)
+        A dictionary mapping the factor name to the transition cost.
+        The cost is a tuple with as first element the base cost of any
+        positive transition (-1 to +1), as second element the base cost
+        of any negative transition (+1 to -1), as third element the 
+        additional cost to positively scale between min (-1) and max (+1),
+        and as third element the additional cost to negatively scale between 
+        max (+1) and min (-1).
+        Categorical factors should have only a float indicating the base cost
+        of any transition.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    execution_cost : float
+        the execution cost of a run.
+    
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    # Validate the categorical factors
+    assert all(
+        isinstance(transition_costs[str(f.name)], (int, float))
+        for f in factors if f.is_categorical
+    ), f'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    # Validate continuous factors
+    assert all(
+        len(transition_costs[str(f.name)]) == 4
+        for f in factors if f.is_continuous
+    ), f'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+
+    # Restructure transition costs
+    transition_costs = {
+        str(f.name): (
+            transition_costs[str(f.name)] 
+            if f.is_continuous
+            else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
+        ) for f in factors
+    }
+
+    # Compute the column starts
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
+    is_continuous = np.array([f.is_continuous for f in factors])
+
+    # Expand the costs to arrays
+    base_costs = np.array([
+        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] 
+        for f in factors
+    ])
+    scale_costs = np.array([
+        [transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2]
+        for f in factors
+    ])
+
+    # Define the transition costs
+    @numba.njit
+    def _cost(Y):
+        # Initialize the costs
+        cc = np.zeros(len(Y))
+        cc[0] = execution_cost
+
+        for i in range(1, len(Y)):
+            # Define the old / new run for transition
+            old_run = Y[i-1]
+            new_run = Y[i]
+
+            # Additive costs
+            cc_ = np.zeros(colstart.size-1)
+            for j in range(colstart.size-1):
+                # Check for a transition
+                if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
+                    # Check if continuous or categorical factor
+                    if is_continuous[j]:
+                        diff = new_run[colstart[j]] - old_run[colstart[j]]
+                        if diff > 0:
+                            # Positive transition
+                            cc_[j] = base_costs[j][0] + scale_costs[j][0] * diff
+                        else:
+                            # Negative transition
+                            cc_[j] = base_costs[j][1] - scale_costs[j][1] * diff
+                    else:
+                        # Categorical base cost
+                        cc_[j] = base_costs[j][0]
+                    
+            # Take the maximum as most-hard-to-change
+            cc[i] = np.max(cc_) + execution_cost
+
+        # Return the costs
+        return [(cc, max_cost, np.arange(len(Y)))]
+
+    return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
+def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
+    """
+    Create a transition cost function for a problem where
+    only a single worker can work on the transition between
+    two consecutive runs. The total transition
+    cost is determined by the sum of all transition costs.
+    The transition cost is determined by scaling the
+    transition cost between start and stop with a base cost.
+    See the parameters for more information.
+    
+    Parameters
+    ----------
+    transition_costs : dict(str, tuple(float, float, float, float) or float)
+        A dictionary mapping the factor name to the transition cost.
+        The cost is a tuple with as first element the base cost of any
+        positive transition (-1 to +1), as second element the base cost
+        of any negative transition (+1 to -1), as third element the 
+        additional cost to positively scale between min (-1) and max (+1),
+        and as third element the additional cost to negatively scale between 
+        max (+1) and min (-1).
+        Categorical factors should have only a float indicating the base cost
+        of any transition.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    execution_cost : float
+        the execution cost of a run.
+    
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    # Validate the categorical factors
+    assert all(
+        isinstance(transition_costs[str(f.name)], (int, float))
+        for f in factors if f.is_categorical
+    ), f'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    # Validate continuous factors
+    assert all(
+        len(transition_costs[str(f.name)]) == 4
+        for f in factors if f.is_continuous
+    ), f'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+
+    # Restructure transition costs
+    transition_costs = {
+        str(f.name): (
+            transition_costs[str(f.name)] 
+            if f.is_continuous
+            else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
+        ) for f in factors
+    }
+
+    # Compute the column starts
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, 1, effect_types - 1))))
+    is_continuous = np.array([f.is_continuous for f in factors])
+
+    # Expand the costs to arrays
+    base_costs = np.array([
+        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] 
+        for f in factors
+    ])
+    scale_costs = np.array([
+        [transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2]
+        for f in factors
+    ])
+
+    # Define the transition costs
+    @numba.njit
+    def _cost(Y):
+        # Initialize the costs
+        cc = np.zeros(len(Y))
+        cc[0] = execution_cost
+
+        for i in range(1, len(Y)):
+            # Define the old / new run for transition
+            old_run = Y[i-1]
+            new_run = Y[i]
+
+            # Additive costs
+            cc_ = np.zeros(colstart.size-1)
+            for j in range(colstart.size-1):
+                # Check for a transition
+                if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
+                    # Check if continuous or categorical factor
+                    if is_continuous[j]:
+                        diff = new_run[colstart[j]] - old_run[colstart[j]]
+                        if diff > 0:
+                            # Positive transition
+                            cc_[j] = base_costs[j][0] + scale_costs[j][0] * diff
+                        else:
+                            # Negative transition
+                            cc_[j] = base_costs[j][1] - scale_costs[j][1] * diff
+                    else:
+                        # Categorical base cost
+                        cc_[j] = base_costs[j][0]
+                    
+            # Take the maximum as most-hard-to-change
+            cc[i] = np.sum(cc_) + execution_cost
+
+        # Return the costs
+        return [(cc, max_cost, np.arange(len(Y)))]
+
+    return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
 
 def fixed_runs_cost(max_cost):
     """

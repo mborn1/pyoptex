@@ -21,12 +21,35 @@ class Factor(__Factor__):
     __slots__ = ()
 
     def __new__(cls, *args, **kwargs):
-
         # Create the object
         self = super(Factor, cls).__new__(cls, *args, **kwargs)
 
+        # Check for a mixture component
+        if self.type in ('mixt', 'mixture'):
+            # Alter default minimum and maximum
+            if self.min == -1 and self.max == 1:
+                smin, smax = 0, 1
+            else:
+                smin, smax = self.min, self.max
+                assert self.min > 0, 'Minimum for a mixture component must be larger than zero'
+                assert self.max > 0, 'Maximum for a mixture component must be larger than zero'
+
+            # Compute the difference
+            diff = smax - smin
+
+            # Define default coordinates as positive
+            levels = self.levels if self.levels is not None \
+                     else np.array([smin, (smin + smax) / 2, smax])
+            
+            # Transform to a new factor
+            return Factor(
+                self.name, self.grouped, self.ratio, 'cont_mixture', 
+                smin - diff, # Creates a min such that "min" is encoded to 0
+                smax, levels, self.coords
+            )
+
         # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
+        assert self.type in ['cont', 'continuous', 'cont_mixture', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous, categorical, or mixture, but is {self.type}'
         if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
             assert all(r >= 0 for r in self.ratio), f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
         else:
@@ -67,7 +90,7 @@ class Factor(__Factor__):
         """
         Determines if the factor is a continuous factor.
         """
-        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative']
+        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative', 'cont_mixture']
 
     @property 
     def is_categorical(self):
@@ -77,6 +100,10 @@ class Factor(__Factor__):
         return not self.is_continuous
 
     @property
+    def is_mixture(self):
+        return self.type.lower() in ['cont_mixture']
+
+    @property
     def coords_(self):
         """
         Computes the encoded coordinates of the factor.
@@ -84,7 +111,7 @@ class Factor(__Factor__):
         if self.coords is None:
             if self.is_continuous:
                 if self.levels is not None:
-                    coord = self.normalize(np.array(self.levels))
+                    coord = np.expand_dims(self.normalize(np.array(self.levels)), 1)
                 else:
                     coord = create_default_coords(1)
             else:

@@ -71,7 +71,7 @@ validate_plot_sizes(factors, model)
 n_tries = 10
 
 # Create the set of operators
-fn = default_fn(metric, Y2X, constraints=constraints)
+fn = default_fn(factors, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn, prior=prior, grps=grps)
 
 # Create design

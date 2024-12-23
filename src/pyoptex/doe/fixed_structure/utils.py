@@ -58,8 +58,32 @@ class Factor(__Factor__):
         # Create the object
         self = super(Factor, cls).__new__(cls, *args, **kwargs)
 
+        # Check for a mixture component
+        if self.type in ('mixt', 'mixture'):
+            # Alter default minimum and maximum
+            if self.min == -1 and self.max == 1:
+                smin, smax = 0, 1
+            else:
+                smin, smax = self.min, self.max
+                assert self.min > 0, 'Minimum for a mixture component must be larger than zero'
+                assert self.max > 0, 'Maximum for a mixture component must be larger than zero'
+
+            # Compute the difference
+            diff = smax - smin
+
+            # Define default coordinates as positive
+            levels = self.levels if self.levels is not None \
+                     else np.array([smin, (smin + smax) / 2, smax])
+            
+            # Transform to a new factor
+            return Factor(
+                self.name, self.re, 'cont_mixture', 
+                smin - diff, # Creates a min such that "min" is encoded to 0
+                smax, levels, self.coords
+            )
+
         # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous or categorical, but is {self.type}'
+        assert self.type in ['cont', 'continuous', 'cont_mixture', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}'
         if self.is_continuous:
             assert isinstance(self.min, (float, int)), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
             assert isinstance(self.max, (float, int)), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
@@ -87,18 +111,22 @@ class Factor(__Factor__):
 
     @property
     def is_continuous(self):
-        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative']
+        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative', 'cont_mixture']
 
     @property 
     def is_categorical(self):
         return not self.is_continuous
+    
+    @property
+    def is_mixture(self):
+        return self.type.lower() in ['cont_mixture']
 
     @property
     def coords_(self):
         if self.coords is None:
             if self.is_continuous:
                 if self.levels is not None:
-                    coord = self.normalize(np.array(self.levels))
+                    coord = np.expand_dims(self.normalize(np.array(self.levels)), 1)
                 else:
                     coord = create_default_coords(1)
             else:

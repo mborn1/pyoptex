@@ -26,7 +26,8 @@ factors = [
             coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
             ratio=[0.1, 1, 10]),
     Factor('E', type='continuous', grouped=False),
-    Factor('F', type='continuous', grouped=False, min=2, max=5),
+    Factor('F', type='continuous', grouped=False, 
+           levels=[-1, -0.3, 0.3, 1], min=2, max=5),
     Factor('G', type='continuous', grouped=False),
 ]
 
@@ -34,7 +35,7 @@ factors = [
 model = partial_rsm_names({
     'A1': 'tfi',
     'E': 'tfi',
-    'F': 'tfi',
+    'F': 'quad',
     'G': 'tfi'
 })
 Y2X = model2Y2X(model, factors)
@@ -67,7 +68,7 @@ constraints = parse_constraints_script(
 # Simulation parameters
 nsims = 10
 nreps = 1
-fn = default_fn(nsims, cost_fn, metric, Y2X, constraints=constraints)
+fn = default_fn(nsims, factors, cost_fn, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn, prior=prior)
 
 # Create design

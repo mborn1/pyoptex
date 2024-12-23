@@ -5,5 +5,9 @@ import plotly.io as pio
 
 from collections import namedtuple
 
-A = namedtuple('A', 'Z ratio', defaults=(None, 1))
-print(A._field_defaults)
+a = pd.DataFrame({'A': [1, 4, 5], 'C': [0, 1, 2]})
+print(a)
+
+print(a.loc[np.array([True, False, True]), ['A']])
+
+

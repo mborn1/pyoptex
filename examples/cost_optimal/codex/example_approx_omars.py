@@ -3,60 +3,60 @@
 # Python imports
 import time
 import os
+import numpy as np
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
+from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
-from pyoptex.doe.cost_optimal import Factor
-from pyoptex.doe.cost_optimal.metric import Iopt
-from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
+from pyoptex.doe.cost_optimal import Factor, cost_fn
+from pyoptex.doe.cost_optimal.metric import Dopt
 from pyoptex.doe.cost_optimal.codex import (
     create_cost_optimal_codex_design, default_fn, create_parameters
 )
+
+# TODO: fix this notebook
 
 # Set the seed
 set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('A', type='categorical', levels=['L1', 'L2', 'L3', 'L4']),
-    Factor('E', type='continuous', grouped=False),
-    Factor('F', type='continuous', grouped=False, min=2, max=5),
-    Factor('G', type='continuous', grouped=False),
+    Factor('X1', type='continuous', grouped=False, min=-1, max=1, levels=[-1, 0, 1]),
+    Factor('X2', type='continuous', grouped=False, min=6, max=36, levels=np.linspace(6, 36, 11)),
+    Factor('X3', type='continuous', grouped=False, min=12, max=36, levels=np.linspace(12, 36, 9)),
 ]
 
 # Create a partial response surface model
 model = partial_rsm_names({
-    'A': 'tfi',
-    'E': 'quad',
-    'F': 'quad',
-    'G': 'quad'
+    'X1': 'quad',
+    'X2': 'quad',
+    'X3': 'quad',
 })
 Y2X = model2Y2X(model, factors)
 
 # Define the criterion for optimization
-metric = Iopt()
+metric = Dopt()
+
+# Define the constraints
+constraints = parse_constraints_script(
+    f'(`X2` <= `X3`)', 
+    factors, exclude=False
+)
 
 # Cost function
-max_transition_cost = 3*4*60
-transition_costs = {
-    'A': 2*60,
-    'E': 1,
-    'F': 1,
-    'G': 1
-}
-execution_cost = 5
-cost_fn = parallel_worker_cost(
-    transition_costs, factors, 
-    max_transition_cost, execution_cost
-)
+max_units = 150
+@cost_fn(denormalize=False, decoded=False, contains_params=False)
+def cost(Y):
+    units = 2 + (Y[:, 0] + 1) * 6
+    return [(units, max_units, np.arange(len(Y)))]
 
 #######################################################################
 
 # Simulation parameters
 nsims = 10
 nreps = 1
-fn = default_fn(nsims, factors, cost_fn, metric, Y2X)
+fn = default_fn(nsims, factors, cost, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn)
 
 # Create design
@@ -70,7 +70,7 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_cost_optimal_codex.csv'), index=False)
+Y.to_csv(os.path.join(root, f'example_micro_pharma.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

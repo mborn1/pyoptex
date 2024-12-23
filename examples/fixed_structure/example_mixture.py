@@ -7,35 +7,33 @@ import numpy as np
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+from pyoptex.doe.utils.model import mixtureY2X
 from pyoptex.doe.fixed_structure import (
-    Factor, RandomEffect, create_fixed_structure_design, create_parameters, default_fn
+    Factor, create_fixed_structure_design, 
+    create_parameters, default_fn
 )
 from pyoptex.doe.fixed_structure.metric import Dopt
+
+# TODO: problem in initialization?
 
 # Set the seed
 set_seed(42)
 
 # Define the plots
 nruns = 20
-nplots = 5
-assert nruns//nplots == nruns/nplots, 'Number of runs must be integer divisable by the number of plots'
-re = RandomEffect(np.repeat(np.arange(nplots), nruns//nplots), ratio=0.1)
 
-# Define the factors
+# Define the factors (last mixture is not explicitely specified)
 factors = [
-    Factor('A', re, type='categorical', levels=['L1', 'L2', 'L3']),
-    Factor('B', type='continuous'),
-    Factor('C', type='continuous', min=2, max=5),
+    Factor('A', type='mixture', levels=np.arange(0, 1.001, 0.05)),
+    Factor('B', type='mixture', levels=np.arange(0, 1.001, 0.05)),
+    Factor('C', type='mixture', min=2, max=5, levels=np.arange(2, 5.001, 0.2)),
 ]
 
-# Create a partial response surface model
-model = partial_rsm_names({
-    'A': 'tfi',
-    'B': 'quad',
-    'C': 'quad',
-})
-Y2X = model2Y2X(model, factors)
+# Create a Scheffe model
+Y2X = mixtureY2X(
+    factors, 
+    mixture_effects=(('A', 'B', 'C'), 'tfi'), 
+)
 
 # Define the metric
 metric = Dopt()
@@ -58,7 +56,7 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'example_splitplot_fs.csv'), index=False)
+Y.to_csv(os.path.join(root, 'example_mixture.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

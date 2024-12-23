@@ -164,10 +164,14 @@ def model2Y2X(model, factors):
         The function transforming the design matrix (Y) to
         the model matrix (X).
     """
+    # Validation
     assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
+    
+    col_names = [str(f.name) for f in factors]
+    assert all(col in col_names for col in model.columns), 'Not all model parameters are factors'
+    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
 
     # Extract factor parameters
-    col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
 
     # Detect model in correct order
@@ -178,6 +182,153 @@ def model2Y2X(model, factors):
 
     # Create transformation function for polynomial models
     Y2X = lambda Y: x2fx(Y, modelenc)
+
+    return Y2X
+
+def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp='_mixture_comp_'):
+    """
+    
+    .. warning::
+        This function is only to see the model used by
+        :py:func:`mixtureY2X <pyoptex.doe.utils.model.mixtureY2X>`.
+        Do not use this with :py:func:`model2Y2X <pyoptex.doe.utils.model.model2Y2X>`.
+    """
+    # Split in effects and order
+    me, mo = mixture_effects
+    me = [*me, mcomp]
+
+    # Validate all mixture effects are continuous
+    assert mo in ('lin', 'tfi'), f'The order of a mixture experiment cannot be higher than two-factor interactions'
+    assert cross_order in (None, 'lin', 'tfi'), 'Can only consider no cross, linear crossing, or two-factor interaction (tfi) crossing'
+
+    # Create the scheffe model and process model
+    scheffe_model = partial_rsm_names({e: mo for e in me}).iloc[1:]
+    process_model = partial_rsm_names(process_effects).iloc[1:]
+
+    # Extract components
+    mixture_comps = scheffe_model.columns
+    process_comps = process_model.columns
+
+    # Cross both dataframes
+    scheffe_model[process_comps] = 0
+    process_model[mixture_comps] = 0
+    model = pd.concat((scheffe_model, process_model), ignore_index=True)
+
+    # Cross the model
+    if cross_order == 'tfi':
+        # Extract tfi process effects
+        tfi_process_effects = (
+            (model[process_comps].sum(axis=1) == 2) # Sum is 2
+            & (model[process_comps].astype(np.bool_).sum(axis=1) == 2) # Count is 2
+            & (model[mixture_comps].sum(axis=1) == 0) # No other components
+        )
+
+        # Extract linear process effects
+        lin_process_effects = (
+            (model[process_comps].sum(axis=1) == 1)
+            & (model[mixture_comps].sum(axis=1) == 0)
+        )
+
+        # Cross the linear process and two-factor mixture
+        tfi_mixt_lin_process = pd.merge(
+            scheffe_model.iloc[len(mixture_comps):][list(mixture_comps)], 
+            model.loc[lin_process_effects, list(process_comps)], 
+            how='cross'
+        )
+
+        # Combine them with linear mixture effects (apart from M_COMP)
+        lin_mixt_tfi_process = pd.merge(
+            model.loc[tfi_process_effects, list(process_comps) + [mcomp]],
+            pd.DataFrame(
+                np.eye(len(mixture_comps) - 1, dtype=np.int_), 
+                columns=mixture_comps.drop(mcomp)
+            ), 
+            how='cross'
+        )[model.columns]
+
+        # Change tfi process effect to interaction with M_COMP
+        model.loc[tfi_process_effects, mcomp] = 1
+
+        # Combine all terms
+        model = pd.concat(
+            (model, tfi_mixt_lin_process, lin_mixt_tfi_process), 
+            ignore_index=True
+        )
+
+    if cross_order in ('lin', 'tfi'):
+        # Extract linear process effects
+        lin_process_effects = (
+            (model[process_comps].sum(axis=1) == 1)
+            & (model[mixture_comps].sum(axis=1) == 0)
+        )
+
+        # Combine them with linear mixture effects (apart from M_COMP)
+        additional_terms = pd.merge(
+            model.loc[lin_process_effects, list(process_comps) + [mcomp]],
+            pd.DataFrame(
+                np.eye(len(mixture_comps) - 1, dtype=np.int_), 
+                columns=mixture_comps.drop(mcomp)
+            ), 
+            how='cross'
+        )[model.columns]
+
+        # Change linear process effect to interaction with M_COMP
+        model.loc[lin_process_effects, mcomp] = 1
+
+        # Combine all terms
+        model = pd.concat((model, additional_terms), ignore_index=True)
+
+    return model
+
+def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None):
+    """
+    Creates a mixture model Y2X function. 
+
+    TODO: note Scheffe model. Note which components to specify
+    """
+    # Validation
+    assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), f'Mixture factors must be of type mixture'
+
+    # Create the mixture model
+    me, _ = mixture_effects
+    mcomp = '_mixture_comp_'
+    model = mixture_scheffe_model(mixture_effects, process_effects, cross_order, mcomp=mcomp)
+
+    # Validate all factors are in model and vice-versa
+    col_names = [str(f.name) for f in factors]
+    assert all(col in col_names for col in model if col != mcomp), 'Not all model parameters are factors'
+    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
+
+    ################################################
+
+    # Extract factor parameters
+    effect_types = np.concatenate((
+        np.array([1 if f.is_continuous else len(f.levels) for f in factors]),
+        np.array([1]) # Add continuous final mixture component
+    ))
+
+    # Retrieve start of columns
+    colstart = np.concatenate((
+        [0], 
+        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
+    ))
+
+    # Retrieve indices of mixture components (encoded)
+    me_idx_enc = np.array([colstart[col_names.index(e)] for e in me])
+
+    # Detect model in correct order
+    model = model[col_names + [mcomp]].to_numpy()
+
+    # Encode model
+    modelenc = encode_model(model, effect_types)
+
+    # Define Y2X
+    def Y2X(Y):
+        Y = np.concatenate((
+            Y,
+            np.expand_dims(1 - np.sum(Y[:, me_idx_enc], axis=1), 1)
+        ), axis=1)
+        return x2fx(Y, modelenc)
 
     return Y2X
 

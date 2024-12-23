@@ -7,7 +7,7 @@ import pandas as pd
 from numba.typed import List
 from tqdm import tqdm
 
-from ...constraints import no_constraints
+from ...constraints import no_constraints, mixture_constraints
 from ...utils.design import decode_design
 from ..utils import Factor, FunctionSet, State
 from .init import initialize_feasible
@@ -45,13 +45,15 @@ def _compute_cs(plot_sizes, ratios, thetas):
     c = c[:, 1:]
     return c
 
-def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible):
+def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize_feasible):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
 
     Parameters
     ----------
+    factors : list(:py:class:`Factor <pyoptex.doe.fixed_stucture.utils.Factor>`)
+        The factors of the experiment.
     metric : :py:class:`SplitkPlotMetricMixin <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin>`
         The metric object.
     Y2X : func
@@ -71,6 +73,25 @@ def default_fn(metric, Y2X, constraints=no_constraints, init=initialize_feasible
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
+
+    # Check if factors contain mixtures
+    if any(f.is_mixture for f in factors):
+        # Create the mixture constraints
+        mix_constr = mixture_constraints(
+            [str(f.name) for f in factors if f.is_mixture], 
+            factors
+        )
+
+        # Add the mixture constraints
+        if constraints is None:
+            constraints = mix_constr
+        else:
+            constraints = constraints | mix_constr
+
+    # Default to no constraints
+    if constraints is None:
+        constraints = no_constraints
+
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
 
 def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):

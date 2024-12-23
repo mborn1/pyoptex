@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from numba.typed import List
 
-from ...constraints import no_constraints
+from ...constraints import no_constraints, mixture_constraints
 from ...utils.design import decode_design, encode_design
 from ..init import init_feasible
 from ..utils import Factor, Parameters
@@ -22,10 +22,10 @@ from .optimization import CEOptimizer, CEStructOptimizer
 
 
 def default_fn(
-    nsims, cost, metric, Y2X,
+    nsims, factors, cost, metric, Y2X,
     init=init_feasible, sample=sample_random, temperature=None,
     accept=exponential_accept_rel, restart=None, insert=insert_optimal,
-    remove=remove_optimal_onebyone, constraints=no_constraints,
+    remove=remove_optimal_onebyone, constraints=None,
     optimizers=[CEOptimizer(1), CEStructOptimizer(1)],
     final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)]
     ):
@@ -33,10 +33,15 @@ def default_fn(
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
 
+    If any mixture components are present, the mixture constraint
+    is automatically added.
+
     Parameters
     ----------
     nsims : int
         The number of simulations for the algorithm.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors of the experiment.
     cost : func(Y, params)
         The cost function.
     metric : :py:class:`pyoptex.doe.cost_optimal.metric.Metric`
@@ -96,6 +101,24 @@ def default_fn(
     if restart is None:
         restart = RestartEveryNFailed(nsims / 100)
 
+    # Check if factors contain mixtures
+    if any(f.is_mixture for f in factors):
+        # Create the mixture constraints
+        mix_constr = mixture_constraints(
+            [str(f.name) for f in factors if f.is_mixture], 
+            factors
+        )
+
+        # Add the mixture constraints
+        if constraints is None:
+            constraints = mix_constr
+        else:
+            constraints = constraints | mix_constr
+
+    # Default to no constraints
+    if constraints is None:
+        constraints = no_constraints
+        
     # Return the function set
     return FunctionSet(
         Y2X, init, cost, metric, constraints.encode(), 
