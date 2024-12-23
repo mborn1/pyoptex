@@ -131,7 +131,7 @@ def compute_update_UD(
 def det_update_UD(U, D, Minv):
     """
     Compute the determinant adjustment as a factor.
-    In other words: :math:`|M^*|=\alpha*|M|`. The new
+    In other words: :math:`|M^*|=\\alpha*|M|`. The new
     information matrix originates from the following update
     formula: :math:`M^* = M + U^T D U`.
 
@@ -139,7 +139,7 @@ def det_update_UD(U, D, Minv):
 
     .. math::
 
-        \alpha = |D| |P| = |D| |D^{-1} + U M^{-1} U.T|
+        \\alpha = |D| |P| = |D| |D^{-1} + U M^{-1} U.T|
 
     Parameters
     ----------

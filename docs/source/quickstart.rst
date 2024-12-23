@@ -193,6 +193,16 @@ console.
 
 More information on how to evaluate the design in :ref:`qc_evaluation`.
 
+.. note::
+  A split-plot design with only one stratum, the easy-to-change stratum
+  is also a fully randomized design. Because of the update formulas,
+  creating a randomized design with the
+  :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
+  may be faster.
+  Such an example script may be found in
+  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_sp.py\ |link-qc-mid1|\ example_randomized_sp.py\ |link-qc-post|
+
+
 .. _qc_splitk:
 
 Creating a split\ :sup:`k`\ -plot design
@@ -203,15 +213,6 @@ In such a scenario, design of experiments literature recommends
 the use of a split-plot design, where the factor A is no longer
 reset with every run. We will create a split-plot design
 with 5 whole plots and 4 runs per whole plot.
-
-.. note::
-  A split-plot design with only one stratum, the easy-to-change stratum
-  is also a fully randomized design. Because of the update formulas,
-  creating a randomized design with the
-  :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
-  may be faster.
-  Such an example script may be found in
-  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_sp.py\ |link-qc-mid1|\ example_randomized_sp.py\ |link-qc-post|
 
 .. note::
   The Python script for the generation of such a design can be
@@ -438,6 +439,12 @@ run is 5 minutes. Some times, multiple factors are reset simultaneously. In this
 case, we assume that the transition cost is determined by the most-hard-to-change factor.
 Such a scenario arises when multiple workers or technicians can work in parallel on their
 own task.
+
+.. note::
+  The Python script for the generation of such a design can be
+  found in 
+  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_cost_optimal_codex.py\ |link-qc-mid1|\ example_cost_optimal_codex.py\ |link-qc-post|.
+
 
 First start with the necessary imports
 
