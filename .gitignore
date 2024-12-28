@@ -21,6 +21,7 @@ test.ipynb
 *.lprof
 docs/source/generated/*
 docs/out/*
+examples/archive/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/pycharm,python,matlab
 # Edit at https://www.toptal.com/developers/gitignore?templates=pycharm,python,matlab
