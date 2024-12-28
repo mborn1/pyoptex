@@ -3,9 +3,6 @@
 Performance
 ===========
 
-This page provides some performance tips and tricks to optimize the
-computational speed of the algorithm
-
 .. _perf_cost:
 
 Costs
@@ -24,7 +21,7 @@ in the decorator as follows
 >>>     return []
 
 In this case, the design is no longer denormalized, but only decoded. This means
-that every categorical factor is decoded to a single column with number ranging from
+that every categorical factor is decoded to a single column with a number ranging from
 0 to the number of levels (in the order indicated by the user when specifying the factor).
 The continuous factors are normalized between -1 and 1.
 
@@ -37,7 +34,7 @@ design matrix is passed to the cost function.
 >>>    # Your cost function here
 >>>    return []
 
-There are two attention points in when dealing with encoded design matrices.
+There are two attention points when dealing with encoded design matrices.
 First, the column index of the factor changes depending on how many preceding
 categorical factors there are, and how many levels each categorical factor has.
 To easily retrieve the new indices, compute
@@ -65,5 +62,6 @@ Bayesian variance ratios
 
 Try to only use a Bayesian approach as a last resort, and definitely
 do not specify too many sets of variance ratios. For each set of
-variance ratios, a seperate metric must be computed per evaluation.
+variance ratios, a seperate metric must be computed per evaluation,
+making it computationally heavy.
 

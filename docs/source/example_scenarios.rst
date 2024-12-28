@@ -27,13 +27,6 @@
 Example scenarios
 =================
 
-This page contains multiple example scenarios with detailed guides.
-
-.. note::
-    This page is still under development, for now look 
-    on `Github <https://github.com/mborn1/pyoptex>`_ under 
-    examples
-
 .. _fs_examples:
 
 Fixed structure
@@ -76,10 +69,10 @@ below is the code to create a mixture with four components, completely defined b
 
 A mixture factor is a factor with a value between 0 and 1 (which represents a fraction of
 the total). By default, only the levels 0, 0.5, and 1 are considered, however, by 
-manually specifying the levels, the user can minimum and maximum constraints on the mixture component.
+manually specifying the levels, the user can assign minimum and maximum constraints on the mixture component.
 For example, here, every run requires at least 20% of component C, and at most 50%.
 
-Second, the model must be adjusted to a Scheffé-model.
+Second, the model is commonly adjusted to a Scheffé-model.
 
 >>> Y2X = mixtureY2X(
 >>>     factors, 
@@ -91,12 +84,12 @@ which automatically adds the final mixture component and computes the model. Not
 the function also permits to easily add process variables and any level of cross-terms between
 the mixture components and the process variables.
 
-Finally, for export we can add the fourth mixture component
+Finally, for export, we can add the fourth mixture component
 
 >>> Y['D'] = 1 - Y.sum(axis=1)
 
 .. note::
-    The mixture constraint indicating the sum of the mixture components cannot be larger than 1
+    The mixture constraint, indicating the sum of the mixture components cannot be larger than one,
     is automatically when the algorithm detects mixture components.
 
 .. _fs_pomars:
@@ -115,10 +108,10 @@ The Python script is found at
 
 While with heuristic algorithms, we cannot guarantee complete orthogonality,
 we can optimize for anti-aliasing using the :py:class:`Aliasing <pyoptex.doe.fixed_structure.metric.Aliasing>`
-metric in cost-optimal designs. In other words, we optimize for minimal
-covariance between the main effects and the two-factor interactions or quadratic effects.
+metric. In other words, in this example, we optimize for minimal
+covariance between the main effects, and the two-factor interactions and quadratic effects.
 
-To do so, we first specify six factors in this example
+To do so, we first specify six factors
 
 >>> factors = [
 >>>     Factor('A', type='continuous'),
@@ -152,7 +145,7 @@ seven terms. Next, we want to minimize the aliasing of these main effects
 to every other element in the matrix, specified by `to_aliasing`.
 
 Next, we define the weights of these covariances. The weight-matrix 
-has in this case seven rows, and 28 columns. We more heavily weigh to the
+has in this case 7 rows, and 28 columns. We more heavily weigh to the
 main effects and intercept (w1) compared to the other effects in the model (w2).
 
 .. list-table:: The weighting block-matrix of the design
@@ -168,7 +161,7 @@ main effects and intercept (w1) compared to the other effects in the model (w2).
      - w2 :math:`\in \mathcal{R}^{n_1 \times n_2}`
      - w2 :math:`\in \mathcal{R}^{n_1 \times n_1}`
 
-with :math:`n_1=7` the number of main effects and :math:`n_2=13` the number of interaction effects.
+with :math:`n_1=6` the number of main effects and :math:`n_2=15` the number of interaction effects.
 The first row is from the intercept to the different effects, the second row contains all main effects
 to the different effects. The first column is to the intercept, the second column to the main effects,
 the third column to the interaction effects, and the fourth column to the quadratic effects.
@@ -254,7 +247,7 @@ are two options in practice:
 
 * Either we regenerate the complete design once we notice more runs per whole plot are feasible
 * Or, if there is no time, we can generate such an augmentation upfront. For example, if the person who
-  generates the design is unavailable.
+  generates the design is unavailable during the experimentation.
 
 In the latter case, we can augment the design by adding one or multiple additional runs to each plot.
 This approach permits us to have an optimal design in case our estimate is good, and a near-optimal design
@@ -280,7 +273,7 @@ Let us consider a prior with 4 whole plots, and 2 runs per whole plot
 >>> )
 
 meaning we estimate two runs per whole plot to be possible. However, it may be larger, up to four runs per whole plot.
-Then we can specify an augmentation
+We can then specify an augmentation
 
 >>> etc = Plot(level=0, size=4)
 >>> htc = Plot(level=1, size=4)
@@ -301,11 +294,16 @@ Suppose there is a factor which must be fixed because it requires a certain orde
 in the execution. For example, the hard-to-change factor must first be set to 1,
 then 0, then -1.
 
+The Python script is found at
+|link-qc-pre|\ |version|\ |link-qc-mid0-fs-splitk|\ example_splitk_fixed_factor.py\ |link-qc-mid1|\ example_splitk_fixed_factor.py\ |link-qc-post|.
+
 We can specify such a design by creating a prior and noting to the algorithm that
 from this prior, not all levels must be fixed. Some can still be optimized.
 
-The Python script is found at
-|link-qc-pre|\ |version|\ |link-qc-mid0-fs-splitk|\ example_splitk_fixed_factor.py\ |link-qc-mid1|\ example_splitk_fixed_factor.py\ |link-qc-post|.
+.. note::
+  The same effect is possible with a covariate function. However, the covariate function
+  is computationally more expensive due to a lack of update formulas, 
+  and cannot be included in :ref:`run level constraints <cust_constraints>`.
 
 Assume we have the following prior
 
@@ -334,11 +332,11 @@ Next, we specify the groups from the prior to be optimized.
 
 Every factor requires a group, which is an array of indices of the groups
 to be optimized. For example, the first group could have values from 0 up to
-(not including) 8. If 0 is included in the first element, 
+(not including) 8. If 0 is included in the first array, 
 factor A can be changed in the first group, 
 meaning the first four rows in this scenario. However, as factor A should be fixed, 
 we specify an empty array indicating no group can be optimized. The easy-to-change factors
-B and C can have indices from 0 up to 8*4 = 32.
+B and C can have indices from 0 up to 8*4 = 32. We specify all as none should be fixed.
 
 Finally, we specify an overall design of the same size
 
@@ -385,10 +383,10 @@ below is the code to create a mixture with three components, completely defined 
 
 A mixture factor is a factor with a value between 0 and 1 (which represents a fraction of
 the total). By default, only the levels 0, 0.5, and 1 are considered, however, by 
-manually specifying the levels, the user can minimum and maximum constraints on the mixture component.
+manually specifying the levels, the user can specify minimum and maximum constraints on the mixture component.
 For an example, see :ref:`fs_mixture`.
 
-Second, the model must be adjusted to a Scheffé-model.
+Second, the model is commonly adjusted to a Scheffé-model.
 
 >>> Y2X = mixtureY2X(
 >>>     factors, 
@@ -400,12 +398,12 @@ which automatically adds the final mixture component and computes the model. Not
 the function also permits to easily add process variables and any level of cross-terms between
 the mixture components and the process variables.
 
-Finally, for export we can add the fourth mixture component
+Finally, for export, we can add the fourth mixture component
 
 >>> Y['D'] = 1 - Y.sum(axis=1)
 
 .. note::
-    The mixture constraint indicating the sum of the mixture components cannot be larger than 1
+    The mixture constraint, indicating the sum of the mixture components cannot be larger than one,
     is automatically when the algorithm detects mixture components.
 
 .. _cost_scaled:
@@ -415,7 +413,7 @@ The cost depends on the magnitude of the change in a factor's level
 
 What if the transition cost depends on the magnitude of the transition? For example,
 heating an oven from 0°C to 100°C requires more time than heating it to 50°C.
-Accounting the this transition is only possible with cost-optimal designs which determine
+Accounting for this transition is only possible with cost-optimal designs which determine
 the structure of the design automatically.
 
 The Python script is found at
@@ -433,18 +431,19 @@ Let us specify an experiment with two hard-to-change factors A and B, and two ea
 We can specify a scaled transition cost using the 
 :py:func:`scaled_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_parallel_worker_cost>` or
 :py:func:`scaled_single_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_single_worker_cost>` functions.
-Each transition cost is specified as a tuple of four elements, for now, we consider the first two and
+Each transition cost is specified as a tuple of four elements, of which, for now, we consider the first two and
 the last two to be the same. A complete example is in :ref:`cost_asymmetric`.
 
 The general transition cost of a scaled scenario is specified as :math:`a + b \cdot mag`, with
 `a` the base cost, `b` the scaling term, and `mag` the magnitude of the transition. The base
-cost is specified in the first two elements tuple. The scaling term, from the minimum to the maximum,
+cost is specified in the first two elements of the tuple. The scaling term, from the minimum to the maximum,
 is specified in the latter two elements of the tuple.
 
 In this example, factor `A` has a scaled cost with no base cost. The time to go from the minimum
 to the maximum is two hours. Factor `B` has a fixed reset cost of one hour. Finally, the easy-to-change
 factors (which are reset with every run) require one minute to reset. There is also an experiment
-execution time of five minutes.
+execution time of five minutes. The total transition time is determined by the 
+most-hard-to-change factor as specified in :ref:`qc_codex`.
 
 >>> max_transition_cost = 3*4*60
 >>> transition_costs = {
@@ -468,9 +467,7 @@ The cost depends on the magnitude and direction of the change in a factor's leve
 What if the cost not only depends on the magnitude, but also the direction? 
 Heating an oven from 0°C to 100°C takes longer than heating it to 50°C. On top,
 cooling is even slower because there is an active heating element, but no active
-cooling element in the over. 
-
-In such a scenario, the cost depends on the magnitude, but also the direction
+cooling element in the oven. In such a scenario, the cost depends on the magnitude, but also the direction
 of the change. There is an asymmetry in the cost function.
 
 The Python script is found at

@@ -45,11 +45,11 @@ freely skip this and come back once a term is unclear.
   runs are intercorrelated, and the last two are intercorrelated. 
 * **V**: The V-matrix is the observation covariance matrix of Y.
   It is equal to :math:`V = \sum_{i=1}^k Z_i Z_i^T + I_N` with `k`
-  the number of random effects (Zs), and `I` the identity matrix of
+  the number of random effects (Zs), and :math:`I_N` the identity matrix of
   size `N`.
 * **Vinv**: The inverse of V.
-* **M** : The information matrix: :math:`X^T V^{-1} X`. :math:`M^{-1}`
-  is the covariance matrix of the parameter estimates in X.
+* **M** : The information matrix: :math:`M = X^T V^{-1} X`. The inverse,
+  :math:`M^{-1}`, is the covariance matrix of the parameter estimates in X.
 * **encoded**: refers to a design matrix for which the categorical
   factors are dummy encoded.
 * **decoded**: refers to a design matrix for which every factor,
@@ -70,11 +70,12 @@ freely skip this and come back once a term is unclear.
 * **continuous** or **quantitative**: Refers to a factor having a value on
   a continuous, measureable scale. The values are comparable and sortable.
 * **categorical** or **qualitative**: Refers to a factor having a predetermined
-  set of possible levels. The values are not comparable, but not sortable.
+  set of possible levels. The values are comparable, but not sortable.
 * **cost function**: The function which computes the resource consumption of the
   design matrix.
 * **cost** or **resource consumption**: The cost or amount of resources consumed
   for the design.
+* **budget**: The maximum resource consumption for the experiment.
 
 .. _qc_first_design:
 
@@ -89,11 +90,8 @@ We will start by creating a fully randomized D-optimal design
 with 20 runs, one categorical and two continuous factors, 
 using the coordinate-exchange algorithm. We are using the
 :py:mod:`fixed_structure <pyoptex.doe.fixed_structure>` submodule 
-for this.
-
-.. note::
-  The complete Python script for the generation of such a design can be
-  found in |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_fs.py\ |link-qc-mid1|\ example_randomized_fs.py\ |link-qc-post|.
+for this. The complete Python script for the generation of such a design can be
+found in |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_randomized_fs.py\ |link-qc-mid1|\ example_randomized_fs.py\ |link-qc-post|.
 
 Start by importing the necessary modules
 
@@ -114,7 +112,7 @@ We define the number of runs
 >>> nruns = 20
 
 Next, we define the factors for our experiment. We have one categorical
-factor A with levels L1, L2, and L3. Next we also define two continuous
+factor A with levels L1, L2, and L3. We also define two continuous
 factors B, and C. By default, factor B is in the range [-1, 1]. However,
 by specifying the `min` and `max` properties, we can define C in the
 range [2, 5].
@@ -135,11 +133,11 @@ range [2, 5].
    using the `coords` parameter. See :ref:`cust_cat_encoding`
    for more information.
 
-Finally, we must define a model. We define a full response surface model
+Then, we must define a model. We define a full response surface model
 with 9 parameters, including the intercept, all three main effects,
 three two-factor interactions, and two quadratic effects of the factors
 B and C. The first command creates a matrix representation of the model,
-the second converts this matrix representation to a callable function
+the second converts this matrix representation to a callable function,
 which transforms a design matrix (Y) to a model matrix (X).
 
 >>> model = partial_rsm_names({
@@ -153,7 +151,7 @@ which transforms a design matrix (Y) to a model matrix (X).
    Any custom linear model can be used. See :ref:`cust_model`
    for more information.
 
-We must also specify the metric which we want to optimize.
+Finally, we must also specify the metric which we want to optimize.
 In this case, we optimize for D-optimality (namely accurate
 parameter estimates).
 
@@ -217,12 +215,9 @@ What if the factor A was actually a component that was hard-to-change?
 In such a scenario, design of experiments literature recommends
 the use of a split-plot design, where the factor A is no longer
 reset with every run. We will create a split-plot design
-with 5 whole plots and 4 runs per whole plot.
-
-.. note::
-  The Python script for the generation of such a design can be
-  found in 
-  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_splitplot_sp.py\ |link-qc-mid1|\ example_splitplot_sp.py\ |link-qc-post|.
+with 5 whole plots and 4 runs per whole plot. The Python script for the generation 
+of such a design can be found in 
+|link-qc-pre|\ |version|\ |link-qc-mid0|\ example_splitplot_sp.py\ |link-qc-mid1|\ example_splitplot_sp.py\ |link-qc-post|.
 
 To create a split-plot design, first,
 we require the imports again.
@@ -243,7 +238,7 @@ we require the imports again.
 
 Note that we now import most from :py:mod:`splitk_plot <pyoptex.doe.fixed_structure.splitk_plot>`
 instead of :py:mod:`fixed_structure <pyoptex.doe.fixed_structure>`.
-Next, we define the hard-to-change and easy-to-change plot (or stratum).
+Next, we define the hard-to-change and easy-to-change plots (or strata).
 
 >>> etc = Plot(level=0, size=4)
 >>> htc = Plot(level=1, size=5, ratio=0.1)
@@ -253,7 +248,7 @@ Next, we define the hard-to-change and easy-to-change plot (or stratum).
 .. note::
    Split-plot designs require the user to specify an estimate of 
    the ratio between the variance of the random effect and the random error,
-   here noted on line 2. Generally, a value of `1` is a good estimate,
+   here noted on line 2 by the parameter `ratio`. Generally, a value of `1` is a good estimate,
    however, a Bayesian approach is also possible. See :ref:`cust_bayesian_ratio`
    for more information.
 
@@ -284,14 +279,14 @@ Finally, we generate the split-plot design.
 >>> Y, state = create_splitk_plot_design(params, n_tries=n_tries)
 >>> end_time = time.time()
 
+More information on how to evaluate the design in :ref:`qc_evaluation`.
+
 .. note::
    Adding more plots is as easy as specifying higher levels and assigning
    factors to them. For example, the very-hard-to-change factors in a 
    split-split-plot design would have a 
    
-   >>> `vhtc = Plot(level=2)`.
-
-More information on how to evaluate the design in :ref:`qc_evaluation`.
+   >>> vhtc = Plot(level=2)
 
 .. note::
   While a split-plot design can also be created using
@@ -310,12 +305,9 @@ to be grouped together. For any scenario where the randomization
 structure does not depend on the design and the number of runs is fixed,
 you can use the :py:func:`create_fixed_structure_design <pyoptex.doe.fixed_structure.wrapper.create_fixed_structure_design>`.
 
-Let's create a simple strip-plot design with 5 plots and 4 runs per plot.
-
-.. note::
-  The Python script for the generation of such a design can be
-  found in 
-  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_strip_plot_fs.py\ |link-qc-mid1|\ example_strip_plot_fs.py\ |link-qc-post|.
+Let's create a simple strip-plot design with 5 whole plots and 4 runs per whole plot.
+The Python script for the generation of such a design can be found in 
+|link-qc-pre|\ |version|\ |link-qc-mid0|\ example_strip_plot_fs.py\ |link-qc-mid1|\ example_strip_plot_fs.py\ |link-qc-post|.
 
 Like all previous examples, we start with the imports
 
@@ -338,6 +330,11 @@ Next, we define the random effect for a strip-plot design.
 >>> nruns = 20
 >>> nplots = 5
 >>> re = RandomEffect(np.tile(np.arange(nplots), nruns//nplots), ratio=0.1)
+
+For this example, the `Z` associated with the random effect will be
+
+>>> np.tile(np.arange(nplots), nruns//nplots)
+[0 1 2 3 4 0 1 2 3 4 0 1 2 3 4 0 1 2 3 4]
 
 Next, define the factors. Note that we assign A to the first
 random effect.
@@ -375,13 +372,17 @@ Finally, we compute the design
 
 You will now notice that the resulting design
 has the same setting of factor A for runs
-[1, 5, 9, 13, 17], the first plot of the strip-plot design
+[1, 6, 11, 16], the first plot of the strip-plot design
 
 .. note::
   If you want to force certain level constraints like in a
   strip-plot design, but you do not want any random effect
   associated, simply set the ratio of the random effect
   to zero.
+
+.. note::
+  Blocking factors can be added by providing them directly to
+  :py:func:`create_parameters <pyoptex.doe.fixed_structure.wrapper.create_parameters>`
 
 .. _qc_cost:
 
@@ -392,7 +393,7 @@ Why use cost-optimal designs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Cost optimal designs shift the philosphy of creating designs.
-Historically, an experiment was always analyzed by a statistician 
+Historically, an experiment was always created by a statistician 
 who determines whether to use a randomized design, a split-plot design,
 a split-split-plot design, etc. That person would then proceed to 
 make an estimation about the number of runs that could be performed,
@@ -438,13 +439,14 @@ regular staggered-level designs which assume a reset at fixed locations in
 the design. The figure below depicts the difference in interpretation.
 Both left and right are the same design, however, the runs are grouped
 differently in the middle column. The split-plot design requires a reset
-in for the second factor whenever the first resets. The generalized-staggered
+in the second factor whenever the first resets. The generalized-staggered
 level design only resets when the factor level changes.
 
 
 .. list-table::
   :align: center
   :widths: 1 1
+  :class: no-border
 
   * - .. figure:: /assets/img/interpretation_splitk_plot.svg
         :width: 100%
@@ -476,6 +478,8 @@ Let's create a design with one categorical factor and three continuous
 factors. The categorical factor A is hard-to-change and has four levels
 L1, L2, L3, and L4. The three continuous factors, E, F, and G, are easy-to-change. We will
 optimize for I-optimality with a full response surface model.
+The Python script for the generation of such a design can be found in 
+|link-qc-pre|\ |version|\ |link-qc-mid0|\ example_cost_optimal_codex.py\ |link-qc-mid1|\ example_cost_optimal_codex.py\ |link-qc-post|.
 
 As we are dealing with hard-to-change factors, our limiting resource
 is time. We will be using 3 days of 4 hours each, for a total of 720 minutes.
@@ -486,13 +490,7 @@ case, we assume that the transition cost is determined by the most-hard-to-chang
 Such a scenario arises when multiple workers or technicians can work in parallel on their
 own task.
 
-.. note::
-  The Python script for the generation of such a design can be
-  found in 
-  |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_cost_optimal_codex.py\ |link-qc-mid1|\ example_cost_optimal_codex.py\ |link-qc-post|.
-
-
-First start with the necessary imports
+First, start with the necessary imports
 
 >>> # Python imports
 >>> import time
@@ -552,12 +550,13 @@ We must also specify the optimization criterion. In this case, I-optimality.
 .. note::
    Any optimization metric can be used. See :ref:`cust_metric` for more information.
 
-We create the cost function using the
+Then, we create the cost function using the
 :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`
 helper function. This cost function defines that the cost of transition between two
 consecutive runs is equal to the transition cost of the most-hard-to-change factor.
 Such a scenario arises when multiple workers or technicians can work in parallel on their
-own task.
+own task. Factor A has a transition cost of two hours, the three easy-to-change
+factors have a transition cost of one minute.
 
 >>> max_transition_cost = 3*4*60
 >>> transition_costs = {
@@ -588,7 +587,6 @@ Finally, we can generate the design
 >>> )
 >>> end_time = time.time()
 
-Similar to :ref:`qc_first_design`, 
 :py:func:`create_cost_optimal_codex_design <pyoptex.doe.cost_optimal.codex.wrapper.create_cost_optimal_codex_design>`
 returns the design `Y` and the corresponding internal state
 with the encoded design matrix, model matrix, metric, cost, etc.
@@ -628,6 +626,7 @@ plots the color map on correlations for the design.
 .. list-table::
   :align: center
   :widths: 1 1
+  :class: no-border
 
   * - .. figure:: /assets/img/heatmap.svg
         :width: 100%
@@ -668,10 +667,8 @@ Once imported, we can evaluate the design. The first command prints the metric v
 for the different provided metrics to the console. The second command
 plots a fraction of design space plot. The third command plots the covariance
 matrix of the parameter estimates. Finally, the last commands prints the variances
-of the parameter estimates to the console. 
-
-The `params` are the simulation parameters which are passed to the
-design generation functions.
+of the parameter estimates to the console.  The `params` are the simulation parameters 
+which are passed to the design generation functions.
 
 >>> print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 >>> plot_fraction_of_design_space(Y, params).show()
@@ -681,7 +678,7 @@ design generation functions.
 .. list-table::
   :align: center
   :widths: 1 1
-  :class: align-top
+  :class: align-top no-border
 
   * - .. figure:: /assets/img/fraction_design_space.svg
         :width: 100%

@@ -6,9 +6,8 @@ Welcome to PyOptEx documentation!
 **Version**: |release|
 
 PyOptEx (or Python Optimal Experiments) is a package designed to create
-optimal designs for experiments with Python. The package designed to be
-as intuitive as possible, making it accessible also to non-statisticians. 
-The package is fully open source and can be used for any purpose.
+optimal design of experiments with Python. 
+It is fully open source and can be used for any purpose.
 
 The package is designed for both engineers, and design of experiment
 researchers. Engineers can use the precreated functions
@@ -19,7 +18,7 @@ on the concept of optimal design of experiments, see :ref:`doe`.
 To generate experimental designs, there are two main options:
 
 * **Fixed structure**: These designs have a fixed number of runs
-  and fixed randomization structure known upfront. Well-known designs
+  and fixed randomization structure, known upfront. Well-known designs
   include split-plot, strip-plot, and regular staggered-level designs.
   A specialization is also included for split\ :sup:`k`\ -plot designs
   using the update formulas as described in 
@@ -27,7 +26,7 @@ To generate experimental designs, there are two main options:
   Go to :ref:`qc_first_design` and :ref:`qc_splitk` for an example respectively.
 * **Cost-optimal designs**: These design generation algorithms follow
   a new DoE philosophy. Instead of fixing the number of runs and randomization
-  structure, the algorithm optimizes directly on the underlying resource
+  structure, the algorithm optimizes directly based on the underlying resource
   constraints. The user must only specify a budget and a function which
   computes the resource consumption of a design. Go to :ref:`qc_cost` for
   an example. The currently implemented algorithm is CODEX.
@@ -60,7 +59,7 @@ Main features
   No longer requires expert statistical knowledge before creating experiments.
 * Accounts for **any constraint** you require. Not only can you choose the
   randomization structure :ref:`manually <qc_other_fixed>`, or let the :ref:`cost-optimal <qc_cost>` 
-  design algorithms figure it out for you. In addition, you can also specify the 
+  design algorithms figure it out automatically, you can also specify the 
   physically :ref:`possible factor combinations <cust_constraints>` for a run.
 * **Augmenting** designs was never easier. Simply read your initial design
   to a pandas dataframe and augment it by passing it as a :ref:`prior <cust_augment>`.

@@ -13,3 +13,12 @@
 .rst-content table.align-top td {
     vertical-align: top !important;
 }
+
+.rst-content table.docutils td:has(> figure) {
+    background-color: #fcfcfc !important;
+    border: none !important;
+}
+
+.rst-content table.no-border {
+    border: none !important;
+}

@@ -3,15 +3,13 @@
 Customization
 =============
 
-This page explains the many ways to customize the presented algorithms.
-
 .. _cust_model:
 
 Custom models
 -------------
 
 In :ref:`qc_first_design`, we created a response surface model
-using the :py:func:`partial_rsm_name <pyoptex.doe.utils.model.partial_rsm_names>`
+using the :py:func:`partial_rsm_names <pyoptex.doe.utils.model.partial_rsm_names>`
 function. While, for most scenarios, a response surface model is more than
 complex enough, not all scenarios require such a model.
 
@@ -65,7 +63,7 @@ Custom metrics
 
 Metrics or optimization criteria can also be fully customized, which can be
 interesting for researchers who which to develop such a new criterion.
-The method to create a new metric depends on which algorithm it targets
+The method to create a new metric depends slightly on which algorithm it targets
 
 Fixed structure design
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -102,8 +100,7 @@ We first compute the information matix, and then compute :math:`|M|^{1/p}`, with
 
 If the criterion requires some pre-initialization, this can be coded in the
 :py:func:`preinint <pyoptex.doe.fixed_structure.metric.Metric.preinit>` function.
-For instance, the I-optimal criterion is required to compute the moments matrix
-and this does not change with the current design.
+For instance, the I-optimal criterion is required to compute the moments matrix.
 
 .. warning::
     The above examples never considered any potential covariate function
@@ -119,7 +116,7 @@ Split\ :sup:`k`\ -plot designs are specialized versions of the fixed structure
 designs. They permit the use of update formulas.
 
 The best way to create a split\ :sup:`k`\ -plot metric is to
-extend from a fixed_structure metric as follows
+extend from a fixed_structure metric, such as the `CustomMetric` above, as follows
 
 >>> from pyoptex.doe.fixed_structure.splitk_plot import SplitkPlotMetricMixin
 >>> 
@@ -142,7 +139,7 @@ For example in D-optimality, the user can initialize the inverse of the informat
 Next, whenever an update is made to a coordinate from the coordinate-exchange
 algorithm, the :py:func:`_update <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin._update>`
 function is called. This function computes the update to the metric, given the
-update.
+update to the design.
 
 >>> def _update(self, Y, X, params, update):
 >>>     # Compute U, D update
@@ -187,7 +184,7 @@ we should update our `Minv` parameter.
 >>>         raise e
 
 Note that some times, update formulas of the above form can be unstable.
-In such a case, the design can be created by passing
+In such a case, the design can be created without update formulas by passing
 `use_formulas=False` to :py:func:`create_splitk_plot_design <pyoptex.doe.fixed_structure.splitk_plot.wrapper.create_splitk_plot_design>`
 
 .. warning::
@@ -206,7 +203,7 @@ which should be extended
 
 The user should extend the metric and implement the
 :py:func:`call <pyoptex.doe.cost_optimal.metric.Metric.call>`
-function.
+function. Here, we recreate the D-optimality criterion.
 
 >>> class CustomMetric(Metric):
 >>>    def call(self, Y, X, Zs, Vinv, costs):
@@ -243,7 +240,7 @@ function.
 Custom cost functions
 ---------------------
 
-Custom cost function provide maximum flexibility to generate
+Custom cost functions provide maximum flexibility to generate
 a design specifically tailored to your problem. Every design is
 limited by a fixed number of resource consumptions, also referred
 to as costs. Creating a custom cost function is extremely easy.
@@ -256,7 +253,7 @@ Single cost function
 ^^^^^^^^^^^^^^^^^^^^
 
 Then, the user can specify any function to compute the costs of 
-design Y. For example, assume we are creating cheese, and every
+design Y. For example, assume we are creating cheese, and 
 we want to know the ideal amount of milk. Each run consumes
 a certain amount of milk, but the total amount of milk for the
 entire experiment is limited. Each factor can consume between
@@ -271,7 +268,7 @@ entire experiment is limited. Each factor can consume between
 
 >>> @cost_fn
 >>> def cost_milk(Y):
->>>    consumption = Y[0]
+>>>    consumption = Y['milk']
 >>>    return [(consumption, milk_budget, np.arange(len(Y)))]
 
 The cost function is a function that takes a denormalized design as an input,
@@ -284,11 +281,12 @@ a different cost. Each tuple then consists of:
   itself is then the exact consumption.
 * The available budget. In this case 100 liters.
 * The affected run indices. This is mostly used when multiple resource constraints
-  are imposed simultaneously and is explained later.
+  are imposed simultaneously as is explained later. This array should be of the 
+  same size as the array of consumptions.
 
 .. note::
     When dealing with transition costs, the cost of a transition may be assigned
-    to either run in addition to execution cost such as the milk consumption.
+    to either run in addition to the execution cost such as the milk consumption.
 
 .. note::
     The cost function returns a denormalized dataframe by default. However,
@@ -300,8 +298,9 @@ Multiple cost functions
 
 When dealing with multiple resource constraints, multiple tuples may be returned
 from the cost function. Another option to combine cost functions is to use
-:py:func:`combine_costs <pyoptex.doe.cost_optimal.cost.combine_costs>`. However,
-computing multiple costs simultaneously often offers a computational advantage.
+:py:func:`combine_costs <pyoptex.doe.cost_optimal.cost.combine_costs>`. 
+Computing multiple costs simultaneously often offers a computational advantage, 
+whereas splitting them creates a development advantage.
 
 
 Subcosts
@@ -323,13 +322,13 @@ expressed as a script which should return true if the constraints are violated
 (by default, or if `exclude=True`) or return true if the constraints are met 
 (if `exclude=False`).
 
-For example, when factor A is level 1, B cannot be smaller than 2
+For example, when factor A is L1, B cannot be smaller than 2
 
 >>> constraints = parse_constraints_script(
 >>>     f'(`A` == "L1") & (`B` < 2)', factors
 >>> )
 
-or
+or inversly, when factor A is L1, B must be larger than or equal to 2
 
 >>> constraints = parse_constraints_script(
 >>>     f'(`A` == "L1") & (`B` >= 2)', factors
@@ -347,7 +346,7 @@ Covariates
 ----------
 
 Covariates are factors which are not controllable, but are quantifiable upfront and 
-expected to be important. Such variables, or additional random effects can be
+expected to be important. Such variables, or additional random effects, can be
 added by means of a covariate function. The exact interface depends on which
 algorithm the covariate function targets.
 
@@ -356,7 +355,7 @@ function is called `cov`.
 
 >>> metric = Dopt(cov=cov)
 
-An example of a preimplemented covariate function is
+An example of a preimplemented covariate function is a
 :py:func:`time trend (splitk plot) <pyoptex.doe.fixed_structure.cov.cov_time_trend>`
 
 >>> metric = Dopt(cov=cov_time_trend(5, 20))
@@ -391,15 +390,15 @@ added as follows. Assume that we want a time trend for a design with
 
 First, we compute the time factor values in `time_array`. Next, we
 define the covariate function. It takes the design and model matrix as an
-input and returns an time-augmented version. Let us first consider when
+input and returns a time-augmented version. Let us first consider when
 `random = False`. In this case, we select the desired subset of the time array
 and augment both the design matrix and the model matrix with a linear time trend.
+
 However, when `random = True`, we generate a random vector as augmentation. The random
 parameter is used to augment random samples such as those required to compute
-the moments matrix in the I-optimality criterion.
-
-In short, the `random` parameters specifies whether to the samples should be
-augmented completely random, or predetermined.
+the moments matrix in the I-optimality criterion. In short, the `random` parameters 
+specifies whether to the samples should be
+augmented completely randomly, or predetermined.
 
 Cost-optimal design
 ^^^^^^^^^^^^^^^^^^^
@@ -427,8 +426,8 @@ reconsider the example of a time trend.
 Because in the cost-optimal design the number of runs
 continuously changes, we cannot precompute the the time array
 as before. However, one of the cost functions can be time.
-By taking `np.cumsum(costs[0][0])`, we know the current time and
-can decide how to divide the time trend based on that. In this example
+By taking `np.cumsum(costs[0][0])`, we know the current time at every run and
+can decide how to divide the time trend. In this example
 an additional time point is added for every hour (assuming the cost
 is expressed in minutes). The `random` parameter again specifies whether
 the augmentation should be for random samples, such as those used to compute
@@ -444,7 +443,7 @@ on how to add an additional blocking effect based on the cumulative cost (e.g. t
 Design augmentation 
 -------------------
 
-Design can be augmented in many ways by specifying a prior design.
+Designs can be augmented in many ways by specifying a prior design.
 
 Fixed structure design
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -480,7 +479,7 @@ augmenting to 4 whole plots with 2 runs per whole plot simply adds 2 additional
 whole plots. 
 
 Augmenting to a design with 3 whole plots and 3 runs per plot will augment to
-the following design where each empty cell will be optimized for.
+the following design where each empty cell will be optimized.
 
 .. list-table:: Augmentation from 2,2 to 3,3
    :widths: 30 30 30
@@ -536,7 +535,7 @@ Such a dataframe can be read from a csv or an excel.
 .. _cust_cat_encoding:
 
 Custom categorical encoding
-------------------------------------
+---------------------------
 
 Optimizing for a design with categorical factors requires encoding
 these factors. Every categorical factor with `N` levels requires 
@@ -562,7 +561,7 @@ uses dummy encoding relative to the third level.
 .. _cust_disc_num:
 
 Discrete numerical factors
-------------------------------------
+--------------------------
 
 By default, every continuous factor is discretized to the
 normalized levels [-1, 0, 1], indicating, low, mid, and high
@@ -581,8 +580,8 @@ of three.
 
 .. _cust_bayesian_ratio:
 
-Bayesian a-prior variances
-------------------------------------
+Bayesian a-priori variances
+---------------------------
 
 When dealing with random effects, the user must make an
 estimate about the ratio between the random effect and the
@@ -592,7 +591,7 @@ the variance of the random effects is the same as the variance
 of the random errors.
 
 .. note::
-    It is better to overestimate then underestimate the variance
+    It is better to overestimate than underestimate the variance
     ratios.
 
 However, a second solution originates from a Bayesian approach. The
