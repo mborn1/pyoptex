@@ -644,3 +644,10 @@ operators to have an idea of the necessary inputs and outputs.
 Any custom operator can be provided by specifying it during the
 :py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
 creation with :py:func:`default_fn <pyoptex.doe.cost_optimal.codex.wrapper.default_fn>`.
+
+.. figure:: /assets/img/codex_flow.png
+        :width: 400
+        :alt: The flow of the CODEX algorithm
+        :align: center
+
+        The flow of the CODEX algorithm.

@@ -9,3 +9,7 @@
 .rst-content dt {
     padding-left: 0.5em
 }
+
+.rst-content table.align-top td {
+    vertical-align: top !important;
+}

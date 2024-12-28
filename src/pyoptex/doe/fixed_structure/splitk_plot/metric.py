@@ -9,7 +9,8 @@ import numpy as np
 from ..metric import (
     Dopt as Dopto, 
     Aopt as Aopto, 
-    Iopt as Iopto
+    Iopt as Iopto,
+    Aliasing as Aliasingo,
 )
 from .formulas import (compute_update_UD, det_update_UD, inv_update_UD,
                        inv_update_UD_no_P)
@@ -544,3 +545,24 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         # Update Minv
         self.Minv -= self.Mup
 
+class Aliasing(SplitkPlotMetricMixin, Aliasingo):
+    """
+    The sum of squares criterion for the weighted alias matrix.
+    Computes the mean in case multiple Vinv are provided.
+
+    The `effects` indices from the model matrix are aliased
+    against `alias` indices from the model matrix.
+
+    Attributes
+    ----------
+    cov : func(Y, X, Zs, Vinv, costs)
+        A function computing the covariate parameters
+        and potential extra random effects.
+    W : np.array(2d)
+        A potential weighting matrix for the elements in aliasing matrix A.
+    effects : np.array(1d)
+        The indices of the effects in the model matrix to alias from.
+    alias : np.array(1d)
+        The indices of the effects in the model matrix to alias to.
+    """
+    pass

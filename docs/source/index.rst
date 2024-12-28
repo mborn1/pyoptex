@@ -13,7 +13,8 @@ The package is fully open source and can be used for any purpose.
 The package is designed for both engineers, and design of experiment
 researchers. Engineers can use the precreated functions
 to generate designs for their problems. Researchers can easily develop
-new metrics (criteria) and test them.
+new metrics (criteria) and test them. If you would like a refresher
+on the concept of optimal design of experiments, see :ref:`doe`.
 
 To generate experimental designs, there are two main options:
 
@@ -29,7 +30,7 @@ To generate experimental designs, there are two main options:
   structure, the algorithm optimizes directly on the underlying resource
   constraints. The user must only specify a budget and a function which
   computes the resource consumption of a design. Go to :ref:`qc_cost` for
-  an example. Currently, only one such algorithm is implemented: CODEX.
+  an example. The currently implemented algorithm is CODEX.
 
 .. figure:: /assets/img/pyoptex_overview.svg
   :width: 400
@@ -41,20 +42,41 @@ To generate experimental designs, there are two main options:
 See the :ref:`quickstart` for more information on how to generate different kinds of
 designs. See :ref:`customization` for a more detailed explanation on how to tune and 
 customize each algorithm. Reseachers can find more information here
-on how to design custom criteria. Finally, see :ref:`performance` for some tips on how
+on how to design custom criteria. The example scenarios are noted in :ref:`example_scenarios`.
+Finally, see :ref:`performance` for some tips on how
 to make the algorithm run faster.
 
 .. note::
 
    This project is under active development. Analysis and model selection will follow.
 
-Contents
---------
+Main features
+-------------
+
+* The **first complete Python package for optimal design of experiments**. Model 
+  :ref:`everything <example_scenarios>` including continuous factors, categorical factors, mixtures, 
+  blocked experiments, split-plot experiments, staggered-level experiments.
+* **Intuitive design of experiments** with :ref:`cost-optimal designs <qc_cost>` for everyone. 
+  No longer requires expert statistical knowledge before creating experiments.
+* Accounts for **any constraint** you require. Not only can you choose the
+  randomization structure :ref:`manually <qc_other_fixed>`, or let the :ref:`cost-optimal <qc_cost>` 
+  design algorithms figure it out for you. In addition, you can also specify the 
+  physically :ref:`possible factor combinations <cust_constraints>` for a run.
+* **Augmenting** designs was never easier. Simply read your initial design
+  to a pandas dataframe and augment it by passing it as a :ref:`prior <cust_augment>`.
+* **Customize** any part of the algorithm, including the :ref:`optimization criteria <cust_metric>` (metrics),
+  :ref:`linear model <cust_model>`, :ref:`encoding of the categorical factors <cust_cat_encoding>`, and much more.
+* Directly optimize for **Bayesian** :ref:`a-priori variance ratios <cust_bayesian_ratio>` in designs with 
+  hard-to-change factors.
+
+Documentation
+-------------
 
 .. toctree::
    :maxdepth: 2
 
    quickstart
+   design_of_experiments
    customization
    performance
    example_scenarios

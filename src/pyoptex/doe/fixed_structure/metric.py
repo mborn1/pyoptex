@@ -288,3 +288,82 @@ class Iopt(Metric):
             # Invert for minimization
             return -trace 
         return -np.inf 
+
+class Aliasing(Metric):
+    """
+    The sum of squares criterion for the weighted alias matrix.
+    Computes the mean in case multiple Vinv are provided.
+
+    The `effects` indices from the model matrix are aliased
+    against `alias` indices from the model matrix.
+
+    Attributes
+    ----------
+    cov : func(Y, X, Zs, Vinv, costs)
+        A function computing the covariate parameters
+        and potential extra random effects.
+    W : np.array(2d)
+        A potential weighting matrix for the elements in aliasing matrix A.
+    effects : np.array(1d)
+        The indices of the effects in the model matrix to alias from.
+    alias : np.array(1d)
+        The indices of the effects in the model matrix to alias to.
+    """
+    def __init__(self, effects, alias, cov=None, W=None):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        effects : np.array(1d)
+            The indices of the effects in the model matrix to alias from.
+        alias : np.array(1d)
+            The indices of the effects in the model matrix to alias to.
+        cov : func(Y, X)
+            The covariance function
+        W : np.array(1d)
+            The weights for the aliasing matrix.
+        """
+        super().__init__(cov)
+        self.W = W
+        self.effects = effects
+        self.alias = alias
+
+    def call(self, Y, X, params):
+        """
+        Computes the aliasing criterion.
+        Computes the average (average) prediction variance if 
+        multiple Vinv are provided.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The updated design matrix.
+        X : np.array(2d)
+            The updated model matrix.
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+        
+        Returns
+        -------
+        metric : float
+            The negative of the aliasing criterion value.
+        """
+        # Compute covariates
+        _, X = self.cov(Y, X)
+
+        # Compute aliasing matrix
+        Xeff = X[:, self.effects]
+        Xa = X[:, self.alias]
+        A = np.linalg.solve(Xeff.T @ params.Vinv @ Xeff, Xeff.T @ params.Vinv) @ Xa
+
+        # Multiply by weights
+        if self.W is not None:
+            A *= self.W
+
+        # Compute mean of SS
+        return -np.power(
+            np.mean(np.sum(np.square(A), axis=(-1, -2))), 
+            1/(X.shape[1] * len(params.Vinv))
+        )
+

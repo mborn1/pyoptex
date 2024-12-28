@@ -25,8 +25,8 @@ factors = [
 
 # Create a Scheffe model
 Y2X = mixtureY2X(
-    factors, 
-    mixture_effects=(('A', 'B'), 'tfi'), 
+    factors,
+    mixture_effects=(('A', 'B'), 'tfi'),
 )
 
 # Define the criterion for optimization

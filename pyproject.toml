@@ -25,6 +25,8 @@ dependencies = [
     "pandas~=1.5",
     "plotly~=5.22",
     "openpyxl~=3.0",
+    "kaleido==0.2.1; sys_platform != 'win32'",
+    "kaleido==0.1.0.post1; sys_platform == 'win32'",
 ]
 keywords = ["python", "flexible", "accessible", "data-analysis", "design-of-experiments", "pyoptex", "innovation"]
 

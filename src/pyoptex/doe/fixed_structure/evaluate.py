@@ -145,8 +145,8 @@ def plot_fraction_of_design_space(Y, params, N=10000):
         color = DEFAULT_PLOTLY_COLORS[i]
         name = ', '.join([
             f'plot {i+1} = {r:.3f}' 
-            for i, r in enumerate(params.ratios[i])
-        ])
+            for r in params.ratios[i]
+        ]) if len(params.ratios) > 0 else None
         fig.add_trace(go.Scatter(
             x=np.linspace(0, 1, len(pv)), 
             y=pv, marker_color=color, name=name
@@ -248,10 +248,10 @@ def plot_estimation_variance_matrix(Y, params, model=None):
     # Create the figure
     fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
         vertical_spacing=0.07,
-        subplot_titles=[
-            'A-priori variance ratios: ' + ', '.join([f'plot {i+1} = {r:.3f}' for i, r in enumerate(params.ratios[i])])
+        subplot_titles=([
+            'A-priori variance ratios: ' + ', '.join([f'plot {i+1} = {r:.3f}' for r in params.ratios[i]])
             for i in range(len(Minv))
-        ]
+        ] if len(params.ratios) > 0 else None)
     )
     for i in range(len(Minv)):
         fig.add_trace(go.Heatmap(

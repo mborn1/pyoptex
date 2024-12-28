@@ -22,6 +22,10 @@ rst_epilog = f"""
 .. |release| replace:: {release}
 
 .. |date| replace:: {format(datetime.datetime.now(), '%B %d, %Y')}
+
+.. |br| raw:: html
+
+     <br>
 """
 
 # -- General configuration

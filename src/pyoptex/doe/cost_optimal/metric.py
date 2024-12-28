@@ -58,6 +58,11 @@ class Metric:
             set of a-priori variance ratios.
         costs : list(np.array(1d), float, np.array(1d))
             The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The value of the criterion.
         """
         raise NotImplementedError('Must implement a call function')
 
@@ -90,6 +95,11 @@ class Dopt(Metric):
             set of a-priori variance ratios.
         costs : list(np.array(1d), float, np.array(1d))
             The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The D-optimality criterion.
         """
         # Compute covariates
         _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
@@ -147,6 +157,11 @@ class Aopt(Metric):
             set of a-priori variance ratios.
         costs : list(np.array(1d), float, np.array(1d))
             The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The negative of the A-optimality criterion.
         """
         # Compute covariates
         _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
@@ -261,6 +276,11 @@ class Iopt(Metric):
             set of a-priori variance ratios.
         costs : list(np.array(1d), float, np.array(1d))
             The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The negative of the I-optimality criterion.
         """
         # Apply covariates
         _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
@@ -323,7 +343,7 @@ class Aliasing(Metric):
 
     def call(self, Y, X, Zs, Vinv, costs):
         """
-        Computes the A-optimality criterion for a given design.
+        Computes the aliasing criterion for a given design.
         Computes the average trace if multiple Vinv are provided.
 
         Parameters
@@ -339,6 +359,11 @@ class Aliasing(Metric):
             set of a-priori variance ratios.
         costs : list(np.array(1d), float, np.array(1d))
             The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The negative of the aliasing criterion.
         """
         # Compute covariates
         _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)

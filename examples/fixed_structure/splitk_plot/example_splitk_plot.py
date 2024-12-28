@@ -59,9 +59,6 @@ prior = (
 # Constraints
 constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
-# Define certain groups to optimize
-grps = None # TODO: explain in second example for different type of prior (same old and new plot sizes)
-
 #########################################################################
 
 # Validate variance components are estimable
@@ -72,7 +69,7 @@ n_tries = 10
 
 # Create the set of operators
 fn = default_fn(factors, metric, Y2X, constraints=constraints)
-params = create_parameters(factors, fn, prior=prior, grps=grps)
+params = create_parameters(factors, fn, prior=prior)
 
 # Create design
 start_time = time.time()
