@@ -3,6 +3,7 @@
 import datetime
 import pathlib
 import sys
+from urllib.parse import quote
 
 sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
 from pyoptex import __version__ as lib_version
@@ -34,7 +35,7 @@ extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
     'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.linkcode',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx_copybutton'
@@ -63,3 +64,26 @@ html_css_files = [
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+
+def linkcode_resolve(domain, info):
+    """
+    Resolves the url for the source code.
+    """
+    # Only consider Python files
+    if domain != 'py':
+        return None
+    
+    # Create URL-encoded filename
+    filename = quote(str(info['module']).replace('.', '/'))
+
+    # Create the anchor
+    if "fullname" in info:
+        anchor = f'def {info["fullname"]}('
+        anchor = "#:~:text=" + quote(anchor.split(".")[-1])
+    else:
+        anchor = ""
+
+    # Link to github
+    result = "https://github.com/mborn1/pyoptex/blob/%s/src/%s.py%s" % (release, filename, anchor)
+    return result
