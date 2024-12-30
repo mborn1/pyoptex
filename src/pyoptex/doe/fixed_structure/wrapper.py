@@ -101,6 +101,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     for i, be in enumerate(block_effects):
         assert len(be.Z) == nruns, f'Blocking effect {i} does not have the correct length: {len(be.Z)}. Should be the number of runs {nruns}'
 
+    nblocks = len(block_effects)
+
     # Extract the random effects
     re = []
     for f in factors:
@@ -128,8 +130,11 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         ]).T
 
         # Split regular and blocking ratios
-        be_ratios = ratios[:, -len(block_effects):]
-        ratios = ratios[:, :len(block_effects)]
+        if nblocks == 0:
+            be_ratios = np.empty_like(ratios, shape=(0, ratios.shape[1]))
+        else:
+            be_ratios = ratios[:, -len(block_effects):]
+            ratios = ratios[:, :len(block_effects)]
     else:
 
         # No blocking ratios
@@ -167,7 +172,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     Vinv = np.linalg.inv(V)
         
     # Define which groups to optimize
-    lgrps = [np.arange(nruns)] + [np.arange(np.max(Z)+1) for Z in Zs]
+    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
     grps = List([lgrps[lvl] for lvl in effect_levels])
 
     # Create the parameters
