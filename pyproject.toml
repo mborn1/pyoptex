@@ -28,7 +28,7 @@ dependencies = [
     "kaleido==0.2.1; sys_platform != 'win32'",
     "kaleido==0.1.0.post1; sys_platform == 'win32'",
 ]
-keywords = ["python", "flexible", "accessible", "data-analysis", "design-of-experiments", "pyoptex", "innovation"]
+keywords = ["python", "flexible", "accessible", "data-analysis", "design-of-experiments", "pyoptex", "innovation", "cost-optimization"]
 
 [project.optional-dependencies]
 dev = [
