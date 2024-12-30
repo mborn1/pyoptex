@@ -3,6 +3,7 @@
 # Normal imports
 import numpy as np
 import pandas as pd
+import os
 import time
 
 # Library imports
@@ -27,7 +28,7 @@ factors = [
             ratio=[0.1, 1, 10]),
     Factor('E', type='continuous', grouped=False),
     Factor('F', type='continuous', grouped=False, 
-           levels=[-1, -0.3, 0.3, 1], min=2, max=5),
+           levels=[2, 3, 4, 5], min=2, max=5),
     Factor('G', type='continuous', grouped=False),
 ]
 
@@ -81,7 +82,8 @@ end_time = time.time()
 #######################################################################
 
 # Write design to storage
-Y.to_csv(f'example_codex.csv', index=False)
+root = os.path.split(__file__)[0]
+Y.to_csv(os.path.join(root, f'example_codex.csv'), index=False)
 print(Y)
 
 print('Completed optimization')

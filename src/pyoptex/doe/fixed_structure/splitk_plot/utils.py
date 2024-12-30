@@ -211,7 +211,7 @@ def terms_per_plot_level(factors, model):
     # Initialize
     plot_levels = np.array([f.re.level for f in factors])
     max_split_level = np.max(plot_levels)
-    split_levels = np.zeros(max_split_level+1, np.int64)
+    split_levels = np.zeros(max_split_level+1, np.int_)
 
     # Compute amount of terms with only factors higher or equal to current split-level
     for i in range(max_split_level + 1):
@@ -270,7 +270,7 @@ def validate_plot_sizes(factors, model):
     """
     # Compute plot sizes
     nb_plots = max(f.re.level for f in factors) + 1
-    plot_sizes = np.zeros(nb_plots, dtype=np.int64)
+    plot_sizes = np.zeros(nb_plots, dtype=np.int_)
     for f in factors:
         plot_sizes[f.re.level] = f.re.size
 

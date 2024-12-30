@@ -154,15 +154,15 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
     # Compute Zs and Vinv
     if len(re) > 0:
-        Zs = np.array([np.array(r.Z) for r in re], dtype=np.int64)
+        Zs = np.array([np.array(r.Z) for r in re], dtype=np.int_)
         V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios])
     else:
-        Zs = np.empty((0, 0), dtype=np.int64)
+        Zs = np.empty((0, 0), dtype=np.int_)
         V = np.expand_dims(np.eye(nruns), 0)
 
     # Augment V with the random blocking effects
     if len(block_effects) > 0:
-        beZs = np.array([np.array(be.Z) for be in block_effects], dtype=np.int64)
+        beZs = np.array([np.array(be.Z) for be in block_effects], dtype=np.int_)
         V += np.array([
             obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) 
             for r in be_ratios
@@ -172,7 +172,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     Vinv = np.linalg.inv(V)
         
     # Define which groups to optimize
-    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
+    lgrps = [np.arange(nruns, dtype=np.int_)] + [np.arange(np.max(Z)+1) for Z in Zs]
     grps = List([lgrps[lvl] for lvl in effect_levels])
 
     # Create the parameters

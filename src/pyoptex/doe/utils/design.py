@@ -184,7 +184,7 @@ def encode_design(Y, effect_types, coords=None):
                 eye = np.concatenate((np.eye(cols[i]), -np.ones((1, cols[i]))))
             else:
                 eye = coords[i]
-            Yenc[..., start:start+cols[i]] = numba_take_advanced(eye, Y[..., i].astype(np.int64))
+            Yenc[..., start:start+cols[i]] = numba_take_advanced(eye, Y[..., i].astype(np.int_))
             start += cols[i]
 
     return Yenc

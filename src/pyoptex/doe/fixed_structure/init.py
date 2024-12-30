@@ -174,8 +174,8 @@ def __correct_constraints(effect_types, effect_levels, grps, coords,
         for i in permitted_to_optimize:
             # Determine which runs belong to that group
             if level == 0:
-                runs = np.array([i], dtype=np.int64)
-                prev_runs = np.arange(i+1, dtype=np.int64)
+                runs = np.array([i], dtype=np.int_)
+                prev_runs = np.arange(i+1, dtype=np.int_)
             else:
                 runs = np.flatnonzero(Zs[level-1] == i)
                 prev_runs = np.flatnonzero(Zs[level-1] <= i)
@@ -188,8 +188,8 @@ def __correct_constraints(effect_types, effect_levels, grps, coords,
                         co 
                         for co in (np.unique(Zs[l-1][runs]) if l > 0 else runs)
                         if co in grps[k]
-                    ], dtype=np.int64)
-                    if l in zidx[j:] else np.empty((0,), dtype=np.int64) 
+                    ], dtype=np.int_)
+                    if l in zidx[j:] else np.empty((0,), dtype=np.int_) 
                     for k, l in enumerate(effect_levels)
                 ]
                 grps_ = List(grps_)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Normal imports
+import os
 import time
 
 # Library imports
@@ -56,7 +57,7 @@ cost_fn = scaled_parallel_worker_cost(
 #######################################################################
 
 # Simulation parameters
-nsims = 1000
+nsims = 10
 nreps = 1
 fn = default_fn(nsims, factors, cost_fn, metric, Y2X)
 params = create_parameters(factors, fn)
@@ -71,7 +72,8 @@ end_time = time.time()
 #######################################################################
 
 # Write design to storage
-Y.to_csv(f'example_scaled.csv', index=False)
+root = os.path.split(__file__)[0]
+Y.to_csv(os.path.join(root, f'example_asymmetric.csv'), index=False)
 print(Y)
 
 print('Completed optimization')

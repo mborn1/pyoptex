@@ -39,7 +39,7 @@ def partial_rsm(nquad, ntfi, nlin):
     nterms = nmain + int(nint * (nint - 1) / 2) + nquad + 1
 
     # Initialize (pre-allocation)
-    max_model = np.zeros((nterms, nmain), dtype=np.int64)
+    max_model = np.zeros((nterms, nmain), dtype=np.int_)
     stop = 1
 
     # Main effects
@@ -114,7 +114,7 @@ def encode_model(model, effect_types):
 
     # Insert extra columns for the encoding
     extra_columns = cols - 1
-    a = np.zeros(np.sum(extra_columns), dtype=np.int64)
+    a = np.zeros(np.sum(extra_columns), dtype=np.int_)
     start = 0
     for i in range(extra_columns.size):
         a[start:start+extra_columns[i]] = np.full(extra_columns[i], i+1)

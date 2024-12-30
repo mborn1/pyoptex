@@ -80,7 +80,7 @@ end_time = time.time()
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv('example_splitk_plot.csv', index=False)
+Y.to_csv(os.path.join(root, 'example_splitk_plot.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')
