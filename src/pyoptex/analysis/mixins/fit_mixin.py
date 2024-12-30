@@ -14,9 +14,10 @@ class RegressionMixin(RegressorMixinSklearn):
     """
     
     Requires:
-    * coef_ : The regression coefficients
-    * terms_ : The indices of the terms
+    * coef_ : The regression coefficients.
+    * terms_ : The indices of the terms.
     * scale_ : The scale factor of the covariance matrix.
+    * vcomp_ : The variance components of any random effects.
     """
 
     def __init__(self, factors=(), Y2X=identity, random_effects=()):
@@ -39,7 +40,9 @@ class RegressionMixin(RegressorMixinSklearn):
     def _validate_X(self, X):
         assert isinstance(X, pd.DataFrame), f'X must be a dataframe'
         assert all(c in X.columns for c in self.features_names_in_), f'X does not have the correct features'
-        # TODO: Validate the level of categorical factors
+        for f in self.factors:
+            if f.is_categorical:
+                assert all(l in f.levels for l in X[str(f.name)].unique()), f'X contains a categorical level not specified in the factor, unable to encode'
 
     def _preprocess_X(self, X):
         # Normalize the factors
@@ -82,6 +85,7 @@ class RegressionMixin(RegressorMixinSklearn):
         if len(self.re) == 0:
             # Define OLS fit
             self.fit_fn_ = lambda X, y, terms: fit_ols(X[:, terms], y)
+            self.Zs_ = np.empty((0, len(X)), dtype=np.int_)
 
         else:
             # Create list from the random effects
@@ -162,6 +166,16 @@ class RegressionMixin(RegressorMixinSklearn):
 
     @cached_property
     def obs_cov(self):
+        """
+        The observation covariance matrix :math:`V = var(Y)`.
+
+        .. math::
+
+            V = \sigma_{\epsilon}^2 I_N + \sum_{i=1}^k \sigma_{\gamma_i}^2 Z_i Z_i^T
+
+        When no random effects are specified, this reduces to a scaled
+        identity matrix.
+        """
         return obs_var_from_Zs(
             self.Zs_, len(self.X_), self.vcomp_ / self.scale_
         ) * self.scale_
@@ -176,6 +190,12 @@ class RegressionMixin(RegressorMixinSklearn):
 
     @cached_property
     def inv_obs_cov(self):
+        """
+        The inverse of the observation covariance matrix.
+        See
+        :py:func:`obs_cov <pyoptex.analysis.mixins.fit_mixin.obs_cov>`
+        for more information.
+        """
         return np.linalg.inv(self.obs_cov)
     
     @property
@@ -188,6 +208,19 @@ class RegressionMixin(RegressorMixinSklearn):
         
     @cached_property
     def information_matrix(self):
+        """
+        The information matrix of the fitted data.
+
+        .. math::
+
+            M = X^T V^{-1} X
+
+        where :math:`X` is the normalized, encoded data, and 
+        :math:`V` the observation covariance matrix
+        (:py:func:`obs_cov <pyoptex.analysis.mixins.fit_mixin.obs_cov>`).
+        When no random effects are specified, this reduces to
+        :math:`M = X^T X`.
+        """
         # Compute observation covariance matrix
         if len(self.re) > 0:
             M = self.X_.T @ np.linalg.solve(self.obs_cov, self.X_)
@@ -206,6 +239,11 @@ class RegressionMixin(RegressorMixinSklearn):
     
     @cached_property
     def inv_information_matrix(self):
+        """
+        The inverse of the information matrix. See
+        :py:func:`information_matrix <pyoptex.analysis.mixins.fit_mixin.information_matrix>`
+        for more information.
+        """
         return np.linalg.inv(self.information_matrix)
     
     @property
@@ -218,9 +256,19 @@ class RegressionMixin(RegressorMixinSklearn):
     
     @property
     def total_var(self):
+        """
+        The total variance on the normalized y-values.
+        Includes both the scale and the variance components of the
+        random effects.
+        """
         return self.scale_ + np.sum(self.vcomp_)
 
     def pred_var(self, X):
+        """
+        Prediction variances from the values specified in X
+        """
+        # TODO: entire conversion from dataframe / normalization / encoding
+
         # Compute base prediction variance
         pv = np.sum((X @ self.inv_information_matrix) * X, axis=1) # X @ Minv @ X.T
 

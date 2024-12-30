@@ -37,9 +37,11 @@ dep = order_dependencies(model, factors)
 Y2X = model2Y2X(model, factors)
 
 # Define random effects
-random_effects = ('RE',)
+# random_effects = ('RE',)
+random_effects = ()
 
 # Create the regressor
 regr = SimpleRegressor(factors, Y2X, random_effects)
-regr.fit(data.drop(columns='Y'), data['Y'])
-print(regr.score(data.drop(columns=['Y']), data['Y']))
+regr.fit(data.drop(columns=['Y', 'RE']), data['Y'])
+print(regr.score(data.drop(columns=['Y', 'RE']), data['Y']))
+print(regr.obs_cov)
