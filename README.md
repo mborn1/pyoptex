@@ -5,22 +5,63 @@
 | Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyoptex.svg)](https://pypi.org/project/pyoptex/) [![PyPI Downloads](https://img.shields.io/pypi/dm/pyoptex.svg?label=PyPI%20downloads)](https://pypi.org/project/pyoptex/) |
 | Meta | [![License - BSD 3-Clause](https://img.shields.io/pypi/l/pyoptex.svg)](https://github.com/mborn1/pyoptex/blob/main/LICENSE) [![docs](https://img.shields.io/readthedocs/pyoptex)](https://pyoptex.readthedocs.io/en/latest/) |
 
-Welcome! PyOptEx is a Python package to create experimental designs.
-The focus is on accessibility for both engineers from industry using design
-of experiments, and researchers willing to develop new criteria or
-design structures.
 
-The main contributions of the package are cost-optimal designs which shift
-the philosophy of requiring expert knowledge and fixing the number of experiments,
-number of plots in a split-plot experiment, to the an optimization algorithm which
-determines the optimal number of runs and design structure based on the
-underlying resource constraints. This means that engineers can simply specify
-money and time as a resource and optimize for the available budget.
+PyOptEx (or Python Optimal Experiments) is a package designed to create optimal design of experiments with Python. It is fully open source and can be used for any purpose.
 
-In case the design structure is not predetermined by the physicalities of the
-experiment, cost-optimal experiments also generate significantly better designs.
+The package is designed for both engineers, and design of experiment researchers. Engineers can use the precreated functions to generate designs for their problems,
+especially the cost-optimal algorithms. Researchers can easily develop new metrics (criteria) and test them.
+
+To generate experimental designs, there are two main options:
+
+* **Fixed structure**: These designs have a fixed number of runs and fixed randomization
+  structure, known upfront. Well-known designs include split-plot, strip-plot, and 
+  regular staggered-level designs. A specialization is also included for splitk-plot
+  designs using the update formulas as described in 
+  [Born and Goos (2025)](https://www.sciencedirect.com/science/article/pii/S0167947324001129).
+
+* **Cost-optimal designs**: These design generation algorithms follow a new 
+  DoE philosophy. 
+  Instead of fixing the number of runs and randomization structure, the algorithm 
+  optimizes directly based on the underlying resource constraints. The user must only 
+  specify a budget and a function which computes the resource consumption of a design. 
+  Go to Creating a cost-optimal design for an example. The currently implemented 
+  algorithm is CODEX.
 
 **_NOTE:_**  This package does not have a release version yet and is still under active development.
+
+## Main features
+
+* The **first complete Python package for optimal design of experiments**. Model
+  [everything](https://pyoptex.readthedocs.io/en/latest/example_scenarios.html#example-scenarios) including continuous factors, categorical factors, 
+  mixtures, blocked experiments, split-plot experiments, staggered-level experiments.
+
+* **Intuitive design of experiments** with 
+  [cost-optimal designs](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-cost) 
+  for everyone. No longer requires expert statistical knowledge before creating
+  experiments.
+
+* Accounts for **any constraint** you require. Not only can you choose 
+  the randomization structure 
+  [manually](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-other-fixed), 
+  or let the 
+  [cost-optimal](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-cost) 
+  design algorithms figure it out automatically, you can also specify the physically 
+  possible factor combinations for a run.
+
+* **Augmenting** designs was never easier. Simply read your initial design 
+  to a pandas dataframe and augment it by passing it as a 
+  [prior](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-augment).
+
+* **Customize** any part of the algorithm, including the 
+  [optimization criteria](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-metric) (metrics), 
+  [linear model](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-model), 
+  [encoding of the categorical factors](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-cat-encoding), 
+  and much more.
+
+* Directly optimize for **Bayesian** 
+  [a-priori variance ratios](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-bayesian-ratio)
+  in designs with hard-to-change factors.
+
 
 ## Getting started
 
