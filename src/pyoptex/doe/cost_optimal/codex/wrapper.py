@@ -7,7 +7,7 @@ import pandas as pd
 from numba.typed import List
 
 from ...constraints import no_constraints, mixture_constraints
-from ...utils.design import decode_design, encode_design
+from ....utils.design import decode_design, encode_design
 from ..init import init_feasible
 from ..utils import Factor, Parameters
 from .utils import FunctionSet

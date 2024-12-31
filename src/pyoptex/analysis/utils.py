@@ -1,12 +1,18 @@
-import pandas as pd
-import numpy as np
-import statsmodels.api as sm
 from functools import cached_property
-from statsmodels.regression.mixed_linear_model import VCSpec
-from sklearn.metrics import r2_score
 
-from ..doe.utils.model import encode_model
-from ..doe.utils.design import obs_var_from_Zs
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import scipy.stats as spstats
+import statsmodels.api as sm
+from plotly.colors import DEFAULT_PLOTLY_COLORS
+from plotly.subplots import make_subplots
+from sklearn.metrics import r2_score
+from statsmodels.regression.mixed_linear_model import VCSpec
+
+from ..utils.design import obs_var_from_Zs
+from ..utils.model import encode_model
+
 
 def identity(Y):
     """
@@ -40,7 +46,7 @@ def order_dependencies(model, factors):
     ----------
     model : pd.DataFrame
         The model
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
 
     Returns
@@ -87,6 +93,24 @@ def order_dependencies(model, factors):
     dep[from_terms, to_terms] = True
 
     return dep
+
+def model2strong(model, dep):
+    # Create a mask
+    strong = np.zeros(dep.shape[0], dtype=np.bool_)
+    strong[model] = True
+    nterms_old = 0
+    nterms = np.sum(strong)
+
+    # Loop until no new terms are added
+    while nterms_old < nterms:
+        # Add dependencies
+        strong[np.any(dep[strong], axis=0)] = True
+
+        # Update number of terms
+        nterms_old = nterms
+        nterms = np.sum(strong)
+
+    return np.flatnonzero(strong)
 
 def r2adj(fit):
     if fit.k_fe < len(fit.params):
@@ -154,3 +178,111 @@ def fit_mixedlm(X, y, groups):
 
     return fit
 
+def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None):
+    # Define the colors
+    if color is not None:
+        unique_colors = df[color].unique()
+        npcolor = df[color].to_numpy()
+    else:
+        unique_colors = [0]
+        npcolor = np.zeros(len(df))
+
+    # Compute the error
+    y_true = df[y_true].to_numpy()
+    y_pred = df[y_pred].to_numpy()
+    error = y_pred - y_true
+
+    # Compute the theoretical normal quantiles
+    ppf = np.linspace(0, 1, len(error) + 2)[1:-1]
+    theoretical_quant = spstats.norm.ppf(ppf)
+
+    # Retrieve the true quantiles
+    quant_idx = np.argsort(error)
+    quant_idx_inv = np.argsort(quant_idx)
+    true_quant = error[quant_idx]
+    true_quant = (true_quant - np.nanmean(true_quant)) / np.nanstd(true_quant)
+
+    # Compute figure ranges
+    pred_range = np.array([
+        min(np.nanmin(y_true), np.nanmin(y_pred)), 
+        max(np.nanmax(y_true), np.nanmax(y_pred)),
+    ])
+    quant_range = np.array([theoretical_quant[0], theoretical_quant[-1]])
+
+    # Create the figure
+    fig = make_subplots(2, 2)
+
+    # Loop over all colors
+    for i, uc in enumerate(unique_colors):
+        # Create subsets
+        c = np.flatnonzero(npcolor == uc)
+        tt = dict(
+            hovertemplate=f'x: %{{x}}<br>y: %{{y}}<br>color: {uc}<br>' \
+                    + '<br>'.join(f'{col}: %{{customdata[{j}]}}' for j, col in enumerate(textcols)),
+            customdata=df.iloc[c][list(textcols)].to_numpy()
+        )
+
+        # Quantile subsets
+        cquant = quant_idx_inv[c]
+
+        # Prediction figure
+        fig.add_trace(go.Scatter(
+            x=y_pred[c], y=y_true[c], mode='markers', 
+            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            name=str(uc), **tt
+        ), row=1, col=1)
+
+        # Error figure 1
+        fig.add_trace(go.Scatter(
+            x=y_pred[c], y=error[c], mode='markers', 
+            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            showlegend=False, **tt
+        ), row=1, col=2)
+
+        # Error figure 2
+        fig.add_trace(go.Scatter(
+            x=c, y=error[c], mode='markers', 
+            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            showlegend=False, **tt
+        ), row=2, col=2)
+
+        # QQ-plot
+        fig.add_trace(go.Scatter(
+            x=theoretical_quant[cquant], y=true_quant[cquant], 
+            mode='markers', marker_color=DEFAULT_PLOTLY_COLORS[i],
+            showlegend=False, **tt
+        ), row=2, col=1)
+
+    # Draw diagonals
+    fig.add_trace(go.Scatter(
+        x=pred_range, y=pred_range, marker_size=0.01, showlegend=False, line_color='black',
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=quant_range, y=quant_range, marker_size=0.01, showlegend=False, line_color='black',
+    ), row=2, col=1)
+
+    # Update ax titles
+    fig.update_xaxes(title='Predicted', row=1, col=1)
+    fig.update_yaxes(title='Real', row=1, col=1)
+    fig.update_xaxes(title='Predicted', row=1, col=2)
+    fig.update_yaxes(title='Error (prediction - real)', row=1, col=2)
+    fig.update_xaxes(title='Run', row=2, col=2)
+    fig.update_yaxes(title='Error (prediction - real)', row=2, col=2)
+    fig.update_xaxes(title='Theoretical quantile', row=2, col=1)
+    fig.update_yaxes(title='Sample quantile', row=2, col=1)
+
+    # Define legend
+    fig.update_layout(
+        showlegend=(len(unique_colors) > 1),
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='left',
+            x=0, 
+            title=color
+        )
+    )
+    
+
+    return fig

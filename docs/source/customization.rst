@@ -9,7 +9,7 @@ Custom models
 -------------
 
 In :ref:`qc_first_design`, we created a response surface model
-using the :py:func:`partial_rsm_names <pyoptex.doe.utils.model.partial_rsm_names>`
+using the :py:func:`partial_rsm_names <pyoptex.utils.model.partial_rsm_names>`
 function. While, for most scenarios, a response surface model is more than
 complex enough, not all scenarios require such a model.
 
@@ -34,7 +34,7 @@ Or
 >>> model = pd.read_excel('...')
 
 Finally, the model can be transformed to a callable using the same
-:py:func:`model2Y2X <pyoptex.doe.utils.model.model2Y2X>` call
+:py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` call
 
 >>> Y2X = model2Y2X(model, factors)
 

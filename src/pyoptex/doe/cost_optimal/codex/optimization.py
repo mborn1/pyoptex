@@ -6,7 +6,7 @@ import numpy as np
 
 from ...._profile import profile
 from ....utils.numba import numba_any_axis1, numba_diff_axis0
-from ...utils.design import force_Zi_asc, obs_var_from_Zs
+from ....utils.design import force_Zi_asc, obs_var_from_Zs
 from ...utils.init import full_factorial
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State

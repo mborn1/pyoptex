@@ -101,7 +101,7 @@ Start by importing the necessary modules
 >>> 
 >>> # PyOptEx imports
 >>> from pyoptex._seed import set_seed
->>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.utils.model import partial_rsm_names, model2Y2X
 >>> from pyoptex.doe.fixed_structure import (
 >>>     Factor, create_fixed_structure_design, create_parameters, default_fn
 >>> )
@@ -229,7 +229,7 @@ we require the imports again.
 >>> 
 >>> # PyOptEx imports
 >>> from pyoptex._seed import set_seed
->>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.utils.model import partial_rsm_names, model2Y2X
 >>> from pyoptex.doe.fixed_structure import Factor
 >>> from pyoptex.doe.fixed_structure.splitk_plot import (
 >>>     create_splitk_plot_design, default_fn, create_parameters, Plot
@@ -318,7 +318,7 @@ Like all previous examples, we start with the imports
 >>> 
 >>> # PyOptEx imports
 >>> from pyoptex._seed import set_seed
->>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.utils.model import partial_rsm_names, model2Y2X
 >>> from pyoptex.doe.fixed_structure import (
 >>>     Factor, RandomEffect, create_fixed_structure_design, 
 >>>     create_parameters, default_fn
@@ -498,7 +498,7 @@ First, start with the necessary imports
 >>> 
 >>> # PyOptEx imports
 >>> from pyoptex._seed import set_seed
->>> from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+>>> from pyoptex.utils.model import partial_rsm_names, model2Y2X
 >>> from pyoptex.doe.cost_optimal import Factor
 >>> from pyoptex.doe.cost_optimal.metric import Iopt
 >>> from pyoptex.doe.cost_optimal.cost import parallel_worker_cost

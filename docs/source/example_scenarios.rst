@@ -79,7 +79,7 @@ Second, the model is commonly adjusted to a Scheffé-model.
 >>>     mixture_effects=(('A', 'B', 'C'), 'tfi'), 
 >>> )
 
-Using the :py:func:`mixtureY2X <pyoptex.doe.utils.model.mixtureY2X>`, we can generate a Y2X function
+Using the :py:func:`mixtureY2X <pyoptex.utils.model.mixtureY2X>`, we can generate a Y2X function
 which automatically adds the final mixture component and computes the model. Note that
 the function also permits to easily add process variables and any level of cross-terms between
 the mixture components and the process variables.
@@ -393,7 +393,7 @@ Second, the model is commonly adjusted to a Scheffé-model.
 >>>     mixture_effects=(('A', 'B'), 'tfi'), 
 >>> )
 
-Using the :py:func:`mixtureY2X <pyoptex.doe.utils.model.mixtureY2X>`, we can generate a Y2X function
+Using the :py:func:`mixtureY2X <pyoptex.utils.model.mixtureY2X>`, we can generate a Y2X function
 which automatically adds the final mixture component and computes the model. Note that
 the function also permits to easily add process variables and any level of cross-terms between
 the mixture components and the process variables.

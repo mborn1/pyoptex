@@ -57,7 +57,7 @@ def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to
     :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>` 
-    followed by :py:func:`obs_var_from_Zs <pyoptex.doe.utils.design.obs_var_from_Zs>`.
+    followed by :py:func:`obs_var_from_Zs <pyoptex.utils.design.obs_var_from_Zs>`.
 
     Parameters
     ----------

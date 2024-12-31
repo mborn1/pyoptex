@@ -7,7 +7,7 @@ import numpy as np
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import (
     Factor, RandomEffect, create_fixed_structure_design, create_parameters, default_fn
 )

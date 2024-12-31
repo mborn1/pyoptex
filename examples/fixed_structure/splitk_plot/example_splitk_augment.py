@@ -8,7 +8,7 @@ import time
 
 # Library imports
 from pyoptex._seed import set_seed
-from pyoptex.doe.utils.model import partial_rsm_names, model2Y2X
+from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import Factor
 from pyoptex.doe.fixed_structure.splitk_plot import (
     create_splitk_plot_design, default_fn, create_parameters, Plot

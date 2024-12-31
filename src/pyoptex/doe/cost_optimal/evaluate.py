@@ -8,8 +8,8 @@ import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 
-from ..utils.design import encode_design, obs_var_from_Zs
-from ..utils.model import model2encnames
+from ...utils.design import encode_design, obs_var_from_Zs
+from ...utils.model import model2encnames
 from .metric import Iopt
 from .utils import obs_var_Zs
 

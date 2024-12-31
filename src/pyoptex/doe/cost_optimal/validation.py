@@ -6,7 +6,7 @@ import warnings
 
 import numpy as np
 
-from ..utils.design import obs_var_from_Zs
+from ...utils.design import obs_var_from_Zs
 from .utils import obs_var_Zs
 
 

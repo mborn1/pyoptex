@@ -60,7 +60,7 @@ def partial_rsm(nquad, ntfi, nlin):
 def partial_rsm_names(effects):
     """
     Creates a partial response surface model 
-    :py:func:`pyoptex.doe.utils.model.partial_rsm` 
+    :py:func:`pyoptex.utils.model.partial_rsm` 
     from the provided effects. The effects is a dictionary mapping 
     the column name to one of ('lin', 'tfi', 'quad').
 
@@ -155,7 +155,7 @@ def model2Y2X(model, factors):
     ----------
     model : pd.DataFrame
         The model
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
 
     Returns
@@ -238,8 +238,8 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
       
     .. warning::
         This function is only to see the model used by
-        :py:func:`mixtureY2X <pyoptex.doe.utils.model.mixtureY2X>`.
-        Do not use this with :py:func:`model2Y2X <pyoptex.doe.utils.model.model2Y2X>`.
+        :py:func:`mixtureY2X <pyoptex.utils.model.mixtureY2X>`.
+        Do not use this with :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
 
     Parameters
     ----------
@@ -402,7 +402,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
 
     Parameters
     ----------
-    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The factors of the experiment.
     mixture_effects : tuple(list(str), str)
         The mixture effects is a tuple with as first element the names of the mixture
@@ -557,7 +557,7 @@ def model2names(model, col_names=None):
 def model2encnames(model, effect_types, col_names=None):
     """
     Retrieves the names of the encoded parameters. Similar to
-    :py:func:`pyoptex.doe.utils.model.model2names`, but also
+    :py:func:`pyoptex.utils.model.model2names`, but also
     categorically encodes the necessary factors.
 
     Parameters

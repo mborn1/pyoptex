@@ -8,7 +8,7 @@ import numba
 import numpy as np
 import pandas as pd
 
-from ..utils.design import decode_design
+from ...utils.design import decode_design
 
 
 def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=False):

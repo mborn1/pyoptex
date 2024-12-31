@@ -4,7 +4,7 @@ Module for utility functions related to the design matrices.
 import numba
 import numpy as np
 
-from ...utils.numba import numba_all_axis2, numba_take_advanced
+from .numba import numba_all_axis2, numba_take_advanced
 
 
 def create_default_coords(effect_type):
@@ -147,7 +147,7 @@ def encode_design(Y, effect_types, coords=None):
     Each categorical factor is encoded using
     effect-encoding, unless the coordinates are specified.
 
-    It is the inverse of :py:func:`pyoptex.doe.utils.design.decode_design`
+    It is the inverse of :py:func:`pyoptex.utils.design.decode_design`
 
     Parameters
     ----------
@@ -196,7 +196,7 @@ def decode_design(Y, effect_types, coords=None):
     Each categorical factor is decoded from
     effect-encoding, unless the coordinates are specified.
 
-    It is the inverse of :py:func:`pyoptex.doe.utils.design.encode_design`
+    It is the inverse of :py:func:`pyoptex.utils.design.encode_design`
 
     Parameters
     ----------
