@@ -9,30 +9,162 @@ from sklearn.base import RegressorMixin as RegressorMixinSklearn
 
 from ..utils import identity, fit_ols, fit_mixedlm
 from ...utils.design import encode_design, obs_var_from_Zs
-from ...utils.model import encode_model, model2encnames
+from ...utils.model import model2encnames
 
 class RegressionMixin(RegressorMixinSklearn):
     """
-    
-    Requires:
-    * coef_ : The regression coefficients.
-    * terms_ : The indices of the terms.
-    * scale_ : The scale factor of the covariance matrix.
-    * vcomp_ : The variance components of any random effects.
+    Base mixin for all regressors. This mixin extends
+    the regressor mixin from sklearn. To create your own
+    regressor, do
+
+    >>> class MyRegressor(RegressionMixin):
+    >>>     def _fit(self, X, y):
+    >>>         # Your fit code
+    >>>         pass
+    >>> 
+    >>>     def _predict(self, X):
+    >>>         # Optional, if you require a custom prediction
+    >>>         # Defaults to
+    >>>         return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) \
+    >>>                       * self.y_std_ + self.y_mean_
+
+    One function should be implemented: the _fit
+    function which fits your model based on the encoded
+    and normalized X, and normalized y. It should set the
+    parameters specified below. Inside the _fit function,
+    you have access to the attributes specified below.
+
+    Optionally, you can implement your own prediction
+    function, however, when setting the coefficients and
+    terms correctly, this should not be necessary. The
+    _predict function receives a normalized and encoded
+    X.
+
+    Any attributes suffixed by `_` is only accessible after
+    fitting.
+
+    .. note::
+        Regressor should be able to handle both OLS and
+        mixed models, or raise an error otherwise. Use
+        `fit_fn_` attribute to fit a model given some
+        terms and data. It automatically accounts for OLS
+        vs. mixed model.
+
+    .. note::
+        If you require access to the attributes `factors`,
+        `re` or `Y2X`, use the underscored versions `_factors`,
+        `_re` and `_Y2X`. As sklearn does not permit to adapt
+        these factors directly, they may be adapted during fitting.
+
+    Parameters
+    ----------
+    terms_ : np.array(1d)
+        The indices of the terms (= columns in X)
+        in the model.
+    coef_ : np.array(1d)
+        An array of coefficients corresponding to
+        the terms.
+    scale _ : float
+        The scale (= variance of the fit).
+    vcomp_ : float
+        The estimates of any presented variance components.
+    fit_ : optional
+        The result of calling
+
+        >>> fit_fn_(X, y, self.terms_)
+
+        if applicable. If not specified,
+        :py:func:`summary <pyoptex.analysis.mixins.fit_mixin.summary>`
+        is unavailable.
+
+    Attributes
+    ----------
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
+        A list of factors to be used during fitting. It contains
+        the categorical encoding, continuous normalization, etc.
+    Y2X : func(Y)
+        The function to transform a design matrix Y to a model matrix X.
+    random_effects : list(str)
+        The names of any random effect columns. Every random effect
+        is interpreted as a string column and encoded using 
+        effect encoding.
+    n_features_in_ : int
+        The number of features. Equals len(self._factors).
+    features_names_in_ : list(str)
+        The names of the features.
+    n_encoded_features_ : int
+        The number of encoded features. Is the result of Y2X(Y).shape[1].
+    effect_types_ : np.array(1d)
+        An array indicating the type of each factor (effect). A
+        1 indicates a continuous variable, anything higher indicates
+        a categorical factor with that many levels. Can be
+        used for internal package functions such as 
+        :py:func:`pyoptex.utils.model.encode_model`.
+    coords_ : :py:class:`numba.typed.List`
+        A list of 2d numpy arrays. Each element corresponds to
+        the possible encodings of a factor. Retrieved using
+        factor.coords_ property.
+    y_mean_ : float
+        The mean y-value, used in normalization.
+    y_std_ : float
+        The standard deviation of the y-value, used in normalization.
+    fit_fn_ : func(X, y, terms)
+        A fit function used to fit a model from data and the specified
+        terms. When random effects are specified, this fits a 
+        mixed model, otherwise an OLS is fitted.
+    Zs_ : np.array(2d)
+        The groups of each random effect. Zs.shape[0] == len(self._re)
+        and Zs.shape[1] == len(X). For example, if the first row is
+        [0, 0, 1, 1], then the first two runs are in group 0 according
+        to the first random effect, and the last two runs are in group 1.
+    is_fitted_ : bool
+        Whether the regressor has been fitted.
     """
 
     def __init__(self, factors=(), Y2X=identity, random_effects=()):
+        """
+        Creates the regressor
+
+        Parameters
+        ----------
+        factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
+            A list of factors to be used during fitting. It contains
+            the categorical encoding, continuous normalization, etc.
+        Y2X : func(Y)
+            The function to transform a design matrix Y to a model matrix X.
+        random_effects : list(str)
+            The names of any random effect columns. Every random effect
+            is interpreted as a string column and encoded using 
+            effect encoding.
+        """
         # Store the parameters
         self.factors = factors
         self.Y2X = Y2X
         self.re = random_effects
 
     def _regr_params(self, X, y):
-        self._factors = list(self.factors)
-        self._re = list(self.re)
+        """
+        Callback function to dynamically alter the inputted variables.
+        By default simply references them.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            A dataframe with the original data.
+        y : pd.Series or np.array(1d)
+            The output variable.
+        """
+        self._factors = self.factors
+        self._re = self.re
         self._Y2X = self.Y2X
 
     def _compute_derived(self):
+        """
+        Computes any necessary derived parameters from the
+        inputs such as the number of features, feature names,
+        effect types and coordinates for encoding the 
+        categorical variables.
+        """
         # Compute derived parameters from the inputs
         self.n_features_in_ = len(self._factors)
         self.features_names_in_ = [str(f.name) for f in self._factors]
@@ -44,6 +176,14 @@ class RegressionMixin(RegressorMixinSklearn):
 
 
     def _validate_X(self, X):
+        """
+        Validates an inputted X (=data).
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data.
+        """
         assert isinstance(X, pd.DataFrame), f'X must be a dataframe'
         assert all(c in X.columns for c in self.features_names_in_), f'X does not have the correct features'
         for f in self._factors:
@@ -51,6 +191,21 @@ class RegressionMixin(RegressorMixinSklearn):
                 assert all(l in f.levels for l in X[str(f.name)].unique()), f'X contains a categorical level not specified in the factor, unable to encode'
 
     def _preprocess_X(self, X):
+        """
+        Preprocesses X by normalizing, encoding 
+        the categorical factors, and applying
+        Y2X.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data
+
+        Returns
+        -------
+        X : np.array(2d)
+            The normalized, encoded model matrix of the data.
+        """
         # Normalize the factors
         for f in self._factors:
             X[str(f.name)] = f.normalize(X[str(f.name)])
@@ -68,6 +223,16 @@ class RegressionMixin(RegressorMixinSklearn):
 
 
     def _validate_fit(self, X, y):
+        """
+        Validate the inputted parameters before fitting the model.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data.
+        y : pd.Series or np.array(1d)
+            The output variable.
+        """
         # Validate init parameters
         assert len(self._factors) > 0, f'Must have at least one factor'
 
@@ -78,6 +243,27 @@ class RegressionMixin(RegressorMixinSklearn):
         assert all(c in X.columns for c in self._re), f'X does not have the correct random effects'
 
     def preprocess_fit(self, X, y):
+        """
+        Preprocesses before fitting the data.
+        Applies _preprocess_X and normalizes the
+        output variable. Also creates
+        the `fit_fn_` attribute by analyzing the
+        random effects.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data.
+        y : pd.Series or np.array(1d)
+            The output variable.
+
+        Returns
+        -------
+        X : np.array(2d)
+            The encoded, normalized model matrix of the data.
+        y : np.array(1d)
+            The normalized output variable.
+        """
         # Normalize y
         self.y_mean_ = np.mean(y)
         self.y_std_ = np.std(y)
@@ -115,9 +301,38 @@ class RegressionMixin(RegressorMixinSklearn):
         return X, y
 
     def _fit(self, X, y):
+        """
+        To be implemented by the user. It should fit the data
+        and create attributes terms_, coef_, scale_, vcomp_,
+        and optionally fit_.
+        See :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin`
+        for more information.
+
+        Parameters
+        ----------
+        X : np.array(2d)
+            The encoded, normalized model matrix of the data.
+        y : np.array(1d)
+            The normalized output variable.
+        """
         raise NotImplementedError('The fit function has not been implemented')
 
     def fit(self, X, y):
+        """
+        Fits the data. After fitting, you can use
+        the :py:func:`predict <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.predict>`
+        function.
+
+        Make sure the input data X only has the necessary
+        columns present.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data
+        y : pd.Series or np.array(1d)
+            The output variable
+        """
         # Adjust the regression parameters
         self._regr_params(X, y)
 
@@ -141,22 +356,77 @@ class RegressionMixin(RegressorMixinSklearn):
 
 
     def _validate_predict(self, X):
+        """
+        Validates the data for predictions. It should
+        have the correct columns and only those columns
+        present.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data
+        """
         # Validate X
         self._validate_X(X)
         assert X.shape[1] == self.n_features_in_, f'X does not have the correct number of features: {self.n_features_in_} vs. {X.shape[1]}'
 
     def preprocess_predict(self, X):
+        """
+        Preprocessing the incoming data
+        before prediction. It normalized, encodes
+        and converts to a model matrix.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data.
+
+        Returns
+        -------
+        X : np.array(2d)
+            The encoded, normalized model matrix of the data.
+        """
         # Preprocess X
         X = self._preprocess_X(X)
 
         return X
 
     def _predict(self, X):
+        """
+        Internal predict function based on the
+        encoded, normalized model matrix of the data.
+        It applies the simple linear regression formula.
+
+        Parameters
+        ----------
+        X : np.array(2d)
+            The encoded, normalized model matrix of the data.
+
+        Returns
+        -------
+        pred : np.array(1d)
+            The predictions.
+        """
         # Predict based on linear regression
         return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) \
                     * self.y_std_ + self.y_mean_
 
     def predict(self, X):
+        """
+        Predict on new data after fitting.
+        Make sure the data only has the necessary
+        columns used during fitting.
+
+        Parameters
+        ----------
+        X : pd.DataFrame    
+            The data.
+        
+        Returns
+        -------
+        pred : np.array(1d)
+            The predictions.
+        """
         # Drop potential remaining random effects
         X = X.drop(columns=list(self._re), errors='ignore')
 
@@ -275,7 +545,19 @@ class RegressionMixin(RegressorMixinSklearn):
 
     def _pred_var(self, X):
         """
-        Prediction variances from the values specified in X
+        Prediction variances for the new values specified in X.
+        It includes the additional variance from the random
+        errors and random effects for a new prediction.
+
+        Parameters
+        ----------
+        X : np.array(2d)
+            The normalized, encoded model matrix of the data.
+
+        Returns
+        -------
+        pred_var : np.array(1d)
+            The prediction variance for each sample.
         """
         # Compute base prediction variance
         pv = np.sum((X @ self.inv_information_matrix) * X, axis=1) # X @ Minv @ X.T
@@ -290,10 +572,89 @@ class RegressionMixin(RegressorMixinSklearn):
         return pv
 
     def pred_var(self, X):
+        """
+        Prediction variances for the new values specified in X.
+        It includes the additional variance from the random
+        errors and random effects for a new prediction.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data
+
+        Returns
+        -------
+        pred_var : np.array(1d)
+            The prediction variance for each sample.
+        """
         X = self.preprocess_predict(X)
         return self._pred_var(X)
 
     def model_formula(self, model):
+        """
+        Creates the prediction formula of the fit for the encoded and
+        normalized data. This function assumes the regressor was
+        fitted with the result of :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+        In that case, the model can be provided to automatically
+        generate the correct labels.
+
+        .. warning::
+            This formula is the prediction formula of the encoded and
+            normalized data. First apply factor normalization
+            and then categorical encoding before applying this
+            prediction formula.
+
+            >>> # Imports
+            >>> from numba.typed import List
+            >>> from pyoptex.utils import Factor
+            >>> from pyoptex.utils.design import encode_design
+            >>> 
+            >>> # Example factors
+            >>> factors = [
+            >>>     Factor('A'), 
+            >>>     Factor('B'),
+            >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
+            >>> ]
+            >>> 
+            >>> # Compute derived parameters
+            >>> effect_types = np.array([
+            >>>     1 if f.is_continuous else len(f.levels)
+            >>>     for f in factors
+            >>> ])
+            >>> coords = List([f.coords_ for f in factors])
+            >>> 
+            >>> # Normalize the factors
+            >>> for f in factors:
+            >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
+            >>> 
+            >>> # Select correct order + to numpy
+            >>> data = data[[str(f.name) for f in factors]].to_numpy()
+            >>> 
+            >>> # Encode
+            >>> data = encode_design(data, effect_types, coords=coords)
+            >>> 
+            >>> # Transform according to the model
+            >>> data = Y2X(data)
+
+            
+        .. note::
+            If you did not create Y2X using
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
+            use
+            :py:func:`formula <pyoptex.analysis.mixins.fit_mixin.formula`.
+            You must manually specify the labels here.
+
+        Parameters
+        ----------
+        model : pd.DataFrame
+            The dataframe of the model used in
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+
+        Returns
+        -------
+        formula : str
+            The prediction formula for encoded and normalized data.
+        """
         # Make sure model is a dataframe
         assert isinstance(model, pd.DataFrame), 'The specified model must be a dataframe'
 
@@ -307,7 +668,7 @@ class RegressionMixin(RegressorMixinSklearn):
 
     def formula(self, labels=None):
         """
-        Creates the prediction formula for the fit for the encoded and
+        Creates the prediction formula of the fit for the encoded and
         normalized data. The labels for each term are given by the 
         `labels` parameter.
         The number of labels must be the number of parameters from Y2X,
@@ -383,6 +744,12 @@ class RegressionMixin(RegressorMixinSklearn):
         return formula   
 
     def summary(self):
+        """
+        Generates a summary of the fit in case it was stored
+        during training in the `fit_` attribute. Use as
+
+        >>> print(regr.summary())
+        """
         if hasattr(self, 'fit_'):
             return self.fit_.summary()
         else:
