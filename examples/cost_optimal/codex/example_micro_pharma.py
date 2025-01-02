@@ -43,7 +43,7 @@ constraints = parse_constraints_script(
 )
 
 # Cost function
-max_units = 150
+max_units = 200
 @cost_fn(denormalize=False, decoded=False, contains_params=False)
 def cost(Y):
     units = 2 + (Y[:, 0] + 1) * 6
@@ -52,8 +52,8 @@ def cost(Y):
 #######################################################################
 
 # Simulation parameters
-nsims = 10
-nreps = 1
+nsims = 1000
+nreps = 10
 fn = default_fn(nsims, factors, cost, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn)
 

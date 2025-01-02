@@ -245,7 +245,7 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
     try:
         for i in range(nreps-1):
             try:
-                state = simulate(params, nreps=nreps, nsims=nsims, validate=validate)
+                state = simulate(params, nsims=nsims, validate=validate)
                 if state.metric > best_state.metric:
                     best_state = state
             except ValueError as e:
