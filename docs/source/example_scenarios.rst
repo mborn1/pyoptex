@@ -524,4 +524,8 @@ Full response surface model.
 X2 <= X3.
 `Copelli et al. (2018) <https://www.sciencedirect.com/science/article/abs/pii/S0169743917306494>`_
 
+Note: not the actual optimum due to the initialization. CODEX designed for
+correct run ordering, but this does not care.
+
+TODO: add maximal initialization vs. minimal.
 

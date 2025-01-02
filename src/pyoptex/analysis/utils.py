@@ -95,6 +95,28 @@ def order_dependencies(model, factors):
     return dep
 
 def model2strong(model, dep):
+    """
+    Convert an existing model to its strong heredity
+    variant according to the provided dependency matrix.
+    A model is a strong heredity model if the for
+    every term i, all its dependencies are also included
+    in the model.
+
+    Parameters
+    ----------
+    model : np.array(1d)
+        The array with indices of the terms included in the
+        initial model
+    dep : np.array(2d)
+        A matrix of size (N, N) with N the total number of terms
+        in the encoded model. Term i depends on term j
+        if dep(i, j) = true.
+
+    Returns
+    -------
+    strong : np.array(1d)
+        The strong heredity model based on the initial model.
+    """
     # Create a mask
     strong = np.zeros(dep.shape[0], dtype=np.bool_)
     strong[model] = True
@@ -113,6 +135,34 @@ def model2strong(model, dep):
     return np.flatnonzero(strong)
 
 def r2adj(fit):
+    """
+    Computes the adjust r-square from a model fit.
+    When fit is from an OLS, the r2adj is already precomputed
+    as rsquared_adj. When fit is from a mixed LM, the r2adj
+    is based on the average estimated semi-variance as denoted
+    in `Piepho (2019) <https://pubmed.ncbi.nlm.nih.gov/30957911/>`_.
+
+    .. math::
+
+        R_{adj}^2 &= 1 - \\frac{trace(V1 P)}{trace(V0 P)} \\\\
+        P &= I_N - \\frac{1}{n} 1_N 1_N^T 
+
+    N is the number of runs.
+    :math:`V_0` and :math:`V_1` are the observation covariance matrices
+    of the model fitted with only the intercept and the complete model.
+    :math:`I_N` is the identity matrix of size (N, N). :math:`1_N` is 
+    a vector of ones of size N.
+
+    Parameters
+    ----------
+    fit : :py:class:`statsmodels.regression.linear_model.RegressionResults` or :py:class:`statsmodels.regression.mixed_linear_model.MixedLMResults`
+        The results after fitting a statsmodels OLS or mixed LM.
+
+    Returns
+    -------
+    r2adj : float
+        The adjust r-squared of the results.
+    """
     if fit.k_fe < len(fit.params):
         # Extract Xnumber of observations
         nobs = len(fit.model.exog)
@@ -148,6 +198,28 @@ def r2adj(fit):
     return r2a
 
 def fit_ols(X, y):
+    """
+    Wrapper to fit a statsmodels OLS model. It includes
+    the following additional attributes required for a 
+    more synchronized output between OLS and Mixed LM.
+
+    * **k_fe**: The number of parameters.
+    * **vcomp**: An empty array.
+    * **converged**: True. 
+
+    Parameters
+    ----------
+    X : np.array(2d)
+        The normalized, encoded model matrix of the data.
+    y : np.array(1d)
+        The output variable
+    
+    Returns
+    -------
+    fit : :py:class:`statsmodels.regression.linear_model.RegressionResults`
+        The statsmodels regression results with some additional
+        attributes.
+    """
     fit = sm.OLS(y, X).fit()
     fit.k_fe = len(fit.params)
     fit.vcomp = np.array([], dtype=np.float64)
@@ -155,6 +227,35 @@ def fit_ols(X, y):
     return fit
 
 def fit_mixedlm(X, y, groups):
+    """
+    Wrapper to fit a statsmodels Mixed LM model. It includes
+    the following additional attributes required for a 
+    more synchronized output between OLS and Mixed LM.
+
+    * **rsquared** : The simple r2_score of the fit.
+    * **rsquared_adj** : The adjust r2 score according to
+      :py:func:`r2_adj <pyoptex.analysis.utils.r2_adj>`.
+
+    Parameters
+    ----------
+    X : np.array(2d)
+        The normalized, encoded model matrix of the data.
+    y : np.array(1d)
+        The output variable
+    groups : np.array(2d)
+        The 2d array of the groups for the random effects
+        of size (g, N), with g the number of random effects
+        and N the number of runs. Each row is an integer
+        array with values from 0 until the total number of groups
+        for that random effect. For example [0, 0, 1, 1] indicates
+        that the first two runs are correlated, and the last two.
+    
+    Returns
+    -------
+    fit : :py:class:`statsmodels.regression.mixed_linear_model.MixedLMResults`
+        The statsmodels Mixed LM results with some additional
+        attributes.
+    """
     # Retrieve dummy encoding for each group
     dummies = [pd.get_dummies(group) for group in groups]
 
@@ -179,6 +280,45 @@ def fit_mixedlm(X, y, groups):
     return fit
 
 def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None):
+    """
+    Plots the residual diagnostics of the fit. This plot contains
+    four subplots in a 2-by-2 grid.
+
+    * The upper left is the predicted vs. real plot. The black diagonal indicates
+      the perfect fit.
+    * The upper right is the predicted vs. error plot. This can indicate
+      if there is any trend or correlation between the predictions and the 
+      random error (they should be uncorrelated).
+    * The lower left is the quantile-quantile plot for a normal distribution
+      of the errors. The black diagonal line indicates the perfect normal
+      distribution of the errors.
+    * The lower right is the run vs. error plot. For example, if the runs
+      are ordered in time, this plot indicates if effects are missing.
+      A trend indicates a time related component, or something which changed with
+      time. An offset for certain blocks of consecutive runs may indicate
+      a missing effect if using design of experiments with hard-to-change factors.
+      Ideally, there are no trends or correlations.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataframe with the data, output, and predictions.
+    y_true : str    
+        The name of the output column.
+    y_pred : str    
+        The name of the prediction column.
+    textcols : list(str) or tuple(str)
+        Any columns which should be added as text upon hover over the graph.
+    color : str
+        The column to group by with colors in the plot. Can be used to identify
+        missing effects for the easy-to-change variables. Note that you
+        any continuous variable should be binned.
+    
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The plotly figure with the residual diagnostics.
+    """
     # Define the colors
     if color is not None:
         unique_colors = df[color].unique()

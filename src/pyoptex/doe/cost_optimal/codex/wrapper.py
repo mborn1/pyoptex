@@ -44,55 +44,55 @@ def default_fn(
         The factors of the experiment.
     cost : func(Y, params)
         The cost function.
-    metric : :py:class:`pyoptex.doe.cost_optimal.metric.Metric`
+    metric : :py:class:`Metric <pyoptex.doe.cost_optimal.metric.Metric>`
         The metric object.
     Y2X : func
         The function converting from the design matrix to the
         model matrix.
     init : func
         The initialization function, 
-        :py:func:`pyoptex.doe.cost_optimal.init.init_feasible` 
+        :py:func:`init_feasible <pyoptex.doe.cost_optimal.init.init_feasible>` 
         by default.
     sample : func
         The sampling function, 
-        :py:func:`pyoptex.doe.cost_optimal.sample.sample_random` 
+        :py:func:`sample_random <pyoptex.doe.cost_optimal.sample.sample_random>` 
         by default.
     temperature : obj
         The temperature object, 
-        :py:class:`pyoptex.doe.cost_optimal.temperature.LinearTemperature` 
+        :py:class:`LinearTemperature <pyoptex.doe.cost_optimal.temperature.LinearTemperature>` 
         by default.
     accept : func
         The acceptance function, 
-        :py:func:`pyoptex.doe.cost_optimal.accept.exponential_accept_rel` 
+        :py:func:`exponential_accept_rel <pyoptex.doe.cost_optimal.accept.exponential_accept_rel>` 
         by default.
     restart : obj
         The restart object, 
-        :py:class:`pyoptex.doe.cost_optimal.restart.RestartEveryNFailed` 
+        :py:class:`RestartEveryNFailed <pyoptex.doe.cost_optimal.restart.RestartEveryNFailed>` 
         by default.
     insert : func
         The insertion function, 
-        :py:func:`pyoptex.doe.cost_optimal.insert.insert_optimal` 
+        :py:func:`insert_optimal <pyoptex.doe.cost_optimal.insert.insert_optimal>` 
         by default.
     remove : func
         The removal function, 
-        :py:func:`pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone` 
+        :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone>` 
         by default.
     constraints : func
         The constraints function, 
-        :py:func:`pyoptex.doe.constraints.no_constraints` 
+        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>` 
         by default.
-    optimizers : list(:py:class:`pyoptex.doe.cost_optimal.optimization.Optimizer`)
+    optimizers : list(:py:class:`Optimizer <pyoptex.doe.cost_optimal.optimization.Optimizer>`)
         A list of optimizers. If None, it defaults to 
-        :py:class:`pyoptex.doe.cost_optimal.optimization.CEOptimizer` 
-        and :py:class:`pyoptex.doe.cost_optimal.optimization.CEStructOptimizer`.
+        :py:class:`CEOptimizer <pyoptex.doe.cost_optimal.optimization.CEOptimizer>` 
+        and :py:class:`CEStructOptimizer <pyoptex.doe.cost_optimal.optimization.CEStructOptimizer>`.
         To provide no optimizers, pass an empty list. 
-    final_optimizers : list(:py:class:`pyoptex.doe.cost_optimal.optimization.Optimizer`)
+    final_optimizers : list(:py:class:`Optimizer <pyoptex.doe.cost_optimal.optimization.Optimizer>`)
         Similar to optimizers, but run at the very end of the algorithm to perform the
         final optimizations. These optimizers are run until no improvements are found.
 
     Returns
     -------
-    fn : :py:class:`pyoptex.doe.cost_optimal.codex.utils.FunctionSet`
+    fn : :py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
         The function set.
     """
     # Set default objects

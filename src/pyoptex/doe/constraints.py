@@ -15,7 +15,7 @@ from ..utils.design import encode_design
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
     Parses a formula of constraints. The function returns an object of type
-    :py:class:`pyoptex.doe.constraints.Col` which can generate a function evaluating
+    :py:class:`Col <pyoptex.doe.constraints.Col>` which can generate a function evaluating
     either the encoded or non-encoded design matrix.
     The generated function returns True where the constraints are violated. 
 
@@ -49,7 +49,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
 
     Returns
     -------
-    constraint : :py:class:`pyoptex.doe.constraints.Col`
+    constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`
         The root constraint which can be converted to a function to evaluate
         either the encoded or decoded design matrix.
     """
@@ -379,7 +379,7 @@ def mixture_constraints(names, factors):
     
     Returns
     -------
-    mixture_constraint : :py:class:`pyoptex.doe.constraints.Col`
+    mixture_constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`
         The mixture constraint.
     """
     script = ' + '.join(f'`{name}`' for name in names) + f' > 1 + eps'

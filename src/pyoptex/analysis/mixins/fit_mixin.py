@@ -99,7 +99,7 @@ class RegressionMixin(RegressorMixinSklearn):
         1 indicates a continuous variable, anything higher indicates
         a categorical factor with that many levels. Can be
         used for internal package functions such as 
-        :py:func:`pyoptex.utils.model.encode_model`.
+        :py:func:`encode_model <pyoptex.utils.model.encode_model>`.
     coords_ : :py:class:`numba.typed.List`
         A list of 2d numpy arrays. Each element corresponds to
         the possible encodings of a factor. Retrieved using

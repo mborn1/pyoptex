@@ -147,7 +147,7 @@ def encode_design(Y, effect_types, coords=None):
     Each categorical factor is encoded using
     effect-encoding, unless the coordinates are specified.
 
-    It is the inverse of :py:func:`pyoptex.utils.design.decode_design`
+    It is the inverse of :py:func:`decode_design <pyoptex.utils.design.decode_design>`
 
     Parameters
     ----------
@@ -196,7 +196,7 @@ def decode_design(Y, effect_types, coords=None):
     Each categorical factor is decoded from
     effect-encoding, unless the coordinates are specified.
 
-    It is the inverse of :py:func:`pyoptex.utils.design.encode_design`
+    It is the inverse of :py:func:`encode_design <pyoptex.utils.design.encode_design>`
 
     Parameters
     ----------

@@ -60,7 +60,7 @@ def partial_rsm(nquad, ntfi, nlin):
 def partial_rsm_names(effects):
     """
     Creates a partial response surface model 
-    :py:func:`pyoptex.utils.model.partial_rsm` 
+    :py:func:`partial_rsm <pyoptex.utils.model.partial_rsm>` 
     from the provided effects. The effects is a dictionary mapping 
     the column name to one of ('lin', 'tfi', 'quad').
 
@@ -557,7 +557,7 @@ def model2names(model, col_names=None):
 def model2encnames(model, effect_types, col_names=None):
     """
     Retrieves the names of the encoded parameters. Similar to
-    :py:func:`pyoptex.utils.model.model2names`, but also
+    :py:func:`model2names <pyoptex.utils.model.model2names>`, but also
     categorically encodes the necessary factors.
 
     Parameters

@@ -185,7 +185,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     @numba.njit
     def _cost(Y):
         """Internal cost function according to 
-        :py:function:`pyoptex.doe.cost_optimal.cost.discount_cost`"""
+        :py:function:`discount_cost <pyoptex.doe.cost_optimal.cost.discount_cost>`"""
         # Initialize costs
         cc = np.zeros(len(Y))
         cc[0] = base_cost
