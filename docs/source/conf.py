@@ -8,10 +8,12 @@ from urllib.parse import quote
 sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
 from pyoptex import __version__ as lib_version
 
+now = datetime.datetime.now()
+
 # -- Project information
 
 project = 'PyOptEx'
-copyright = '2024, Mathias Born'
+copyright = f'{now.year}, Mathias Born'
 author = 'Mathias Born'
 
 release = lib_version
