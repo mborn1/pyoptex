@@ -98,7 +98,8 @@ An approximated OMARS design (anti-aliasing)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Besides the well-known D-, I- and A-optimality criteria, a new type of
-designs is emerging: OMARS (orthogonally, minimally aliased response surface designs).
+designs is emerging: OMARS (orthogonally, minimally aliased response surface designs, 
+`Núñez Ares and Goos (2019) <https://www.tandfonline.com/doi/abs/10.1080/00401706.2018.1549103>`_).
 These designs permit to estimate the main effects of a model, but guarantee
 complete orthogonality (or decorrelation) from the two-factor interactions and 
 quadratic effects. They are `anti-aliasing`.
