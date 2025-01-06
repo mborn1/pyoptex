@@ -7,8 +7,35 @@ import numpy as np
 from ....utils.model import sample_model_dep
 from ....utils.numba import numba_int2bool
 
+from .models.model import Model
+def sample(dep, size, forced=None, mode=None, N=1, skip=10):
+    # Create the SAMS modeller
+    m = Model(np.zeros((0, len(dep))), np.zeros((0,)), mode=mode, forced=forced, dep=dep)
+
+    # Initialize a random model
+    model = np.zeros((size,), dtype=np.int_)
+    m.init(model)
+
+    # Intialize the samples
+    samples = np.zeros((N, size), dtype=np.int_)
+
+    # Warmup phase
+    for i in range(1000):
+        m.mutate(model)
+
+    # Main sampling loop
+    for i in range(N*skip):
+        # Mutate the model
+        m.mutate(model)
+
+        # Every skip, store the result
+        if i % skip == 0:
+            samples[int(i/skip)] = model
+
+    return samples
+
 def entropies_approx(submodels, freqs, model_size, dep, mode, 
-                     forced=None, N=1000000, eps=1e-6):
+                     forced=None, N=10000, eps=1e-6):
     """
     Compute the approximate entropy by sampling N random models
     and observing the frequency of each submodel.
@@ -54,7 +81,8 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
         An array of floats of the same length as the submodels.
     """
     # Generate random samples
-    samples = sample_model_dep(dep, model_size, N, forced, mode)
+    # samples = sample_model_dep(dep, model_size, N, forced, mode)
+    samples = sample(dep, model_size, forced, mode, N, skip=10)
 
     # Convert samples to a boolean array
     samples = numba_int2bool(samples, len(dep))

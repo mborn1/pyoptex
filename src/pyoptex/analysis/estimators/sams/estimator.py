@@ -35,10 +35,7 @@ class SamsRegressor(MultiRegressionMixin):
         :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`
 
     .. warning::
-        As of now, it is necessary to specify the order of each model term in
-        `model_order`. and the same dictionary must be used to generate the
-        corresponding model and Y2X for correct entropy calculations. It also
-        only works for 'weak' heredity.
+        TODO: model_order
 
         >>> model_order = {'A': 'quad', 'B': 'tfi}
 
@@ -425,6 +422,12 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Compute entropy (based on model order)
             self.entropy_model_order_ = entropies(submodels, freqs, self._model_size, model_counts)
+
+            # Compute approximated entropies
+            entropy = entropies_approx(
+                submodels, freqs, self._model_size, self.dependencies, self.mode,
+                self.forced_model
+            )
 
         return entropy
 

@@ -53,7 +53,7 @@ class Model:
         """
         # Validate the inputs
         assert len(X) == len(y), 'Must have the same number of runs for the data as the output variable'
-        assert np.all(forced < X.shape[1]), 'The forced terms are not in the model matrix, index is too high'
+        assert forced is None or np.all(forced < X.shape[1]), 'The forced terms are not in the model matrix, index is too high'
         assert mode in (None, 'weak', 'strong'), 'The mode must be None, weak or strong heredity'
         if mode is not None:
             assert dep is not None, 'Must specify a dependency matrix if the mode is weak or strong heredity'
