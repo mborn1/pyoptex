@@ -3,7 +3,7 @@ from sklearn.base import BaseEstimator
 
 from .mixins.fit_mixin import RegressionMixin
 from .mixins.conditional_mixin import ConditionalRegressionMixin
-from .utils import identity
+from ..utils.model import identityY2X
 
 class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator):
     """
@@ -20,7 +20,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
         :py:class:`ConditionalRegressionMixin <pyoptex.analysis.mixins.conditional_mixin.ConditionalRegressionMixin>`
     """
 
-    def __init__(self, factors=(), Y2X=identity, random_effects=(), conditional=False):
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), conditional=False):
         """
         Simple regression model.
 

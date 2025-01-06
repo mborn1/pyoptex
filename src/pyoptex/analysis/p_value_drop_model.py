@@ -3,7 +3,7 @@ from sklearn.base import BaseEstimator
 
 from .mixins.fit_mixin import RegressionMixin
 from .mixins.conditional_mixin import ConditionalRegressionMixin
-from .utils import identity
+from ..utils.model import permitted_dep_drop, identityY2X
 
 
 class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator):
@@ -37,7 +37,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
         The heredity mode to adhere to.
     """
 
-    def __init__(self, factors=(), Y2X=identity, random_effects=(), 
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), 
                  conditional=False, 
                  threshold=0.05, dependencies=None, mode=None):
         """
@@ -72,50 +72,6 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
         self.threshold = threshold
         self.dependencies = dependencies
         self.mode = mode
-
-    def _can_drop(self, terms, idx, mode, dependencies):
-        """
-        Determines if the term specified by at `idx` of `terms` can be dropped,
-        given the other existing terms in the model, the mode, and
-        the dependency matrix.
-
-        Parameters
-        ----------
-        terms : np.array(1d)
-            The terms in the current model. 
-        idx : int
-            The index of the term in the current model to be dropped.
-        mode : None or 'weak' or 'strong'
-            The heredity mode.
-        dependencies : np.array(2d)
-            The dependency matrix of size (N, N) with N the number
-            of terms in the encoded model (output from Y2X). Term i depends on term j
-            if dep(i, j) = true.
-
-        Returns
-        -------
-        can_drop : bool
-            Whether this term can be dropped given the dependencies
-            and heredity mode.
-        """
-        # Retrieve the terms depending on this term
-        dep_terms = dependencies[:, terms[idx]]
-
-        # Check for the mode
-        if mode == 'strong':
-            # No dependent terms, otherwise violation of strong heredity
-            drop = ~np.any(dep_terms)
-
-        elif mode == 'weak':
-            # No single dependent terms left, otherwise violation of weak heredity
-            single_deps = np.sum(dependencies[dep_terms][:, terms], axis=1) == 1
-            drop = ~np.any(single_deps)
-        
-        else:
-            # No restrictions
-            drop = True
-
-        return drop
 
     def _drop_one_by_one(self, X, y, threshold, mode, dependencies):
         """
@@ -158,7 +114,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
             i = 0
             while i < keep.size \
                     and pvalues[sorted_p_idx[i]] > threshold \
-                    and not self._can_drop(keep, sorted_p_idx[i], mode, dependencies):
+                    and not permitted_dep_drop(keep, mode=mode, dep=dependencies, subset=[sorted_p_idx[i]])[0]:
                 i += 1
 
             # Check for a valid index

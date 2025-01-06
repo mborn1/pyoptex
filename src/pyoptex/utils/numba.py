@@ -193,3 +193,82 @@ def numba_take_advanced(arr, idx, out=None):
 
     # Reshape and return
     return out.reshape((*shape, *arr.shape[1:]))
+
+@numba.njit
+def numba_choice_bool_axis0(valids):
+    """
+    For each row in valids, chooses a random index of the true
+    elements in that row. For example, if valids
+    is [[True, False], [True, True]], the first element of out
+    must be 0 as there is no other options, the second element
+    has a 50% chance to be zero, and a 50% chance to be one.
+    If all elements are False, -1 is returned.
+
+    Parameters
+    ----------
+    valids : np.array(2d)
+        A 2d-boolean matrix.
+
+    Returns
+    -------
+    out : np.array(1d)
+        An integer array with the randomly chosen indices.
+    """
+    out = np.zeros(len(valids), dtype=np.int_)
+    for i in range(len(valids)):
+        idx = np.flatnonzero(valids[i])
+        if idx.size == 0:
+            out[i] = -1
+        else:
+            out[i] = np.random.choice(idx)
+    return out
+
+@numba.njit
+def numba_int2bool(arr, size):
+    """
+    Converts an ndarray of integers to a boolean representation.
+    The input array has size (..., N), the output array has
+    size (..., `size`), where '...' represent the same shape.
+
+    For examples:
+
+    * An array [0, 1] and size 3 will be converted to
+      [True, True, False].
+    * An array [[0, 1], [2, 3]] and size 5 will be converted
+      to [[True, True, False, False, False], [False, False, True, True, False]].
+
+    .. note::
+        Every element in arr must be strictly smaller than size.
+
+    Parameters
+    ----------
+    arr : np.array(nd)
+        Any nd-array with integers smaller than size.
+    size : int
+        The size of the last dimension in the output array. All
+        elements in `arr` must be strictly smaller than this number.
+    
+    Returns
+    -------
+    out : np.array(nd)
+        An nd-array with booleans. The last dimension is equal
+        to `size`, the other dimensions are all but the last
+        dimension of `arr`
+    """
+
+    # Store the original shape
+    original_shape = arr.shape
+
+    # Reshape existing array to keep only last dimension
+    n = np.prod(np.array(arr.shape[:-1]))
+    arr = arr.reshape(n, arr.shape[-1])
+
+    # Create the output array
+    out = np.zeros((n, size), dtype=np.bool_)
+
+    # Convert to boolean
+    for i in range(arr.shape[0]):
+        out[i, arr[i]] = True
+
+    # Return the reshaped array
+    return out.reshape(*original_shape[:-1], size)

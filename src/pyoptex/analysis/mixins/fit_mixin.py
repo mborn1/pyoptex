@@ -2,14 +2,12 @@ import numpy as np
 import pandas as pd
 from functools import cached_property
 from numba.typed import List
-from sklearn.utils.validation import (
-    check_X_y, check_is_fitted
-)
+from sklearn.utils.validation import check_X_y
 from sklearn.base import RegressorMixin as RegressorMixinSklearn
 
-from ..utils import identity, fit_ols, fit_mixedlm
+from ..utils.fit import fit_ols, fit_mixedlm
 from ...utils.design import encode_design, obs_var_from_Zs
-from ...utils.model import model2encnames
+from ...utils.model import model2encnames, identityY2X
 
 class RegressionMixin(RegressorMixinSklearn):
     """
@@ -121,7 +119,7 @@ class RegressionMixin(RegressorMixinSklearn):
         Whether the regressor has been fitted.
     """
 
-    def __init__(self, factors=(), Y2X=identity, random_effects=()):
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):
         """
         Creates the regressor
 
@@ -174,6 +172,9 @@ class RegressionMixin(RegressorMixinSklearn):
         ])
         self.coords_ = List([f.coords_ for f in self._factors])
 
+    @property
+    def is_fitted(self):
+        return getattr(self, 'is_fitted_', False)
 
     def _validate_X(self, X):
         """
@@ -431,7 +432,7 @@ class RegressionMixin(RegressorMixinSklearn):
         X = X.drop(columns=list(self._re), errors='ignore')
 
         # Validate this model has been fitted
-        check_is_fitted(self, 'is_fitted_')
+        assert self.is_fitted, 'You must fit the regressor before predicting'
         self._validate_predict(X)
 
         # Preprocess the input
@@ -754,3 +755,154 @@ class RegressionMixin(RegressorMixinSklearn):
             return self.fit_.summary()
         else:
             raise AttributeError('Must have a fit_ object to print a fit summary')
+
+class MultiRegressionMixin(RegressionMixin):
+    """
+    Base mixin for all regressors which output multiple models
+    during the model selection. This mixin extends
+    :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>`,
+    which extends the regression mixin from sklearn. To create your own
+    regressor, do
+
+    >>> class MyMultiRegressor(MultiRegressionMixin):
+    >>>     def _fit(self, X, y):
+    >>>         # Your fit code
+    >>>         pass
+    >>> 
+    >>>     def _predict(self, X):
+    >>>         # Optional, if you require a custom prediction
+    >>>         # Defaults to
+    >>>         return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) \
+    >>>                       * self.y_std_ + self.y_mean_
+
+    One function should be implemented: the _fit
+    function which fits your model based on the encoded
+    and normalized X, and normalized y. It should set the
+    parameters specified below. Inside the _fit function,
+    you have access to the attributes specified below.
+
+    Optionally, you can implement your own prediction
+    function, however, when setting the coefficients and
+    terms correctly, this should not be necessary. The
+    _predict function receives a normalized and encoded
+    X.
+
+    Any attributes suffixed by `_` is only accessible after
+    fitting.
+
+    .. note::
+        Contains the same attributes as
+        :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>`.
+
+    .. note::
+        Prediction happens based on the top model (is the first model 
+        in `models_`). To predict based on any other model, fit that
+        specific model using
+        :py:class:`SimpleRegressor <pyoptex.analysis.simple_model.SimpleRegressor>`.
+
+        Assume it is based on a model (in a pandas dataframe) and you fitted
+        a multi-regression model `multi_regr`:
+
+        >>> model = ...
+        >>> multi_regr = ...
+        >>> 
+        >>> terms = multi_regr.models_[1]
+        >>> new_model = model.iloc[terms]
+        >>> Y2X = model2Y2X(new_model, factors)
+        >>> 
+        >>> regr = SimpleRegressor(factors, Y2X, random_effects).fit(X, y)
+
+    Parameters
+    ----------
+    models_ : list(np.array(1d))
+        The list of models, sorted by the selection_metrics_ (highest metric first).
+        Each model is an integer array specifying the selected terms.
+    selection_metrics_ : np.array(1d)
+        The metric of each model, sorted highest first. The selection metric
+        defines the order in which the models should be analyzed.
+    metric_name_ : str
+        The name of the selection metric.
+    """
+
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):
+        """
+        Creates the regressor
+
+        Parameters
+        ----------
+        factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
+            A list of factors to be used during fitting. It contains
+            the categorical encoding, continuous normalization, etc.
+        Y2X : func(Y)
+            The function to transform a design matrix Y to a model matrix X.
+        random_effects : list(str)
+            The names of any random effect columns. Every random effect
+            is interpreted as a string column and encoded using 
+            effect encoding.
+        """
+        super().__init__(factors, Y2X, random_effects)
+
+    def fit(self, X, y):
+        """
+        Fits the data. After fitting, you can use
+        the :py:func:`predict <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.predict>`
+        and :py:func:`plot_selection <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin.plot_selection>`
+        functions.
+
+        Make sure the input data X only has the necessary
+        columns present.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The data
+        y : pd.Series or np.array(1d)
+            The output variable
+        """
+        # Adjust the regression parameters
+        self._regr_params(X, y)
+
+        # Compute derived parameters
+        self._compute_derived()
+
+        # Validate input X and y
+        self._validate_fit(X, y)
+
+        # Preprocess the fitting
+        X, y = self.preprocess_fit(X, y)
+
+        # Fit the data
+        X, y = check_X_y(X, y, accept_sparse=True)
+        self._fit(X, y)
+
+        # Add additional parameters required for RegressionMixin
+        self.terms_ = self.models_[0]
+        self.fit_ = self.fit_fn_(X, y, self.terms_)
+        self.coef_ = self.fit_.params[:self.fit_.k_fe]
+        self.scale_ = self.fit_.scale
+        self.vcomp_ = self.fit_.vcomp
+
+        # Mark as fitted
+        self.is_fitted_ = True
+
+        return self
+
+    def plot_selection(self, ntop=5):
+        """
+        Creates a selection plot to visually display how the top performing
+        models were selected and ordered.
+
+        .. note::
+            There are no restrictions on how the plot should look.
+            This depends entirely on the model selection algorithm.
+
+        Parameters
+        ----------
+        ntop : int
+            The number of top models to indicate in the selection plot.
+
+        Returns
+        -------
+        fig : :py:class:`plotly.graph_objects.Figure`        
+        """
+        raise NotImplementedError('No selection plot was implemented')

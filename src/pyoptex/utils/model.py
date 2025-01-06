@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .design import x2fx
+from .numba import numba_choice_bool_axis0
 
 
 def partial_rsm(nquad, ntfi, nlin):
@@ -468,6 +469,22 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
 
     return Y2X
 
+def identityY2X(Y):
+    """
+    The identity function.
+
+    Parameters
+    ----------
+    Y : np.array
+        The input
+
+    Returns
+    -------
+    Y : np.array
+        The input returned
+    """
+    return Y
+
 ################################################
 
 def encode_names(col_names, effect_types):
@@ -589,3 +606,388 @@ def model2encnames(model, effect_types, col_names=None):
     col_names_model = model2names(model_enc, col_names_enc)
 
     return col_names_model
+
+################################################
+
+def order_dependencies(model, factors):
+    """
+    Create a dependency matrix from a model where
+    interactions and higher order effects depend
+    on their components and lower order effects.
+
+    For example:
+    * :math:`x_0`: depends only on the intercept.
+    * :math:`x_0^2`: depends on :math:`x_0`, which in turn depends on the intercept.
+    * :math:`x_0 x_1`: depends on both :math:`x_0` and :math:`x_1`, which both depend on the intercept.
+    * :math:`x_0^2 x_1` : depends on both :math:`x_0^2` and :math:`x_1`, which depend on :math:`x_0` and the intercept.
+
+    Parameters
+    ----------
+    model : pd.DataFrame
+        The model
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
+        The list of factors in the design.
+
+    Returns
+    -------
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model. Term i depends on term j
+        if dep(i, j) = true.
+    """
+    # Validation
+    assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
+    assert np.all(model >= 0), 'All powers must be larger than zero'
+
+    col_names = [str(f.name) for f in factors]
+    assert all(col in col_names for col in model.columns), 'Not all model parameters are factors'
+    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
+
+    # Extract factor parameters
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+
+    # Detect model in correct order
+    model = model[col_names].to_numpy()
+
+    # Encode model
+    modelenc = encode_model(model, effect_types)
+
+    # Compute the possible dependencies
+    eye = np.expand_dims(np.eye(modelenc.shape[1]), 1)
+    model = np.expand_dims(modelenc, 0)
+    all_dep = model - eye # all_dep[:, i] are all possible dependencies for term i
+
+    # Valid dependencies
+    all_dep_valid = np.where(np.all(all_dep >= 0, axis=2))
+    from_terms = all_dep_valid[1]
+
+    # Extract the dependent terms
+    to_terms = np.argmax(np.all(
+        np.expand_dims(modelenc, 0) == np.expand_dims(all_dep[all_dep_valid], 1), 
+        axis=2
+    ), axis=1)
+
+    # Compute dependencies
+    dep = np.zeros((modelenc.shape[0], modelenc.shape[0]), dtype=np.bool_)
+    dep[from_terms, to_terms] = True
+
+    return dep
+
+def model2strong(model, dep):
+    """
+    Convert an existing model to its strong heredity
+    variant according to the provided dependency matrix.
+    A model is a strong heredity model if the for
+    every term i, all its dependencies are also included
+    in the model.
+
+    Parameters
+    ----------
+    model : np.array(1d)
+        The array with indices of the terms included in the
+        initial model
+    dep : np.array(2d)
+        A matrix of size (N, N) with N the total number of terms
+        in the encoded model. Term i depends on term j
+        if dep(i, j) = true.
+
+    Returns
+    -------
+    strong : np.array(1d)
+        The strong heredity model based on the initial model.
+    """
+    # Create a mask
+    strong = np.zeros(dep.shape[0], dtype=np.bool_)
+    strong[model] = True
+    nterms_old = 0
+    nterms = np.sum(strong)
+
+    # Loop until no new terms are added
+    while nterms_old < nterms:
+        # Add dependencies
+        strong[np.any(dep[strong], axis=0)] = True
+
+        # Update number of terms
+        nterms_old = nterms
+        nterms = np.sum(strong)
+
+    return np.flatnonzero(strong)
+
+def permitted_dep_add(model, mode=None, dep=None, subset=None):
+    """
+    Computes which terms are permitted to be added to this model
+    such that adding any of the returned terms does not violate
+    the heredity constraints.
+
+    .. note::
+        Does not check whether the term already exists in the model.
+
+    Parameters
+    ----------
+    model : np.array(1d)
+        The current model.
+    mode : None, 'weak' or 'strong'
+        The heredity mode to adhere to.
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model (output from Y2X). Term i depends on term j
+        if dep(i, j) = true.
+    subset : np.array(1d)
+        The subset of terms to validate. 
+        If None, all terms are validated.
+
+    Returns
+    -------
+    valid : np.ndarray(1d)
+        A boolean array indicating which terms are valid to be added.
+        Has the same length as the subset.
+    """
+    # Subset the relations
+    dep = dep if subset is None else dep[subset]
+
+    if mode == 'weak':
+        # Take all terms without dependencies
+        valid = ~np.any(dep, axis=1)
+
+        # If a model is present, also add the valid dependencies
+        if len(model) > 0:
+            valid = valid | np.any(dep[:, model], axis=1)
+
+    elif mode == 'strong':
+        # Take all terms without dependencies
+        valid = ~np.any(dep, axis=1)
+
+        # If a model is present, also add the valid dependencies
+        if len(model) > 0:
+            # All dependencies must be in the model
+            valid = valid | (np.sum(dep, axis=1) == np.sum(dep[:, model], axis=1))
+
+    else:
+        # All terms are valid
+        valid = np.ones(len(dep), dtype=np.bool_)
+
+    return valid
+
+def permitted_dep_drop(model, mode=None, dep=None, subset=None):
+    """
+    Determines if the term specified by at `idx` of `model` can be dropped,
+    given the other existing terms in the model, the mode, and
+    the dependency matrix.
+
+    Parameters
+    ----------
+    model : np.array(1d)
+        The terms in the current model. 
+    mode : None or 'weak' or 'strong'
+        The heredity mode.
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model (output from Y2X). Term i depends on term j
+        if dep(i, j) = true.
+    subset : np.array(1d)
+        The subset of terms to validate, represented as indices in the
+        `model` parameter. 
+        If None, all terms in the model are validated.
+
+    Returns
+    -------
+    can_drop : np.array(bool)
+        Whether this term can be dropped given the dependencies
+        and heredity mode.
+    """
+    # Short-circuit
+    if len(model) == 0:
+        return np.zeros((0,), dtype=np.bool_)
+
+    # Extract the subset
+    if subset is None:
+        subset = np.arange(len(model))
+    subset = model[subset]
+
+    # Check for the mode
+    if mode == 'strong':
+        # No dependent terms, otherwise violation of strong heredity
+        drop = ~np.any(dep[:, subset][model], axis=0)
+
+    elif mode == 'weak':
+        # No single dependent terms left, otherwise violation of weak heredity
+        single_deps = np.sum(dep[:, model][model], axis=1) == 1
+        drop = ~np.any(dep[:, subset][model[single_deps]], axis=0)
+    
+    else:
+        # No restrictions
+        drop = np.ones(len(subset), dtype=np.bool_)
+
+    return drop
+
+def sample_model_dep(dep, size, n_samples=1, forced=None, mode=None):
+    """
+    Sample a model given the dependency matrix of a
+    fixed size. The terms are sampled one-by-one.
+
+    Parameters
+    ----------
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model (output from Y2X). Term i depends on term j
+        if dep(i, j) = true.
+    size : int
+        The size of the model to sample.
+    n_samples : int
+        The number of samples to draw.
+    forced : np.array(1d)
+        A model which must be included at all times.
+    mode : None or 'weak' or 'strong'
+        The heredity mode during sampling.
+
+    Returns
+    -------
+    model : np.array(2d)
+        The sampled model which is an array of integers of size (n_samples, size).
+    """
+    # The output
+    out = np.zeros((n_samples, size), dtype=np.int_)
+
+    # No dep
+    no_dep = np.flatnonzero(~np.any(dep, axis=1))
+
+    # Check for a forced model
+    if forced is not None:
+        # Set forced model as the beginning of each sample
+        out[:, :forced.size] = forced
+        start = forced.size
+    else:
+        # Sample the initial value
+        if mode is None:
+            # Any value is possible
+            out[:, 0] = np.random.choice(np.arange(len(dep)), out.shape[0])
+        else:
+            # Only no dependency terms are possible
+            out[:, 0] = np.random.choice(no_dep, out.shape[0])
+        start = 1
+
+    if mode is None:
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Determine which ones are valid
+            valids = np.ones((out.shape[0], len(dep)), dtype=np.bool_)
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+            
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    elif mode == 'weak':
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Compute which terms are valid
+            valids = np.any(dep[:, out[:, :i]], axis=-1).T
+            valids[:, no_dep] = True
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    elif mode == 'strong':
+        # Compute total number of dependencies
+        nb_dep = np.sum(dep, axis=1)
+
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Compute which terms are valid
+            valids = (np.sum(dep[:, out[:, :i]], axis=-1).T == nb_dep)
+            valids[:, no_dep] = True
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    else:
+        raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
+
+    return out
+
+def sample_model_dep_(dep, size, n_samples=1, forced=None, mode=None):
+    """
+    Sample a model given the dependency matrix of a
+    fixed size. The terms are sampled one-by-one.
+
+    Parameters
+    ----------
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model (output from Y2X). Term i depends on term j
+        if dep(i, j) = true.
+    size : int
+        The size of the model to sample.
+    n_samples : int
+        The number of samples to draw.
+    forced : np.array(1d)
+        A model which must be included at all times.
+    mode : None or 'weak' or 'strong'
+        The heredity mode during sampling.
+
+    Returns
+    -------
+    model : np.array(2d)
+        The sampled model which is an array of integers of size (n_samples, size).
+    """
+    # The output
+    out = np.zeros((n_samples, size), dtype=np.int_)
+
+    # No dep
+    # no_dep = np.flatnonzero(~np.any(dep, axis=1))
+
+    # Number of dependencies
+    total_nb_dep = np.sum(dep, axis=1)
+
+    # Check for a forced model
+    if forced is not None:
+        # Set forced model as the beginning of each sample
+        out[:, :forced.size] = forced
+        start = forced.size
+    else:
+        # Sample the initial value
+        out[:, 0] = np.random.choice(np.arange(len(dep)), out.shape[0])
+
+        start = 1
+
+
+    if mode is None:
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Determine which ones are valid
+            valids = np.ones((out.shape[0], len(dep)), dtype=np.bool_)
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+            
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    elif mode == 'weak':
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Compute which terms are valid
+            valids = np.any(dep[:, out[:, :i]], axis=-1).T
+            valids[:, no_dep] = True
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    elif mode == 'strong':
+        # Compute total number of dependencies
+        nb_dep = np.sum(dep, axis=1)
+
+        # Loop to generate a sample
+        for i in range(start, out.shape[1]):
+            # Compute which terms are valid
+            valids = (np.sum(dep[:, out[:, :i]], axis=-1).T == nb_dep)
+            valids[:, no_dep] = True
+            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+
+            # Random sampling
+            out[:, i] = numba_choice_bool_axis0(valids)
+
+    else:
+        raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
+
+    return out
