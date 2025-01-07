@@ -62,6 +62,10 @@ To generate experimental designs, there are two main options:
   [a-priori variance ratios](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-bayesian-ratio)
   in designs with hard-to-change factors.
 
+* High-performance **model selection** using 
+  [SAMS](https://pyoptex.readthedocs.io/en/latest/_docs/analysis/customization.html#a-cust-sams)
+   (simulated annealing model selection)
+  [(Wolters and Bingham, 2012)](https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157).
 
 ## Getting started
 

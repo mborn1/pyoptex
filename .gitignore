@@ -19,7 +19,7 @@ ignore/*
 test.ipynb
 *.csv
 *.lprof
-docs/source/generated/*
+docs/source/_generated/*
 docs/out/*
 examples/archive/*
 

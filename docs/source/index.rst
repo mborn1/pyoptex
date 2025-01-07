@@ -38,16 +38,18 @@ To generate experimental designs, there are two main options:
 
   The overview of the PyOptEx package.
 
-See the :ref:`quickstart` for more information on how to generate different kinds of
+See the design of experiments :ref:`quickstart` for more information on how to generate different kinds of
 designs. See :ref:`customization` for a more detailed explanation on how to tune and 
 customize each algorithm. Reseachers can find more information here
 on how to design custom criteria. The example scenarios are noted in :ref:`d_example_scenarios`.
 Finally, see :ref:`performance` for some tips on how
 to make the algorithm run faster.
 
+To analyze the data after the experiment, have a look at the analysis :ref:`a_quickstart`.
+
 .. note::
 
-   This project is under active development. Analysis and model selection will follow.
+   This project is under active development.
 
 Main features
 -------------
@@ -67,6 +69,8 @@ Main features
   :ref:`linear model <cust_model>`, :ref:`encoding of the categorical factors <cust_cat_encoding>`, and much more.
 * Directly optimize for **Bayesian** :ref:`a-priori variance ratios <cust_bayesian_ratio>` in designs with 
   hard-to-change factors.
+* High-performance **model selection** using :ref:`SAMS <a_cust_sams>` (simulated annealing model selection)
+  `(Wolters and Bingham, 2012) <https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157>`_.
 
 Documentation
 -------------

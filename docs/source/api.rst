@@ -6,7 +6,7 @@ API
 .. rubric:: Modules
 
 .. autosummary::
-   :toctree: generated
+   :toctree: _generated
    :template: module.rst
    :recursive:
 
