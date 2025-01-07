@@ -23,6 +23,8 @@
 Example scenarios
 =================
 
+.. _a_drop_p_value:
+
 Dropping based on p-values
 --------------------------
 
@@ -66,6 +68,7 @@ we wish to investigate.
 >>> Y2X = model2Y2X(model, factors)
 
 Then we need to decide on the model constraints. There are three types of models:
+
 * No heredity: This means any term can occur in the model, without any restrictions.
 * Weak heredity: This means that if a term such as :math:`A \times B` occurs in the model,
   either :math:`A`, :math:`B`, or both must also occur in the model. Similar for
@@ -267,3 +270,145 @@ indicate the random effect groups with a color.
   :width: 100%
   :alt: The residual diagnostics
   :align: center
+
+
+Simulated Annealing Model Selection (SAMS)
+------------------------------------------
+
+While model selection is often performed based on p-values or metrics such
+as the AICc or BIC, SAMS improves on most of them. For more extensive
+information on the algorithm, see :ref:`a_cust_sams`.
+
+In this example, we have six factors, A through F, and wish to detect
+the weak heredity model :math:`A + C + A \times B`. The full Python
+script is at 
+|link-qc-pre|\ |version|\ |link-qc-mid0-sams|\ sams_generic.py\ |link-qc-mid1|\ sams_generic.py\ |link-qc-post|.
+
+First, the imports
+
+>>> import numpy as np
+>>> import pandas as pd
+>>> 
+>>> from pyoptex.utils import Factor
+>>> from pyoptex.utils.model import model2Y2X, order_dependencies, partial_rsm_names
+>>> from pyoptex.analysis import SamsRegressor
+>>> from pyoptex.analysis.utils.plot import plot_res_diagnostics
+
+Next, we define the factors and simulate some data.
+
+>>> # Define the factors
+>>> factors = [
+>>>     Factor('A'), Factor('B'), Factor('C'),
+>>>     Factor('D'), Factor('E'), Factor('F'),
+>>> ]
+>>> 
+>>> # The number of random observations
+>>> N = 200
+>>> 
+>>> # Define the data
+>>> data = pd.DataFrame(np.random.rand(N, len(factors)) * 2 - 1, columns=[str(f.name) for f in factors])
+>>> data['Y'] = 2*data['A'] + 3*data['C'] - 4*data['A']*data['B'] + 5\
+>>>                 + np.random.normal(0, 1, N)
+
+Then, as in any analysis, we define the Y2X function, which is a full
+response surface model, and the corresponding heredity dependencies.
+
+>>> # Create the model
+>>> model_order = {str(f.name): 'quad' for f in factors}
+>>> model = partial_rsm_names(model_order)
+>>> Y2X = model2Y2X(model, factors)
+>>> 
+>>> # Define the dependencies
+>>> dependencies = order_dependencies(model, factors)
+
+Finally, we fit the SAMS model
+
+>>> regr = SamsRegressor(
+>>>     factors, Y2X,
+>>>     dependencies=dependencies, mode='weak',
+>>>     forced_model=np.array([0], np.int_),
+>>>     model_size=6, nb_models=5000, skipn=1000,
+>>> )
+>>> regr.fit(data.drop(columns='Y'), data['Y'])
+
+.. note::
+    By specifying the model_order parameter in the SamsRegressor,
+    we can use the exact entropy caluclations. For more information,
+    see :ref:`a_cust_sams_entropy`. The full Python script is at
+    |link-qc-pre|\ |version|\ |link-qc-mid0-sams|\ sams_partial_rsm.py\ |link-qc-mid1|\ sams_partial_rsm.py\ |link-qc-post|.
+
+Finally, we can analyze the generated models. To manually extract a model, use
+the :py:func:`plot_selection <pyoptex.analysis.estimators.sams.estimator.SamsRegressor.plot_selection>`
+
+>>> regr.plot_selection().show()
+
+.. figure:: /assets/img/raster_plot.png
+  :width: 100%
+  :alt: The raster plot of the SAMS algorithm.
+  :align: center
+
+:py:class:`SamsRegressor <pyoptex.analysis.estimators.sams.estimator.SamsRegressor>`
+is a :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`, 
+meaning it finds multiple good-fitting models and orders them. By default, the best
+can be analyzed as before
+
+>>> # Print the summary
+>>> print(regr.summary())
+                            OLS Regression Results
+==============================================================================
+Dep. Variable:                      y   R-squared:                       0.858
+Model:                            OLS   Adj. R-squared:                  0.856
+Method:                 Least Squares   F-statistic:                     394.5
+Date:                Tue, 07 Jan 2025   Prob (F-statistic):           9.15e-83
+Time:                        15:23:33   Log-Likelihood:                -88.642
+No. Observations:                 200   AIC:                             185.3
+Df Residuals:                     196   BIC:                             198.5
+Df Model:                           3
+Covariance Type:            nonrobust
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const         -0.0043      0.027     -0.159      0.874      -0.058       0.049
+x1             0.8045      0.048     16.689      0.000       0.709       0.900
+x2             1.1409      0.045     25.356      0.000       1.052       1.230
+x3            -1.7373      0.084    -20.769      0.000      -1.902      -1.572
+==============================================================================
+Omnibus:                        1.979   Durbin-Watson:                   2.166
+Prob(Omnibus):                  0.372   Jarque-Bera (JB):                1.934
+Skew:                          -0.238   Prob(JB):                        0.380
+Kurtosis:                       2.932   Cond. No.                         3.17
+==============================================================================
+
+Or 
+
+>>> # Print the formula in encoded form
+>>> print(regr.model_formula(model=model))
+-0.004 * cst + 0.805 * A + 1.141 * C + -1.737 * A * B
+
+Prediction is still the same.
+
+>>> data['pred'] = regr.predict(data.drop(columns='Y'))
+
+And the residual plot of the highest entropy model can be found using
+
+>>> plot_res_diagnostics(
+>>>     data, y_true='Y', y_pred='pred', 
+>>>     textcols=[str(f.name) for f in factors],
+>>> ).show()
+
+.. note::
+  If the best model is not the desired model, you can extract any other model
+  in the list by accessing :py:attr:`models\_ <pyoptex.analysis.estimators.sams.estimator.SamsRegressor.models\_>`
+  after fitting. These are ordered by highest entropy first.
+
+  Once you selected a model, you can refit it, similar to the 
+  :ref:`p-value example <a_drop_p_value>`. Instead of simply predicting based on the `regr`, we can transform
+  the result to a strong model
+
+  >>> terms_strong = model2strong(regr.terms_, dependencies)
+  >>> model = model.iloc[terms_strong]
+  >>> Y2X = model2Y2X(model, factors)
+
+  And fit a simple model
+
+  >>> regr_simple = SimpleRegressor(factors, Y2X).fit(data.drop(columns='Y'), data['Y'])

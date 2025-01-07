@@ -252,7 +252,7 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
 
     First a random model is sampled by adding terms one-by-one. Next,
     that sample is mutated for `n_warmup` times. Finally, a chain 
-    is built by mutating the sample and extracting every `skip`th sample
+    is built by mutating the sample and extracting every `skip` th sample
     until `n_samples` are generated.
 
     This is exactly the same method SAMS uses to sample and mutate the models,
@@ -274,7 +274,7 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
     skip : int
-        Take every `skip`th sample from the Markov-chain.
+        Take every `skip` th sample from the Markov-chain.
     n_warmup : int
         The number of warmup mutations for a random initial
         model.

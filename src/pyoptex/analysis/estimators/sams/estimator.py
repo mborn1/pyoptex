@@ -37,8 +37,6 @@ class SamsRegressor(MultiRegressionMixin):
     .. note::
         A more detailed guide on SAMS can be found at :ref:`a_cust_sams`.
 
-    TODO: entropy calculations + examples + index
-
     Attributes
     ----------
     dependencies : np.array(2d)
@@ -82,7 +80,7 @@ class SamsRegressor(MultiRegressionMixin):
         calculations.
     nterms_bnb : None or int or iterable(int)
         The fixed sizes of submodels to apply the branch-and-bound algorithm
-        on. If None, every size from one to the `model_size` - 2 is tested
+        on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
         as recommended by the original paper. If an int, every size from 
         one until the specified number is tested. If an iterable, only the
         values from the iterable are tested.
@@ -95,13 +93,13 @@ class SamsRegressor(MultiRegressionMixin):
         to three minutes.
     entropy_sampler : func(dep, model_size, N, forced, mode)
         The sampler to use when generating random hereditary models. See the
-        :ref:`samplers_sams` for an indication on which sampler to use.
+        documentation on customizing SAMS for an indication on which sampler to use.
     entropy_sampling_N : int
         The number of random samples to draw using the sampler to compute
         the theoretical frequencies of the submodels.
     entropy_model_order : dict(str: ('lin' or 'tfi' or 'quad'))
         The order of the terms in the model. Please read the warning in
-        :ref:`warning_sams`.
+        the documentation on customizing SAMS.
     tqdm : bool
         Whether to use tqdm to track the progress
 
@@ -193,7 +191,7 @@ class SamsRegressor(MultiRegressionMixin):
             calculations.
         nterms_bnb : None or int or iterable(int)
             The fixed sizes of submodels to apply the branch-and-bound algorithm
-            on. If None, every size from one to the `model_size` - 2 is tested
+            on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
             as recommended by the original paper. If an int, every size from 
             one until the specified number is tested. If an iterable, only the
             values from the iterable are tested.
@@ -206,13 +204,13 @@ class SamsRegressor(MultiRegressionMixin):
             to three minutes.
         entropy_sampler : func(dep, model_size, N, forced, mode)
             The sampler to use when generating random hereditary models. See the
-            :ref:`samplers_sams` for an indication on which sampler to use.
+        documentation on customizing SAMS for an indication on which sampler to use.
         entropy_sampling_N : int
             The number of random samples to draw using the sampler to compute
             the theoretical frequencies of the submodels.
         entropy_model_order : dict(str: ('lin' or 'tfi' or 'quad'))
             The order of the terms in the model. Please read the warning in
-            :ref:`warning_sams`.
+            the documentation on customizing SAMS.
         tqdm : bool
             Whether to use tqdm to track the progress
         """
@@ -252,7 +250,7 @@ class SamsRegressor(MultiRegressionMixin):
         self._model_size = self.model_size if self.model_size is not None else int(len(X) / 3)
 
         # Set some default values
-        self._nterms_bnb = self._model_size - 2 if self.nterms_bnb is None else self.nterms_bnb
+        self._nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
         self._nterms_bnb = range(len(self.forced_model) + 1, self._nterms_bnb) \
                                 if isinstance(self._nterms_bnb, int) else self._nterms_bnb
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
@@ -311,8 +309,8 @@ class SamsRegressor(MultiRegressionMixin):
             model_types_ord = {'quad': 2, 'tfi': 1, 'lin': 0}
 
             # Reorder the model types based on the factors
-            assert all(str(f.name) in self.entropy_model_order.keys() for f in factors), 'All factors must have an entropy model order specified'
-            entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in factors}
+            assert all(str(f.name) in self.entropy_model_order.keys() for f in self._factors), 'All factors must have an entropy model order specified'
+            entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in self._factors}
             
             # Assert the ordering
             assert np.all(np.diff([model_types_ord[typ] for typ in entropy_model_order.values()]) <= 0), 'Model types must be ordered quad > tfi > lin for entropy calculations'

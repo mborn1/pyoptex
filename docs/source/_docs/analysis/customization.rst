@@ -117,7 +117,7 @@ submodels occur most often.
 See :py:class:`SamsRegressor <pyoptex.analysis.estimators.sams.estimator.SamsRegressor>` for information
 on the parameters.
 
-
+.. _a_cust_sams_entropy:
 
 Entropy calculations
 ^^^^^^^^^^^^^^^^^^^^
