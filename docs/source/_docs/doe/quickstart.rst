@@ -29,6 +29,8 @@ To use PyOptEx, first install it using pip:
    (.venv) $ pip install pyoptex
 
 
+.. _terminology:
+
 Terminology
 -----------
 This section summarizes some commonly used terminology and notations. You can

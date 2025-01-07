@@ -22,7 +22,7 @@
 
   </a>
 
-.. _example_scenarios:
+.. _d_example_scenarios:
 
 Example scenarios
 =================

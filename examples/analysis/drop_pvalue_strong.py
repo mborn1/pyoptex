@@ -44,16 +44,16 @@ terms_strong = model2strong(regr.terms_, dependencies)
 model = model.iloc[terms_strong]
 Y2X = model2Y2X(model, factors)
 
-regr_simpl = SimpleRegressor(factors, Y2X).fit(data.drop(columns='Y'), data['Y'])
+regr_simple = SimpleRegressor(factors, Y2X).fit(data.drop(columns='Y'), data['Y'])
 
 # Print the summary
-print(regr_simpl.summary())
+print(regr_simple.summary())
 
 # Print the formula in encoded form
-print(regr_simpl.model_formula(model=model))
+print(regr_simple.model_formula(model=model))
 
 # Predict
-data['pred'] = regr_simpl.predict(data.drop(columns='Y'))
+data['pred'] = regr_simple.predict(data.drop(columns='Y'))
 
 # Plot the residual diagnostics
 plot_res_diagnostics(

@@ -650,7 +650,7 @@ class RegressionMixin(RegressorMixinSklearn):
             If you did not create Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
             use
-            :py:func:`formula <pyoptex.analysis.mixins.fit_mixin.formula`.
+            :py:func:`formula <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.formula>`.
             You must manually specify the labels here.
 
         Parameters
@@ -726,7 +726,7 @@ class RegressionMixin(RegressorMixinSklearn):
             If you created Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
             use
-            :py:func:`model_formula <pyoptex.analysis.mixins.fit_mixin.model_formula`.
+            :py:func:`model_formula <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.model_formula>`.
             It will automatically assign the correct labels.
 
         Parameters

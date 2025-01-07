@@ -41,7 +41,7 @@ To generate experimental designs, there are two main options:
 See the :ref:`quickstart` for more information on how to generate different kinds of
 designs. See :ref:`customization` for a more detailed explanation on how to tune and 
 customize each algorithm. Reseachers can find more information here
-on how to design custom criteria. The example scenarios are noted in :ref:`example_scenarios`.
+on how to design custom criteria. The example scenarios are noted in :ref:`d_example_scenarios`.
 Finally, see :ref:`performance` for some tips on how
 to make the algorithm run faster.
 
@@ -53,7 +53,7 @@ Main features
 -------------
 
 * The **first complete Python package for optimal design of experiments**. Model 
-  :ref:`everything <example_scenarios>` including continuous factors, categorical factors, mixtures, 
+  :ref:`everything <d_example_scenarios>` including continuous factors, categorical factors, mixtures, 
   blocked experiments, split-plot experiments, staggered-level experiments.
 * **Intuitive design of experiments** with :ref:`cost-optimal designs <qc_cost>` for everyone. 
   No longer requires expert statistical knowledge before creating experiments.
@@ -75,6 +75,7 @@ Documentation
    :maxdepth: 3
 
    doe
+   analysis
 
 
 .. toctree::
