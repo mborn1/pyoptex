@@ -4,15 +4,15 @@
 
 .. |link-qc-mid0-fs| raw:: html
 
-  /examples/fixed_structure/
+  /examples/doe/fixed_structure/
 
 .. |link-qc-mid0-fs-splitk| raw:: html
 
-  /examples/fixed_structure/splitk_plot/
+  /examples/doe/fixed_structure/splitk_plot/
 
 .. |link-qc-mid0-cost-codex| raw:: html
 
-  /examples/cost_optimal/codex/
+  /examples/doe/cost_optimal/codex/
 
 .. |link-qc-mid1| raw:: html
 

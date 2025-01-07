@@ -4,7 +4,7 @@
 
 .. |link-qc-mid0| raw:: html
 
-  /examples/quickstart/
+  /examples/doe/quickstart/
 
 .. |link-qc-mid1| raw:: html
 

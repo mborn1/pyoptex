@@ -147,7 +147,6 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
             assert self.dependencies is not None, 'Must specify dependency matrix if using weak or strong heredity'
             assert len(self.dependencies.shape) == 2, 'Dependencies must be a 2D array'
             assert self.dependencies.shape[0] == self.dependencies.shape[1], 'Dependency matrix must be square'
-            assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
 
     def _fit(self, X, y):
         """
@@ -161,6 +160,9 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
         y : np.array(1d)
             The normalized output variable.
         """
+        # Final assertion
+        assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
+
         # Drop terms one-by-one based on p-value
         self.terms_ = self._drop_one_by_one(X, y, self.threshold, self.mode, self.dependencies)
 

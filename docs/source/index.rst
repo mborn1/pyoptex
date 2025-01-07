@@ -1,5 +1,5 @@
 Welcome to PyOptEx documentation!
-===================================
+=================================
 
 **Date**: |date|
 
@@ -72,13 +72,9 @@ Documentation
 -------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   quickstart
-   design_of_experiments
-   customization
-   performance
-   example_scenarios
+   doe
 
 
 .. toctree::
