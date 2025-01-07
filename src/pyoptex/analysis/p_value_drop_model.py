@@ -161,7 +161,9 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
             The normalized output variable.
         """
         # Final assertion
-        assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
+        if self.mode is not None:
+            print(len(self.dependencies), X.shape)
+            assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
 
         # Drop terms one-by-one based on p-value
         self.terms_ = self._drop_one_by_one(X, y, self.threshold, self.mode, self.dependencies)

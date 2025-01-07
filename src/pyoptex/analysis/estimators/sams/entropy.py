@@ -4,143 +4,11 @@ Module for the SAMS entropy calculations.
 
 import numpy as np
 
-from ....utils.model import sample_model_dep
+from ....utils.model import sample_model_dep_onebyone
 from ....utils.numba import numba_int2bool
 
-from .models.model import Model
-def sample_mcmc(dep, size, forced=None, mode=None, N=1, skip=10):
-    # Create the SAMS modeller
-    m = Model(np.zeros((0, len(dep))), np.zeros((0,)), mode=mode, forced=forced, dep=dep)
-
-    # Initialize a random model
-    model = np.zeros((size,), dtype=np.int_)
-    m.init(model)
-
-    # Intialize the samples
-    samples = np.zeros((N, size), dtype=np.int_)
-
-    # Warmup phase
-    for i in range(1000):
-        m.mutate(model)
-
-    # Main sampling loop
-    for i in range(N*skip):
-        # Mutate the model
-        m.mutate(model)
-
-        # Every skip, store the result
-        if i % skip == 0:
-            samples[int(i/skip)] = model
-
-    return samples
-
-def sample_random(dep, size, forced=None, mode=None, N=1):
-    assert mode == 'weak', 'Mode must be weak'
-
-    #########################
-    # Initialize number of dependencies
-    nb_dep = np.ma.masked_where(~dep, np.zeros_like(dep, dtype=np.int_)).harden_mask()
-
-    # At the true positions in these columns, set a 1
-    affected = ~np.any(dep, axis=1)
-    nb_dep[:, affected] = 1
-    affected = np.any(dep[:, affected], axis=1)
-
-    while np.any(affected):
-        # Alter the affected positions
-        nb_dep[:, affected] = np.min(nb_dep[affected], axis=1).compressed() + 1
-        affected = np.any(dep[:, affected], axis=1)
-
-    #########################
-
-    # Initialize the models
-    models = np.zeros((N, size), dtype=np.int_)
-    models[:, :forced.size] = forced
-
-    # Fix the forced model
-    if forced is not None and forced.size > 0:
-        # Convert submodel to binary array
-        affected = model[:forced.size]
-        submodelb = np.zeros(len(dep), dtype=np.int_)
-        submodelb[affected] = 1
-        
-        # Update the model
-        nb_dep[:, affected] -= 1
-        affected = np.any(dep[:, affected], axis=1)
-        while np.any(affected):
-            # Alter the affected positions
-            nb_dep[:, affected] = np.min(nb_dep[affected], axis=1) - submodelb[affected] + 1
-            affected = np.any(dep[:, affected], axis=1)
-    
-    # Sample all models
-    for model in models:
-        # Initialize i
-        i = forced.size
-        j = forced.size
-        nb_dep_ = nb_dep.copy()
-
-        # Loop until a full model
-        while i < size:
-
-            # Compute the minimal path for each term
-            min_path = np.min(nb_dep_, axis=1).filled(0)
-
-            # Sample the first
-            choices = np.ones(len(dep), dtype=np.bool_)
-            choices[min_path >= size - i] = False # Remove those with too many dependencies
-            choices[model[:i]] = False # Remove already in the model
-            choices = np.flatnonzero(choices)
-            model[i] = np.random.choice(choices)
-
-            # TODO: purely random sampling is a problem for true sampling
-
-            # Check if already hereditary
-            if min_path[model[i]] > 0:
-                # Update with dependencies
-                choices = np.copy(dep[model[i]])
-                choices[min_path >= size - i - 1] = False
-                choices[model[:i+1]] = False
-                choices = np.flatnonzero(choices)
-
-                # Check if there are any choices
-                while choices.size != 0:
-                    # Sample a new term
-                    i += 1
-                    model[i] = np.random.choice(choices)
-
-                    # Check for heredity
-                    if min_path[model[i]] <= 0:
-                        break
-
-                    # Determine new choices
-                    choices = np.copy(dep[model[i]])
-                    choices[min_path >= size - i - 1] = False
-                    choices[model[:i+1]] = False
-                    choices = np.flatnonzero(choices)
-
-            # Increase the model size        
-            i += 1
-
-            # Convert submodel to binary array
-            affected = model[j:i]
-            submodelb = np.zeros(len(dep), dtype=np.int_)
-            submodelb[affected] = 1
-            
-            # Update the model
-            nb_dep_[:, affected] -= 1
-            affected = np.any(dep[:, affected], axis=1)
-            while np.any(affected):
-                # Alter the affected positions
-                nb_dep_[:, affected] = np.min(nb_dep_[affected], axis=1) - submodelb[affected] + 1
-                affected = np.any(dep[:, affected], axis=1)
-
-            # Set j to i for next iteration
-            j = i
-
-    return models
-
 def entropies_approx(submodels, freqs, model_size, dep, mode, 
-                     forced=None, N=10000, eps=1e-6):
+                     forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6):
     """
     Compute the approximate entropy by sampling N random models
     and observing the frequency of each submodel.
@@ -177,6 +45,8 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
     N : int
         The number of random samples to draw to compute the
         theoretical frequency of a submodel.
+    sampler : func(dep, model_size, N, forced, mode)
+        The sampler to use when generating random hereditary models.
     eps : float
         A numerical stability parameter in computing the entropy.
 
@@ -186,9 +56,7 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
         An array of floats of the same length as the submodels.
     """
     # Generate random samples
-    # samples = sample_model_dep(dep, model_size, N, forced, mode)
-    # samples = sample_mcmc(dep, model_size, forced, mode, N, skip=10)
-    samples = sample_random(dep, model_size, forced, mode, N)
+    samples = sampler(dep, model_size, N, forced, mode)
 
     # Convert samples to a boolean array
     samples = numba_int2bool(samples, len(dep))

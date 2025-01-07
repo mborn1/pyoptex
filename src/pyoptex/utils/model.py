@@ -820,7 +820,7 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
 
     return drop
 
-def sample_model_dep(dep, size, n_samples=1, forced=None, mode=None):
+def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
     """
     Sample a model given the dependency matrix of a
     fixed size. The terms are sampled one-by-one.
@@ -906,10 +906,18 @@ def sample_model_dep(dep, size, n_samples=1, forced=None, mode=None):
 
     return out
 
-def sample_model_dep_(dep, size, n_samples=1, forced=None, mode=None):
+def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
     """
     Sample a model given the dependency matrix of a
-    fixed size. The terms are sampled one-by-one.
+    fixed size. The terms are as follows:
+
+    * First you uniformly sample any term.
+    * Then you look at the necessary dependencies and add these one-by-one.
+    * If multiple dependencies exist, you sample from them uniformly. 
+    * Go back to step one and continue until you sampled `size` terms.
+
+    .. note::
+        The mode must be weak heredity as of now.
 
     Parameters
     ----------
@@ -931,63 +939,111 @@ def sample_model_dep_(dep, size, n_samples=1, forced=None, mode=None):
     model : np.array(2d)
         The sampled model which is an array of integers of size (n_samples, size).
     """
-    # The output
-    out = np.zeros((n_samples, size), dtype=np.int_)
+    # Validate the mode
+    assert mode != 'strong', 'Mode must be None or weak'
 
-    # No dep
-    # no_dep = np.flatnonzero(~np.any(dep, axis=1))
-
-    # Number of dependencies
-    total_nb_dep = np.sum(dep, axis=1)
-
-    # Check for a forced model
-    if forced is not None:
-        # Set forced model as the beginning of each sample
-        out[:, :forced.size] = forced
-        start = forced.size
-    else:
-        # Sample the initial value
-        out[:, 0] = np.random.choice(np.arange(len(dep)), out.shape[0])
-
-        start = 1
-
-
+    # Return a one-by-one sampler if the mode is None
     if mode is None:
-        # Loop to generate a sample
-        for i in range(start, out.shape[1]):
-            # Determine which ones are valid
-            valids = np.ones((out.shape[0], len(dep)), dtype=np.bool_)
-            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+        return sample_model_dep_onebyone(dep, size, n_samples, forced, mode)
+
+    #########################
+    # Initialize number of dependencies
+    nb_dep = np.ma.masked_where(~dep, np.zeros_like(dep, dtype=np.int_)).harden_mask()
+
+    # At the true positions in these columns, set a 1
+    affected = ~np.any(dep, axis=1)
+    nb_dep[:, affected] = 1
+    affected = np.any(dep[:, affected], axis=1)
+
+    while np.any(affected):
+        # Alter the affected positions
+        nb_dep[:, affected] = np.min(nb_dep[affected], axis=1).compressed() + 1
+        affected = np.any(dep[:, affected], axis=1)
+
+    #########################
+
+    # Initialize the models
+    models = np.zeros((n_samples, size), dtype=np.int_)
+    models[:, :forced.size] = forced
+
+    # Fix the forced model
+    if forced is not None and forced.size > 0:
+        # Convert submodel to binary array
+        affected = forced
+        submodelb = np.zeros(len(dep), dtype=np.int_)
+        submodelb[affected] = 1
+        
+        # Update the model
+        nb_dep[:, affected] -= 1
+        affected = np.any(dep[:, affected], axis=1)
+        while np.any(affected):
+            # Alter the affected positions
+            nb_dep[:, affected] = np.min(nb_dep[affected], axis=1) - submodelb[affected] + 1
+            affected = np.any(dep[:, affected], axis=1)
+    
+    # Sample all models
+    for model in models:
+        # Initialize i
+        i = forced.size
+        j = forced.size
+        nb_dep_ = nb_dep.copy()
+
+        # Loop until a full model
+        while i < size:
+
+            # Compute the minimal path for each term
+            min_path = np.min(nb_dep_, axis=1).filled(0)
+
+            # Sample the first
+            choices = np.ones(len(dep), dtype=np.bool_)
+            choices[min_path >= size - i] = False # Remove those with too many dependencies
+            choices[model[:i]] = False # Remove already in the model
+            choices = np.flatnonzero(choices)
+            model[i] = np.random.choice(choices)
+
+            # TODO: purely random sampling is a problem for true sampling
+
+            # Check if already hereditary
+            if min_path[model[i]] > 0:
+                # Update with dependencies
+                choices = np.copy(dep[model[i]])
+                choices[min_path >= size - i - 1] = False
+                choices[model[:i+1]] = False
+                choices = np.flatnonzero(choices)
+
+                # Check if there are any choices
+                while choices.size != 0:
+                    # Sample a new term
+                    i += 1
+                    model[i] = np.random.choice(choices)
+
+                    # Check for heredity
+                    if min_path[model[i]] <= 0:
+                        break
+
+                    # Determine new choices
+                    choices = np.copy(dep[model[i]])
+                    choices[min_path >= size - i - 1] = False
+                    choices[model[:i+1]] = False
+                    choices = np.flatnonzero(choices)
+
+            # Increase the model size        
+            i += 1
+
+            # Convert submodel to binary array
+            affected = model[j:i]
+            submodelb = np.zeros(len(dep), dtype=np.int_)
+            submodelb[affected] = 1
             
-            # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            # Update the model
+            nb_dep_[:, affected] -= 1
+            affected = np.any(dep[:, affected], axis=1)
+            while np.any(affected):
+                # Alter the affected positions
+                nb_dep_[:, affected] = np.min(nb_dep_[affected], axis=1) - submodelb[affected] + 1
+                affected = np.any(dep[:, affected], axis=1)
 
-    elif mode == 'weak':
-        # Loop to generate a sample
-        for i in range(start, out.shape[1]):
-            # Compute which terms are valid
-            valids = np.any(dep[:, out[:, :i]], axis=-1).T
-            valids[:, no_dep] = True
-            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
+            # Set j to i for next iteration
+            j = i
 
-            # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
-
-    elif mode == 'strong':
-        # Compute total number of dependencies
-        nb_dep = np.sum(dep, axis=1)
-
-        # Loop to generate a sample
-        for i in range(start, out.shape[1]):
-            # Compute which terms are valid
-            valids = (np.sum(dep[:, out[:, :i]], axis=-1).T == nb_dep)
-            valids[:, no_dep] = True
-            valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
-
-            # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
-
-    else:
-        raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
-
-    return out
+    return models

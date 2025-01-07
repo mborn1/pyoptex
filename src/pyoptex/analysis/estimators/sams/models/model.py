@@ -244,3 +244,67 @@ class Model:
             metric and the estimated coefficients.
         """
         raise NotImplementedError('This function must be implemented')
+
+def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=10, n_warmup=1000):
+    """
+    Sample a model given the dependency matrix of a
+    fixed size. The terms are sampled using Markov-chain Monte-carlo.
+
+    First a random model is sampled by adding terms one-by-one. Next,
+    that sample is mutated for `n_warmup` times. Finally, a chain 
+    is built by mutating the sample and extracting every `skip`th sample
+    until `n_samples` are generated.
+
+    This is exactly the same method SAMS uses to sample and mutate the models,
+    except for the fact that no acceptance probability is used and every `skip`
+    samples are skipped.
+
+    Parameters
+    ----------
+    dep : np.array(2d)
+        The dependency matrix of size (N, N) with N the number
+        of terms in the encoded model (output from Y2X). Term i depends on term j
+        if dep(i, j) = true.
+    size : int
+        The size of the model to sample.
+    n_samples : int
+        The number of samples to draw.
+    forced : np.array(1d)
+        A model which must be included at all times.
+    mode : None or 'weak' or 'strong'
+        The heredity mode during sampling.
+    skip : int
+        Take every `skip`th sample from the Markov-chain.
+    n_warmup : int
+        The number of warmup mutations for a random initial
+        model.
+
+    Returns
+    -------
+    model : np.array(2d)
+        The sampled model which is an array of integers of size (n_samples, size).
+    """
+    # Create the SAMS modeller
+    m = Model(np.zeros((0, len(dep))), np.zeros((0,)), mode=mode, forced=forced, dep=dep)
+
+    # Initialize a random model
+    model = np.zeros((size,), dtype=np.int_)
+    m.init(model)
+
+    # Intialize the samples
+    samples = np.zeros((n_samples, size), dtype=np.int_)
+
+    # Warmup phase
+    for i in range(n_warmup):
+        m.mutate(model)
+
+    # Main sampling loop
+    for i in range(n_samples*skip):
+        # Mutate the model
+        m.mutate(model)
+
+        # Every skip, store the result
+        if i % skip == 0:
+            samples[int(i/skip)] = model
+
+    return samples

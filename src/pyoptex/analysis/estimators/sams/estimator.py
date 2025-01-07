@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 
 from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X
+from ....utils.model import identityY2X, sample_model_dep_onebyone
 from ....utils.comp import timeout
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
@@ -34,6 +34,11 @@ class SamsRegressor(MultiRegressionMixin):
         It also includes all parameters and attributes from 
         :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`
 
+    .. note::
+        A more detailed guide on SAMS can be found at :ref:`a_cust_sams`.
+
+    TODO: entropy calculations + examples + index
+
     Attributes
     ----------
     dependencies : np.array(2d)
@@ -45,7 +50,8 @@ class SamsRegressor(MultiRegressionMixin):
     forced_model : np.array(1d)
         Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
         is used to force the intercept when the intercept is the first column in
-        the normalized, encoded model matrix.
+        the normalized, encoded model matrix. This model must itself fulfill the
+        heredity constraints.
     model_size : int
         The size of the overfitted models. Defaults to the number of runs
         divided by three. The overfitted model includes the forced model,
@@ -87,8 +93,15 @@ class SamsRegressor(MultiRegressionMixin):
         algorithm would require too much time, most likely low entropy models
         are the result and the computation can be halted prematurely. Defaults
         to three minutes.
-    model_order : dict(str: ('lin' or 'tfi' or 'quad'))
-        The order of the terms in the model.
+    entropy_sampler : func(dep, model_size, N, forced, mode)
+        The sampler to use when generating random hereditary models. See the
+        :ref:`samplers_sams` for an indication on which sampler to use.
+    entropy_sampling_N : int
+        The number of random samples to draw using the sampler to compute
+        the theoretical frequencies of the submodels.
+    entropy_model_order : dict(str: ('lin' or 'tfi' or 'quad'))
+        The order of the terms in the model. Please read the warning in
+        :ref:`warning_sams`.
     tqdm : bool
         Whether to use tqdm to track the progress
 
@@ -122,7 +135,9 @@ class SamsRegressor(MultiRegressionMixin):
                     model_size=None, nb_models=10000, skipn='auto', est_ratios=None,
                     max_cluster=8, ncluster=None,
                     topn_bnb=4, nterms_bnb=None, bnb_timeout=180,
-                    model_order=None, tqdm=True):
+                    entropy_sampler=sample_model_dep_onebyone, entropy_sampling_N=10000, 
+                    entropy_model_order=None,
+                    tqdm=True):
         """
         Initializes the class
 
@@ -146,7 +161,8 @@ class SamsRegressor(MultiRegressionMixin):
         forced_model : np.array(1d)
             Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
             is used to force the intercept when the intercept is the first column in
-            the normalized, encoded model matrix.
+            the normalized, encoded model matrix. This model must itself fulfill the
+            heredity constraints.
         model_size : int
             The size of the overfitted models. Defaults to the number of runs
             divided by three. The overfitted model includes the forced model,
@@ -188,8 +204,15 @@ class SamsRegressor(MultiRegressionMixin):
             algorithm would require too much time, most likely low entropy models
             are the result and the computation can be halted prematurely. Defaults
             to three minutes.
-        model_order : dict(str: ('lin' or 'tfi' or 'quad'))
-            The order of the terms in the model.
+        entropy_sampler : func(dep, model_size, N, forced, mode)
+            The sampler to use when generating random hereditary models. See the
+            :ref:`samplers_sams` for an indication on which sampler to use.
+        entropy_sampling_N : int
+            The number of random samples to draw using the sampler to compute
+            the theoretical frequencies of the submodels.
+        entropy_model_order : dict(str: ('lin' or 'tfi' or 'quad'))
+            The order of the terms in the model. Please read the warning in
+            :ref:`warning_sams`.
         tqdm : bool
             Whether to use tqdm to track the progress
         """
@@ -208,7 +231,9 @@ class SamsRegressor(MultiRegressionMixin):
         self.forced_model = forced_model
         self.max_cluster = max_cluster
         self.ncluster = ncluster
-        self.model_order = model_order
+        self.entropy_sampler = entropy_sampler
+        self.entropy_sampling_N = entropy_sampling_N
+        self.entropy_model_order = entropy_model_order
         self.tqdm = tqdm
 
     def _regr_params(self, X, y):
@@ -280,10 +305,19 @@ class SamsRegressor(MultiRegressionMixin):
             if self.ncluster != 'auto':
                 assert self.ncluster > 0, 'The number of clusters must be larger than or equal to one'
 
-        # Validate model order: TODO: validate if necessary
-        if self.model_order is not None:
+        # Validate model order for entropy calculations
+        if self.entropy_model_order is not None:
+            # Define the required ordering
             model_types_ord = {'quad': 2, 'tfi': 1, 'lin': 0}
-            assert np.all(np.diff([model_types_ord[typ] for typ in self.model_order.values()]) <= 0), 'Model types must be ordered quad > tfi > lin for entropy calculations'
+
+            # Reorder the model types based on the factors
+            assert all(str(f.name) in self.entropy_model_order.keys() for f in factors), 'All factors must have an entropy model order specified'
+            entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in factors}
+            
+            # Assert the ordering
+            assert np.all(np.diff([model_types_ord[typ] for typ in entropy_model_order.values()]) <= 0), 'Model types must be ordered quad > tfi > lin for entropy calculations'
+
+            # TODO: Perform a random validation of the model to make sure it is correct in Y2X
 
     def _topn_selection(self, results, sizes, nterms, topn=4, timeout_sec=180):
         """
@@ -391,6 +425,10 @@ class SamsRegressor(MultiRegressionMixin):
 
         Parameters
         ----------
+        X : np.array(2d)
+            The encoded, normalized model matrix of the data.
+        y : np.array(1d)
+            The normalized output variable.
         submodels : list(np.array(1d))
             The list of top submodels for each size.
         freq : np.array(1d)
@@ -401,28 +439,22 @@ class SamsRegressor(MultiRegressionMixin):
         entropies : np.array(1d)
             The entropies of these models.
         """
-        if self.model_order is None or self.mode != 'weak':
+        if self.entropy_model_order is None or self.mode != 'weak':
             # Compute approximated entropies
             entropy = entropies_approx(
                 submodels, freqs, self._model_size, self.dependencies, self.mode,
-                self.forced_model
+                self.forced_model, self.entropy_sampling_N, self.entropy_sampler
             )
 
         else:
             # Compute the number of factors for each
             model_counts = {e: 0 for e in ('quad', 'tfi', 'lin')}
-            for mt, et in zip(self.model_order.values(), self.effect_types_):
+            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_):
                 model_counts[mt] += (1 if et == 1 else et - 1)
             model_counts = [model_counts.get(e, 0) for e in ('quad', 'tfi', 'lin')]
 
             # Compute entropy (based on model order)
-            self.entropy_model_order_ = entropies(submodels, freqs, self._model_size, model_counts)
-
-            # Compute approximated entropies
-            entropy = entropies_approx(
-                submodels, freqs, self._model_size, self.dependencies, self.mode,
-                self.forced_model
-            )
+            entropy = entropies(submodels, freqs, self._model_size, model_counts)
 
         return entropy
 
@@ -439,7 +471,8 @@ class SamsRegressor(MultiRegressionMixin):
         """
         # Some final validation
         assert np.all(self.forced_model < self.n_encoded_features_), 'The forced model must have integers smaller than the number of parameters in X'
-        assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
+        if self.mode is not None:
+            assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
 
         # Compute SAMS results
         if len(self._re) == 0:
@@ -543,11 +576,6 @@ class SamsRegressor(MultiRegressionMixin):
         self.entropies_ = self.entropies_[best_idx]
         self.models_ = [submodels[i] for i in best_idx]
         self.frequencies_ = freq[best_idx]
-
-        ### TODO: tmp
-        self.models_order_ = [submodels[i] for i in np.argsort(self.entropy_model_order_)[::-1]]
-        submodels_order = self._unique_submodels(self.models_order_, self.n_encoded_features_)
-        self.models_order_ = [model for accept, model in zip(submodels_order, self.models_order_) if accept]
 
         # Take only the unique submodels
         submodels = self._unique_submodels(self.models_, self.n_encoded_features_)
