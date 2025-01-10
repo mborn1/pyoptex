@@ -4,7 +4,7 @@ Module for all metrics of fixed structure designs.
 
 import numpy as np
 
-from ..utils.comp import outer_integral
+from ...utils.comp import outer_integral
 from .cov import no_cov
 from .init import init_random
 

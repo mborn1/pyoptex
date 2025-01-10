@@ -9,13 +9,13 @@ import numpy as np
 from numba.typed import List
 
 from ..utils.numba import numba_all_axis1
-from .utils.design import encode_design
+from ..utils.design import encode_design
 
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
     Parses a formula of constraints. The function returns an object of type
-    :py:class:`pyoptex.doe.constraints.Col` which can generate a function evaluating
+    :py:class:`Col <pyoptex.doe.constraints.Col>` which can generate a function evaluating
     either the encoded or non-encoded design matrix.
     The generated function returns True where the constraints are violated. 
 
@@ -36,7 +36,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     ----------
     script : str
         The script to parse
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
     exclude : bool
         Determines whether the presented formula should be excluded 
@@ -49,7 +49,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
 
     Returns
     -------
-    constraint : :py:class:`pyoptex.doe.constraints.Col`
+    constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`
         The root constraint which can be converted to a function to evaluate
         either the encoded or decoded design matrix.
     """
@@ -94,7 +94,7 @@ class Col:
     ----------
     col : float or int or string
         Meaning depends on the value of `factor`.
-    factor : None or :py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`
+    factor : None or :py:class:`Factor <pyoptex.utils.factor.Factor>`
         If None, this column represents a simple constant and `col`
         represents the constant value. Otherwise, it represents
         the column and the attribute `col` represents the index of the
@@ -374,12 +374,12 @@ def mixture_constraints(names, factors):
     ----------
     names : list(str)
         The names of the mixture components.
-    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The factors of the experiment.
     
     Returns
     -------
-    mixture_constraint : :py:class:`pyoptex.doe.constraints.Col`
+    mixture_constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`
         The mixture constraint.
     """
     script = ' + '.join(f'`{name}`' for name in names) + f' > 1 + eps'

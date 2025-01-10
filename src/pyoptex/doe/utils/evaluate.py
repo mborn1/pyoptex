@@ -8,8 +8,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from numba.typed import List
 
-from .design import encode_design
-from .model import model2encnames
+from ...utils.design import encode_design
+from ...utils.model import model2encnames
 
 
 def design_heatmap(Y, factors):
@@ -22,7 +22,7 @@ def design_heatmap(Y, factors):
     ----------
     Y : pd.DataFrame
         A decoded and denormalized design.
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
 
     Returns
@@ -87,7 +87,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     ----------
     Y : pd.DataFrame
         The decoded and denormalized design.
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
     Y2X : func(Y)
         The function to convert the design matrix Y to a
@@ -142,7 +142,7 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     ----------
     Y : pd.DataFrame
         The decoded and denormalized design.
-    factors : list(:py:class:`Cost_optimal factor <pyoptex.doe.cost_optimal.utils.Factor>` or :py:class:`Splitk_plot factor <pyoptex.doe.splitk_plot.utils.Factor>`)
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
     Y2X : func(Y)
         The function to convert the design matrix Y to a

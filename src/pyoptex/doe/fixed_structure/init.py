@@ -7,7 +7,7 @@ import numpy as np
 from numba.typed import List
 
 from ..._profile import profile
-from ..utils.design import encode_design
+from ...utils.design import encode_design
 from ..utils.init import init_single_unconstrained
 
 

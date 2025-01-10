@@ -32,36 +32,40 @@ To generate experimental designs, there are two main options:
 ## Main features
 
 * The **first complete Python package for optimal design of experiments**. Model
-  [everything](https://pyoptex.readthedocs.io/en/latest/example_scenarios.html#example-scenarios) including continuous factors, categorical factors, 
+  [everything](https://pyoptex.readthedocs.io/en/latest/_docs/doe/example_scenarios.html#example-scenarios) including continuous factors, categorical factors, 
   mixtures, blocked experiments, split-plot experiments, staggered-level experiments.
 
 * **Intuitive design of experiments** with 
-  [cost-optimal designs](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-cost) 
+  [cost-optimal designs](https://pyoptex.readthedocs.io/en/latest/_docs/doe/quickstart.html#qc-cost) 
   for everyone. No longer requires expert statistical knowledge before creating
   experiments.
 
 * Accounts for **any constraint** you require. Not only can you choose 
   the randomization structure 
-  [manually](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-other-fixed), 
+  [manually](https://pyoptex.readthedocs.io/en/latest/_docs/doe/quickstart.html#qc-other-fixed), 
   or let the 
-  [cost-optimal](https://pyoptex.readthedocs.io/en/latest/quickstart.html#qc-cost) 
+  [cost-optimal](https://pyoptex.readthedocs.io/en/latest/_docs/doe/quickstart.html#qc-cost) 
   design algorithms figure it out automatically, you can also specify the physically 
   possible factor combinations for a run.
 
 * **Augmenting** designs was never easier. Simply read your initial design 
   to a pandas dataframe and augment it by passing it as a 
-  [prior](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-augment).
+  [prior](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-augment).
 
 * **Customize** any part of the algorithm, including the 
-  [optimization criteria](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-metric) (metrics), 
-  [linear model](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-model), 
-  [encoding of the categorical factors](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-cat-encoding), 
+  [optimization criteria](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-metric) (metrics), 
+  [linear model](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-model), 
+  [encoding of the categorical factors](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-cat-encoding), 
   and much more.
 
 * Directly optimize for **Bayesian** 
-  [a-priori variance ratios](https://pyoptex.readthedocs.io/en/latest/customization.html#cust-bayesian-ratio)
+  [a-priori variance ratios](https://pyoptex.readthedocs.io/en/latest/_docs/doe/customization.html#cust-bayesian-ratio)
   in designs with hard-to-change factors.
 
+* High-performance **model selection** using 
+  [SAMS](https://pyoptex.readthedocs.io/en/latest/_docs/analysis/customization.html#a-cust-sams)
+   (simulated annealing model selection)
+  [(Wolters and Bingham, 2012)](https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157).
 
 ## Getting started
 
@@ -75,7 +79,10 @@ pip install pyoptex
 The documentation for this package can be found at [here](https://pyoptex.readthedocs.io/en/latest/)
 
 ## Create your first design
-See the documentation on [Your first design](https://pyoptex.readthedocs.io/en/latest/quickstart.html)
+See the documentation on [Your first design](https://pyoptex.readthedocs.io/en/latest/_docs/doe/quickstart.html)
+
+## Analyze your first dataset
+See the documentation on [Your first dataset](https://pyoptex.readthedocs.io/en/latest/_docs/analysis/quickstart.html)
 
 ## License
 BSD-3 clause, meaning you can use and alter it for any purpose,

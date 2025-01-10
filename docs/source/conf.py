@@ -3,6 +3,8 @@
 import datetime
 import pathlib
 import sys
+import inspect
+import importlib
 from urllib.parse import quote
 
 sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
@@ -76,15 +78,36 @@ def linkcode_resolve(domain, info):
     if domain != 'py':
         return None
     
+    # Retrieve start and end line
+    start_line, end_line = None, None
+    mod = importlib.import_module(info["module"])
+    try:
+        # Retrieve the object dynamically
+        if "." in info["fullname"]:
+            objname, attrname = info["fullname"].split(".")
+            obj = getattr(mod, objname)
+            obj = getattr(obj, attrname)
+        else:
+            obj = getattr(mod, info["fullname"])
+
+        try:
+            # Try to get the source code
+            lines, start_line = inspect.getsourcelines(obj)
+            end_line = start_line + len(lines)
+        except TypeError:
+            pass
+
+    except (AttributeError, OSError):
+        print(f'Unable to load: {info}')
+
     # Create URL-encoded filename
     filename = quote(str(info['module']).replace('.', '/'))
 
     # Create the anchor
-    if "fullname" in info:
-        anchor = f'def {info["fullname"]}('
-        anchor = "#:~:text=" + quote(anchor.split(".")[-1])
+    if start_line is None:
+        anchor = ''
     else:
-        anchor = ""
+        anchor = f'#L{start_line}-L{end_line}'
 
     # Link to github
     result = "https://github.com/mborn1/pyoptex/blob/%s/src/%s.py%s" % (release, filename, anchor)

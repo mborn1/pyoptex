@@ -8,7 +8,7 @@ from numba.typed import List
 
 from ...._profile import profile
 from ....utils.numba import numba_all_axis1
-from ...utils.design import encode_design
+from ....utils.design import encode_design
 
 
 @numba.njit
