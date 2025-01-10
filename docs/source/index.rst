@@ -47,10 +47,6 @@ to make the algorithm run faster.
 
 To analyze the data after the experiment, have a look at the analysis :ref:`a_quickstart`.
 
-.. note::
-
-   This project is under active development.
-
 Main features
 -------------
 
