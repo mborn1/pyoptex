@@ -122,7 +122,7 @@ Skew:                           0.192   Prob(JB):                        0.540
 Kurtosis:                       2.995   Cond. No.                         2.96
 ==============================================================================
 
-Or the prediction formula. Not that indeed the correct model was
+Or the prediction formula. Note that indeed the correct model was
 selected in this case.
 
 >>> print(regr.model_formula(model=model))
@@ -161,8 +161,8 @@ The full Python script can be found at
 |link-qc-pre|\ |version|\ |link-qc-mid0|\ drop_pvalue_strong.py\ |link-qc-mid1|\ drop_pvalue_strong.py\ |link-qc-post|.
 
 
-Mixed model
------------
+Mixed linear model
+------------------
 
 Mixed models occur very often when having hard-to-change factors. Every result from a 
 split-plot design, split-split-plot design, strip-plot design, staggered-level design, etc.
@@ -332,13 +332,15 @@ Finally, we fit the SAMS model
 >>> regr.fit(data.drop(columns='Y'), data['Y'])
 
 .. note::
-    By specifying the model_order parameter in the SamsRegressor,
+    By specifying the `entropy_model_order` parameter in the 
+    :py:class:`SamsRegressor <pyoptex.analysis.estimators.sams.estimator.SamsRegressor>`,
     we can use the exact entropy caluclations. For more information,
     see :ref:`a_cust_sams_entropy`. The full Python script is at
     |link-qc-pre|\ |version|\ |link-qc-mid0-sams|\ sams_partial_rsm.py\ |link-qc-mid1|\ sams_partial_rsm.py\ |link-qc-post|.
 
 Finally, we can analyze the generated models. To manually extract a model, use
 the :py:func:`plot_selection <pyoptex.analysis.estimators.sams.estimator.SamsRegressor.plot_selection>`
+function.
 
 >>> regr.plot_selection().show()
 
@@ -402,11 +404,11 @@ And the residual plot of the highest entropy model can be found using
   after fitting. These are ordered by highest entropy first.
 
   Once you selected a model, you can refit it, similar to the 
-  :ref:`p-value example <a_drop_p_value>`. Instead of simply predicting based on the `regr`, we can transform
-  the result to a strong model
+  :ref:`p-value example <a_drop_p_value>`. Instead of simply predicting based on the `regr`, 
+  we can select the desired model
 
-  >>> terms_strong = model2strong(regr.terms_, dependencies)
-  >>> model = model.iloc[terms_strong]
+  >>> terms = regr.models_[i]
+  >>> model = model.iloc[terms]
   >>> Y2X = model2Y2X(model, factors)
 
   And fit a simple model

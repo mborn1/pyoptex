@@ -73,14 +73,14 @@ and quadratic effects).
 
 First, we create a matrix representation of our model using the
 :py:func:`partial_rsm_names <pyoptex.utils.model.partial_rsm_names>` function.
-Then, we convert this model to a function which transforms X to Y using the
+Then, we convert this model to a function which transforms Y to X using the
 :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` function.
 
 >>> model = partial_rsm_names({str(f.name): 'quad' for f in factors})
 >>> Y2X = model2Y2X(model, factors)
 
 Finally, we create the 
-:py:class:`SimpleRegressor <pyoptex.analysis.simple_model.SimpleRegressor>`
+:py:class:`SimpleRegressor <pyoptex.analysis.estimators.simple_model.SimpleRegressor>`
 and fit it to the data
 
 >>> regr = SimpleRegressor(factors, Y2X)

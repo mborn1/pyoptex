@@ -1,9 +1,9 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 
-from .mixins.fit_mixin import RegressionMixin
-from .mixins.conditional_mixin import ConditionalRegressionMixin
-from ..utils.model import identityY2X
+from ..mixins.fit_mixin import RegressionMixin
+from ..mixins.conditional_mixin import ConditionalRegressionMixin
+from ...utils.model import identityY2X
 
 class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator):
     """

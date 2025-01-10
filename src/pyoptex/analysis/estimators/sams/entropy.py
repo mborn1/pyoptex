@@ -3,6 +3,7 @@ Module for the SAMS entropy calculations.
 """
 
 import numpy as np
+from scipy.special import comb
 
 from ....utils.model import sample_model_dep_onebyone
 from ....utils.numba import numba_int2bool
@@ -80,10 +81,6 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
     
     return entropies
 
-####################################################################
-
-from scipy.special import comb
-
 def count_models(max_model, model_size, model=None):
     """
     Counts the number of models of a given size in the max model
@@ -106,6 +103,11 @@ def count_models(max_model, model_size, model=None):
         - me_mm: The number of effects that cannot create quadratic or TFI
         - mtfi: The number of TFI
         - mquad: The number of quadratic effects
+
+    Returns
+    -------
+    nb_models : int
+        The number of hereditary models with the specified submodel.
     """
     # Extract encoder and model values
     if model is None:
@@ -142,26 +144,31 @@ def count_models(max_model, model_size, model=None):
 
 def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
     """
-    Compute the entropies of the submodels given the total set of models
+    Compute the entropies of the submodels given the total set of models.
+    Please read the warning in the documentation on customizing SAMS.
 
-    Assertions: 
-    
-    * encoding: Models are encoded by intercept, quad, TFI, main effects (in that order)
-      (see partial_rsm)
-    * simulation: The simulation is performed in weak heredity conditions
+    .. warning::
+        Asserts weak heredity and a partial response surface model 
+        in a particular order.
 
     Parameters
     ----------
     submodels : list(np.array(1d))
         The submodels to compute the entropy for
-    models : np.array(2d)
-        All the models of the simulation
     freqs : np.array(1d)
         An array of (observed) frequencies from each submodel
+    model_size : int
+        The size of the overfitted models.
+        The overfitted model includes the forced model.
     max_model : (nquad, ntwo, nlin)
         A tuple with the number of quadratic, TFI and linear effects
     eps : float
         The numerical stability parameter in computing the logarithms
+
+    Returns
+    -------
+    entropy : np.array(1d)
+        An array of floats with the entropy for each submodel.
     """
     # Extract global parameters
     nquad, ntwo, nlin = max_model

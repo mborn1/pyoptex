@@ -806,7 +806,7 @@ class MultiRegressionMixin(RegressionMixin):
         Prediction happens based on the top model (is the first model 
         in `models\_`). To predict based on any other model, fit that
         specific model using
-        :py:class:`SimpleRegressor <pyoptex.analysis.simple_model.SimpleRegressor>`.
+        :py:class:`SimpleRegressor <pyoptex.analysis.estimators.simple_model.SimpleRegressor>`.
 
         Assume it is based on a model (in a pandas dataframe) and you fitted
         a multi-regression model `multi_regr`:

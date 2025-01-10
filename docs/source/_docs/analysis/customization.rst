@@ -42,7 +42,7 @@ outputs, `y`. See the :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mi
 documentation for more information about which other parameters are available
 during fitting and model selection. If desired, the user could overwrite the default 
 :py:func:`_predict <pyoptex.analysis.mixins.fit_mixin.RegressionMixin._predict>`,
-however, care should be taken when doing so for the other attributes and functions.
+however, maybe the other attributes and functions must also be updated.
 
 .. note::
     It is important that the constructor of the regressor only sets the variables,
@@ -63,6 +63,10 @@ the user must set (all parameters are also indicated as the attributes of the mi
 * vcomp\_ : a 1-D numpy floating point arry with the estimated variance components in a mixed model.
 * fit\_ : optionally the fit object, returned by `fit_fn\_`. If specified, the used can call
   `.summary()` which is forwarded here.
+
+Have a look at the source code of 
+:py:class:`SimpleRegressor <pyoptex.analysis.estimators.simple_model.SamsRegressor>` for a
+simple example.
 
 For a :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`,
 only three attributes must be set:
@@ -90,29 +94,34 @@ good fitting models have in common. The algorithm works in three stages:
   problem at hand.
 * The reduction stage: here the algorithm takes the simulated models and looks what the
   most common 1-factor, 2-factor, 3-factor, etc. combinations are. In other words, it looks
-  at which submodel of size k occurs most frequently in the good fitting models.
+  at which submodel of size k occurs most frequently in the good fitting models for multiple 
+  values of k.
 * The selection stage: here the algorithm takes the most occuring submodels of each size and
   compares them to determine an ordering. The ordering is based on the entropy which is explained
   later.
 
 As you may notice, the algorithm does not output just one model. It outputs multiple models,
-ordered by which model is has the most confidence in. The last two stages of the algorithm
+ordered by which model it has the most confidence in. The last two stages of the algorithm
 use the result of the first stage to automatically determine an ordering, however, the user
 may also manually look at a raster plot of the results which looks as follows:
 
+.. figure:: /assets/img/raster_plot.png
+  :width: 100%
+  :alt: The raster plot. Every row is a model, every column is a term. The color indicates the coefficient magnitude.
+  :align: center
 
 Each row is a model, each column is a potential term in the model, and the color indicates the
 coefficient of the term. This means that any term not in the model has a coefficient of zero, which is
 plotted in white. By looking at largely colored columns, we can determine which
-submodels occur most often.
+submodels occur most often (here :math:`x_1`, :math:`x_3` and :math:`x_7`).
 
 .. note::
   In some events, multiple distinct models may perform equally well. Such a scenario is
   difficult to detect in the raster plot, and also by the entropy criterion. Luckily, we
   can also cluster the results in the raster plot making them more visible. The different
   terms in each model are binary encoded if the effect is present or not. On this representation,
-  a kmeans clustering is run. Such a scenario 
-  is investigated in `Wolters and Bingham (2012) <https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157>`_.
+  a kmeans clustering is run. This technique was also devised by
+  `Wolters and Bingham (2012) <https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157>`_.
 
 See :py:class:`SamsRegressor <pyoptex.analysis.estimators.sams.estimator.SamsRegressor>` for information
 on the parameters.
@@ -135,8 +144,8 @@ hereditary models.
 
 In `Wolters and Bingham (2012) <https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157>`_,
 the authors performed some simulations on screening designs for different model selection algorithms.
-The oracle method requires prior knowledge about the true model. Each term is tested for significance.
-The AICc method comes from Akaike's Information Criterion (corrected). The authors noted that
+The oracle method requires prior knowledge about the true model, and each term is tested for significance.
+The AICc method is Akaike's Information Criterion (corrected). The authors noted that
 a search through the hereditary models was performed, from which the best according to the AICc was
 selected. This, together with the Bayes Information Criterion (BIC) is commonly applied in practice.
 The last method is the new SAMS method with entropy selection.
@@ -169,7 +178,7 @@ The last method is the new SAMS method with entropy selection.
 The SAMS method with entropy significantly outperforms any other method with 43.3% of models
 found to be correct. In addition, the oracle method, which has prior knowledge about the true
 model, also only found 62.8% of the models. AICc only found about 7.2% of the models making it 
-not very suitable for this kind of scenario.
+not very suitable for this scenario.
   
 .. _samplers_sams:
 
@@ -224,9 +233,10 @@ The results are
 The first row is the exact entropy method as used in
 `Wolters and Bingham (2012) <https://www.tandfonline.com/doi/abs/10.1198/TECH.2011.08157>`_.
 Note that all three samplers, even though they perform worse than the exact entropy based on the percentage
-of correct models, still perform significantly better than AICc. When loosing the classification by
-also classiying models underfitted or overfitted by one term as correct, the exact entropy method
-has 61.1% accuracy, the one-by-one has 59.1%, the mcmc has 59.3%, and the random has 56.5%.
+of correct models, still perform significantly better than AICc. When loosening the classification by
+also classifying models underfitted or overfitted by one term as correct, the exact entropy method
+has 61.1% accuracy, the one-by-one has 59.1%, the mcmc has 59.3%, and the random has 56.5%. Only
+a 2% difference for the one-by-one and mcmc samplers.
 
 By default, the one-by-one 
 sampler is used as it performs almost equally as good as the mcmc method, but computes faster.
@@ -279,7 +289,7 @@ sampler is used as it performs almost equally as good as the mcmc method, but co
   >>>     factors, Y2X, 
   >>>     mode='weak', dependencies=dep,
   >>>     forced_model=np.array([0], np.int\_),
-  >>>     entropy_model_order=entropy_model_order)
+  >>>     entropy_model_order=entropy_model_order
   >>> )
 
   
