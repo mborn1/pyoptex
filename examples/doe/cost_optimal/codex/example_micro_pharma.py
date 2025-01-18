@@ -4,6 +4,7 @@
 import time
 import os
 import numpy as np
+import pandas as pd
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
@@ -43,7 +44,7 @@ constraints = parse_constraints_script(
 )
 
 # Cost function
-max_units = 200
+max_units = 150
 @cost_fn(denormalize=False, decoded=False, contains_params=False)
 def cost(Y):
     units = 2 + (Y[:, 0] + 1) * 6
@@ -75,3 +76,5 @@ print(f'Metric: {state.metric:.3f}')
 print(f'Cost: {state.cost_Y}')
 print(f'Number of experiments: {len(state.Y)}')
 print(f'Execution time: {end_time - start_time:.3f}')
+
+#######################################################################

@@ -508,24 +508,3 @@ execution cost of five minutes.
 >>>     transition_costs, factors, 
 >>>     max_transition_cost, execution_cost
 >>> )
-
-.. _cost_micro_pharma:
-
-A pharmaceutical example
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. note::
-    The explanation on this example will follow.
-
-Problem with three continuous factors. X1 in [-1, 0, 1], X2 with range 6 to 36 and a step of 3,
-X3 with range 12 to 36 with step of 3.
-200 units available, X1=-1 - 2, X1=0 - 8, X1=1 - 14.
-Full response surface model.
-X2 <= X3.
-`Copelli et al. (2018) <https://www.sciencedirect.com/science/article/abs/pii/S0169743917306494>`_
-
-Note: not the actual optimum due to the initialization. CODEX designed for
-correct run ordering, but this does not care.
-
-TODO: add maximal initialization vs. minimal.
-
