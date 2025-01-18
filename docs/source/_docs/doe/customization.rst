@@ -40,7 +40,7 @@ Finally, the model can be transformed to a callable using the same
 
 If the user requires an even more complex linear model which can not be expressed
 as a product of powers, the user can directly implement the `Y2X` function. For example,
-assume the user wants to generate a a design for the linear model
+assume the user wants to generate a design for the linear model
 :math:`y = \beta_0 + \beta_1 x + \beta_2 sin(x) + \epsilon`
 
 >>> def Y2X(Y)
@@ -313,8 +313,8 @@ to which runs the constraint applies.
 
 .. _cust_constraints:
 
-Run constraints
----------------
+Factor level constraints
+------------------------
 
 Some times, certain combinations of factor levels are impossible. These impossible
 combinations can be accounted for by a constraints function. The function is
