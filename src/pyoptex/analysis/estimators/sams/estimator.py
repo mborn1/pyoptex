@@ -102,7 +102,6 @@ class SamsRegressor(MultiRegressionMixin):
         the documentation on customizing SAMS.
     tqdm : bool
         Whether to use tqdm to track the progress
-
     sams_model\_ : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
         A SAMS model used in sampling and fitting data during the SAMS procedure.
     results\_ : np.array(1d)
@@ -204,7 +203,7 @@ class SamsRegressor(MultiRegressionMixin):
             to three minutes.
         entropy_sampler : func(dep, model_size, N, forced, mode)
             The sampler to use when generating random hereditary models. See the
-        documentation on customizing SAMS for an indication on which sampler to use.
+            documentation on customizing SAMS for an indication on which sampler to use.
         entropy_sampling_N : int
             The number of random samples to draw using the sampler to compute
             the theoretical frequencies of the submodels.
