@@ -122,7 +122,7 @@ class Dopt(Metric):
 
         # Compute D-optimality
         return np.power(
-            np.product(np.maximum(np.linalg.det(M), 0)),
+            np.prod(np.maximum(np.linalg.det(M), 0)),
             1/(X.shape[1] * len(params.Vinv))
         )
  

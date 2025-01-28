@@ -69,7 +69,7 @@ def full_factorial(colstart, coords, Y=None):
     """
     # Initialize Y
     if Y is None:
-        n = np.product([coords[i].shape[0] for i in range(len(coords))])
+        n = np.prod([coords[i].shape[0] for i in range(len(coords))])
         Y = np.zeros((n, colstart[-1]), dtype=np.float64)
 
     # Create the full factorial matrix
