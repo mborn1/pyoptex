@@ -205,7 +205,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     )
 
     # Validate the cost of the prior
-    if params.prior is not None:
+    if len(params.prior) > 0:
         costs = params.fn.cost(params.prior, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])

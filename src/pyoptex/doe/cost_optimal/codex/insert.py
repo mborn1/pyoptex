@@ -115,7 +115,12 @@ def _insert_position(new_run, pos, state, params, new_X=None):
                 for ratios in params.ratios
             ])
     else:
-        Zs, Vinv = state.Zs, state.Vinv
+        # Shortcut as there are no hard-to-vary factors
+        Zs = state.Zs
+        Vinv = np.broadcast_to(
+            np.eye(len(Y)), 
+            (state.Vinv.shape[0], len(Y), len(Y))
+        )
 
     # Update costs
     costs = params.fn.cost(Y, params)
