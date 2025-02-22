@@ -27,8 +27,6 @@ To generate experimental designs, there are two main options:
   Go to Creating a cost-optimal design for an example. The currently implemented 
   algorithm is CODEX.
 
-**_NOTE:_**  This package does not have a release version yet and is still under active development.
-
 ## Main features
 
 * The **first complete Python package for optimal design of experiments**. Model
