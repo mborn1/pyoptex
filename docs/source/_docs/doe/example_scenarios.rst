@@ -509,26 +509,3 @@ execution cost of five minutes.
 >>>     max_transition_cost, execution_cost
 >>> )
 
-.. _cost_micro_pharma:
-
-Micronization of a pharmaceutical ingredient
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This is a problem on micronization from
-`Copelli et al. (2018) <https://www.sciencedirect.com/science/article/abs/pii/S0169743917306494>`_
-with three discrete continuous factors. X1 can have values
--1, 0, or 1. X2 is from 6 until 36 with steps of 3. X3 is from
-12 until 36, also with steps of 3. One resource is being 
-consumed in the experiment, expressed in `units`, which
-are determined by the setting of X1. In total,
-200 units are available for the experiment. A setting of X1=-1
-consumes 2 units, a setting of X1=0 consumes 8 units, and a 
-setting of X1=1 consumes 14 units. Additionally, the setting
-of X2 must be smaller than or equal to X3. The researchers were
-interested in D-optimality for a full response surface model.
-
-.. note::
-    This example must still be completed further.
-
-Note: not the actual optimum due to the initialization. CODEX designed for
-correct run ordering, but this does not care.
-
