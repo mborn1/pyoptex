@@ -74,6 +74,7 @@ Documentation
 .. toctree::
    :maxdepth: 3
 
+   general 
    doe
    analysis
 
