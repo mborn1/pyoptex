@@ -22,6 +22,9 @@ Quickstart
 Installation
 ------------
 
+If you have not installed Python and setup a project, follow this guide
+:ref:`install_python`.
+
 To use PyOptEx, first install it using pip:
 
 .. code-block:: console
