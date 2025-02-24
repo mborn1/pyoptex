@@ -41,7 +41,7 @@ dependencies = order_dependencies(model, factors)
 regr = SamsRegressor(
     factors, Y2X,
     dependencies=dependencies, mode='weak',
-    forced_model=np.array([0], np.int_),
+    forced_model=np.array([0], np.int64),
     model_size=6, nb_models=5000, skipn=1000,
     entropy_model_order=model_order
 )

@@ -75,7 +75,7 @@ class ConditionalRegressionMixin:
 
             # Create the conditional model
             self._conditional_model = pd.DataFrame(
-                np.eye(len(self._conditional_factors) ,dtype=np.int_), 
+                np.eye(len(self._conditional_factors) ,dtype=np.int64), 
                 columns=[str(f.name) for f in self._conditional_factors]
             )
 

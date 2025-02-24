@@ -132,7 +132,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
     # Extract the plot sizes
     nb_plots = max(f.re.level for f in factors) + 1
-    plot_sizes = np.ones(nb_plots, dtype=np.int_) * -1
+    plot_sizes = np.ones(nb_plots, dtype=np.int64) * -1
     ratios = [None] * nb_plots
     for f in factors:
         # Fix plot sizes
@@ -209,7 +209,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Compute old plot sizes
         nb_old_plots = max(p.level for p in old_plots) + 1
-        old_plot_sizes = np.ones(nb_old_plots, dtype=np.int_) * -1
+        old_plot_sizes = np.ones(nb_old_plots, dtype=np.int64) * -1
         for p in old_plots:
             if old_plot_sizes[p.level] == -1:
                 old_plot_sizes[p.level] = p.size
@@ -241,8 +241,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         grps = List([lgrps[lvl] for lvl in effect_levels])
     else:
         grps = List([np.concatenate(
-            (grps[i].astype(np.int_), lgrps[effect_levels[i]]), 
-            dtype=np.int_
+            (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
+            dtype=np.int64
         ) for i in range(len(effect_levels))])
     
     # Create the parameters

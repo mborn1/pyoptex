@@ -233,7 +233,7 @@ def cov_block(cost=1, ratios=1., cost_index=0):
         else:
             # Define blocks and ratios
             cum_cost = np.cumsum(costs[cost_index][0])
-            blocks = np.floor_divide(cum_cost, cost).astype(np.int_)
+            blocks = np.floor_divide(cum_cost, cost).astype(np.int64)
             
             # Update Zs, Vinv
             Zs = list(Zs)

@@ -40,7 +40,7 @@ def partial_rsm(nquad, ntfi, nlin):
     nterms = nmain + int(nint * (nint - 1) / 2) + nquad + 1
 
     # Initialize (pre-allocation)
-    max_model = np.zeros((nterms, nmain), dtype=np.int_)
+    max_model = np.zeros((nterms, nmain), dtype=np.int64)
     stop = 1
 
     # Main effects
@@ -115,7 +115,7 @@ def encode_model(model, effect_types):
 
     # Insert extra columns for the encoding
     extra_columns = cols - 1
-    a = np.zeros(np.sum(extra_columns), dtype=np.int_)
+    a = np.zeros(np.sum(extra_columns), dtype=np.int64)
     start = 0
     for i in range(extra_columns.size):
         a[start:start+extra_columns[i]] = np.full(extra_columns[i], i+1)
@@ -310,7 +310,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
         lin_mixt_tfi_process = pd.merge(
             model.loc[tfi_process_effects, list(process_comps) + [mcomp]],
             pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int_), 
+                np.eye(len(mixture_comps) - 1, dtype=np.int64), 
                 columns=mixture_comps.drop(mcomp)
             ), 
             how='cross'
@@ -336,7 +336,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
         additional_terms = pd.merge(
             model.loc[lin_process_effects, list(process_comps) + [mcomp]],
             pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int_), 
+                np.eye(len(mixture_comps) - 1, dtype=np.int64), 
                 columns=mixture_comps.drop(mcomp)
             ), 
             how='cross'
@@ -846,7 +846,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
         The sampled model which is an array of integers of size (n_samples, size).
     """
     # The output
-    out = np.zeros((n_samples, size), dtype=np.int_)
+    out = np.zeros((n_samples, size), dtype=np.int64)
 
     # No dep
     no_dep = np.flatnonzero(~np.any(dep, axis=1))
@@ -948,7 +948,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
 
     #########################
     # Initialize number of dependencies
-    nb_dep = np.ma.masked_where(~dep, np.zeros_like(dep, dtype=np.int_)).harden_mask()
+    nb_dep = np.ma.masked_where(~dep, np.zeros_like(dep, dtype=np.int64)).harden_mask()
 
     # At the true positions in these columns, set a 1
     affected = ~np.any(dep, axis=1)
@@ -963,14 +963,14 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
     #########################
 
     # Initialize the models
-    models = np.zeros((n_samples, size), dtype=np.int_)
+    models = np.zeros((n_samples, size), dtype=np.int64)
     models[:, :forced.size] = forced
 
     # Fix the forced model
     if forced is not None and forced.size > 0:
         # Convert submodel to binary array
         affected = forced
-        submodelb = np.zeros(len(dep), dtype=np.int_)
+        submodelb = np.zeros(len(dep), dtype=np.int64)
         submodelb[affected] = 1
         
         # Update the model
@@ -1032,7 +1032,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
 
             # Convert submodel to binary array
             affected = model[j:i]
-            submodelb = np.zeros(len(dep), dtype=np.int_)
+            submodelb = np.zeros(len(dep), dtype=np.int64)
             submodelb[affected] = 1
             
             # Update the model

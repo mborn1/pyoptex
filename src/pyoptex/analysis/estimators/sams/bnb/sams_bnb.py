@@ -106,7 +106,7 @@ class SamsBnB(BnB):
 
         # Default values
         if forced_model is None:
-            forced_model = np.zeros((0,), dtype=np.int_)
+            forced_model = np.zeros((0,), dtype=np.int64)
 
         # Store the variables
         self.model_size = model_size
@@ -137,8 +137,8 @@ class SamsBnB(BnB):
             The corresponding scores.
         """
         # Initialize the best size 'nfit' models
-        top_models = np.zeros((nfit, self.model_size), dtype=np.int_)
-        top_frequencies = np.zeros(nfit, dtype=np.int_)
+        top_models = np.zeros((nfit, self.model_size), dtype=np.int64)
+        top_frequencies = np.zeros(nfit, dtype=np.int64)
 
         # Initialization procedure
         models = self.spm
@@ -214,7 +214,7 @@ class SamsBnB(BnB):
 
         for i in options:
             # Create a node
-            node = np.zeros(self.model_size, dtype=np.int_)
+            node = np.zeros(self.model_size, dtype=np.int64)
             node[:self.forced_model.size] = self.forced_model
             node[self.forced_model.size] = i
             node[self.forced_model.size + 1:] = -1
