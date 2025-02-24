@@ -43,15 +43,15 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
 
     # Initialize model storage
     rdtype = np.dtype([
-        ('model', np.int_, model_size), 
+        ('model', np.int64, model_size), 
         ('coeff', np.float64, model_size),
         ('metric', np.float64)
     ])   
     results = np.zeros(nb_models, dtype=rdtype)
-    models = np.zeros((nb_models, model_size), dtype=np.int_)
+    models = np.zeros((nb_models, model_size), dtype=np.int64)
 
     # Create initial model
-    m = np.zeros(model_size, dtype=np.int_)
+    m = np.zeros(model_size, dtype=np.int64)
     m = model.init(m)
 
     # Compute initial metric

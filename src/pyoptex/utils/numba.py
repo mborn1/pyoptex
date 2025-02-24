@@ -214,7 +214,7 @@ def numba_choice_bool_axis0(valids):
     out : np.array(1d)
         An integer array with the randomly chosen indices.
     """
-    out = np.zeros(len(valids), dtype=np.int_)
+    out = np.zeros(len(valids), dtype=np.int64)
     for i in range(len(valids)):
         idx = np.flatnonzero(valids[i])
         if idx.size == 0:

@@ -284,7 +284,7 @@ class RegressionMixin(RegressorMixinSklearn):
         if len(self._re) == 0:
             # Define OLS fit
             self.fit_fn_ = lambda X, y, terms: fit_ols(X[:, terms], y)
-            self.Zs_ = np.empty((0, len(X)), dtype=np.int_)
+            self.Zs_ = np.empty((0, len(X)), dtype=np.int64)
 
         else:
             # Create list from the random effects

@@ -349,7 +349,7 @@ class SamsRegressor(MultiRegressionMixin):
         """
         # Initialize results
         models = list()
-        counts = np.zeros(len(sizes) * topn, dtype=np.int_)
+        counts = np.zeros(len(sizes) * topn, dtype=np.int64)
 
         # Compute BnB
         for i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
@@ -537,7 +537,7 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Fit kmeans on selected number of clusters
             self.kmeans_ = KMeans(n_init='auto', n_clusters=ncluster).fit(results_cluster)
-            self.kmeans_.skips = np.zeros(ncluster, dtype=np.int_)
+            self.kmeans_.skips = np.zeros(ncluster, dtype=np.int64)
             self.kmeans_.dists = kmeans_dists
 
             # Perform model select on each cluster

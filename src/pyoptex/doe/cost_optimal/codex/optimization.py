@@ -342,15 +342,15 @@ def ce_struct_optimizer(state, params):
     for col in range(params.colstart.size - 1):
         # Detect blocks
         blocks = np.concatenate((
-            np.array([0], np.int_), 
+            np.array([0], np.int64), 
             np.where(numba_any_axis1(numba_diff_axis0(state.Y[:, params.colstart[col]:params.colstart[col+1]]) != 0))[0] + 1,
-            np.array([len(state.Y)], np.int_)
+            np.array([len(state.Y)], np.int64)
         ))
 
         # Extract blocks with no overlap in prior
         blocks = blocks[blocks >= nprior]
         if blocks[0] != nprior:
-            blocks = np.concatenate((np.array([nprior], np.int_), blocks))
+            blocks = np.concatenate((np.array([nprior], np.int64), blocks))
 
         for b in range(blocks.size - 1):
             # Rows from that block

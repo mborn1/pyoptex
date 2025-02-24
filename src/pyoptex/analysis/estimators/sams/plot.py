@@ -55,7 +55,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     # Check if we require kmeans plotting
     if kmeans is not None:
         # Initialize indices with first skipn
-        idx = np.zeros(len(results), dtype=np.int_)
+        idx = np.zeros(len(results), dtype=np.int64)
         idx[:skipn] = np.arange(skipn)
 
         # Initialize the array of skips and thresholds
@@ -64,7 +64,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
 
         # Add default skips
         if not hasattr(kmeans, 'skips'):
-            kmeans.skips = np.zeros(kmeans.n_clusters, dtype=np.int_)
+            kmeans.skips = np.zeros(kmeans.n_clusters, dtype=np.int64)
 
         # Loop over all clusters
         for i in range(kmeans.n_clusters):

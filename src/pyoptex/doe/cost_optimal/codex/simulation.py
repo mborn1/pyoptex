@@ -35,7 +35,7 @@ def simulate(params, nsims=100, validate=False):
     # Initialize stats
     params.stats['it'] = 0
     params.stats['rejections'] = 0
-    params.stats['insert_loc'] = -1 * np.ones(nsims, dtype=np.int_)
+    params.stats['insert_loc'] = -1 * np.ones(nsims, dtype=np.int64)
     params.stats['removed_insert'] = np.zeros(nsims, dtype=np.bool_)
     params.stats['metrics'] = np.zeros(nsims, dtype=np.float64)
     

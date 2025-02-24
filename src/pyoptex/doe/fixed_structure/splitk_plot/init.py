@@ -175,11 +175,11 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords,
                 np.array([
                     g for g in grps[col] 
                     if g >= grp*jmp/thetas[l] and g < (grp+1)*jmp/thetas[l]
-                ], dtype=np.int_) 
+                ], dtype=np.int64) 
                 if l < level else (
-                    np.arange(grp, grp+1, dtype=np.int_) 
+                    np.arange(grp, grp+1, dtype=np.int64) 
                     if (l == level and grp in grps[col])
-                    else np.arange(0, dtype=np.int_)
+                    else np.arange(0, dtype=np.int64)
                 )
                 for col, l in enumerate(effect_levels)
             ]

@@ -63,7 +63,7 @@ class Model:
 
         # Create default forced
         if forced is None:
-            forced = np.array([], dtype=np.int_)
+            forced = np.array([], dtype=np.int64)
 
         # Store
         self.X = X 
@@ -288,11 +288,11 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
     m = Model(np.zeros((0, len(dep))), np.zeros((0,)), mode=mode, forced=forced, dep=dep)
 
     # Initialize a random model
-    model = np.zeros((size,), dtype=np.int_)
+    model = np.zeros((size,), dtype=np.int64)
     m.init(model)
 
     # Intialize the samples
-    samples = np.zeros((n_samples, size), dtype=np.int_)
+    samples = np.zeros((n_samples, size), dtype=np.int64)
 
     # Warmup phase
     for i in range(n_warmup):

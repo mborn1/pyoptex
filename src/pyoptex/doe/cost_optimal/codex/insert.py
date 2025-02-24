@@ -39,7 +39,7 @@ def groups_insert(Yn, Zs, pos, colstart):
     """
 
     # Initialization
-    a = np.zeros(len(Zs), dtype=np.int_)
+    a = np.zeros(len(Zs), dtype=np.int64)
     b = [() for _ in range(a.size)]
 
     # Loop over all factors
