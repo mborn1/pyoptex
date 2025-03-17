@@ -41,7 +41,7 @@ def evaluate_metrics(Y, params, metrics):
 
     # Transform Y to numpy
     col_names = [str(f.name) for f in params.factors]
-    Y = Y[col_names].to_numpy()
+    Y = Y[col_names].astype(float).to_numpy()
 
     # Encode the design
     Y = encode_design(Y, params.effect_types, params.coords)
