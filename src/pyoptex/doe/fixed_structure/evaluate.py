@@ -213,7 +213,7 @@ def estimation_variance_matrix(Y, params):
 
     return Minv
 
-def plot_estimation_variance_matrix(Y, params, model=None):
+def plot_estimation_variance_matrix(Y, params, model=None, abs=False):
     """
     Plots the parameter estimation covariance matrix. One is plotted
     for each set of a-prior variance components.
@@ -227,6 +227,9 @@ def plot_estimation_variance_matrix(Y, params, model=None):
     model : None or pd.DataFrame
         The model dataframe corresponding to the Y2X function in order
         to extract the parameter names.
+    abs : bool
+        Whether to plot the actual estimation variances, or the absolute values
+        of them.
 
     Returns
     -------
@@ -235,6 +238,10 @@ def plot_estimation_variance_matrix(Y, params, model=None):
     """
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)
+
+    # Optionally plot the absolute values
+    if abs:
+        Minv = np.abs(Minv)
 
     # Determine the encoded column names
     if model is None:
