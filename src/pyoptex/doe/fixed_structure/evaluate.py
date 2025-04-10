@@ -40,7 +40,7 @@ def evaluate_metrics(Y, params, metrics):
 
     # Transform Y to numpy
     col_names = [str(f.name) for f in params.factors]
-    Y = Y[col_names].to_numpy()
+    Y = Y[col_names].astype(float).to_numpy()
 
     # Encode the design
     Y = encode_design(Y, params.effect_types, params.coords)
@@ -85,7 +85,7 @@ def fraction_of_design_space(Y, params, N=10000):
 
     # Transform Y to numpy
     col_names = [str(f.name) for f in params.factors]
-    Y = Y[col_names].to_numpy()
+    Y = Y[col_names].astype(float).to_numpy()
 
     # Encode the design
     Y = encode_design(Y, params.effect_types, params.coords)
@@ -195,7 +195,7 @@ def estimation_variance_matrix(Y, params):
 
     # Transform Y to numpy
     col_names = [str(f.name) for f in params.factors]
-    Y = Y[col_names].to_numpy()
+    Y = Y[col_names].astype(float).to_numpy()
 
     # Encode the design
     Y = encode_design(Y, params.effect_types, params.coords)
