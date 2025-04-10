@@ -115,7 +115,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
 
     # Transform Y to numpy
     col_names = [str(f.name) for f in factors]
-    Y = Y[col_names].to_numpy()
+    Y = Y[col_names].astype(float).to_numpy()
 
     # Encode the design
     Y = encode_design(Y, effect_types, coords)
