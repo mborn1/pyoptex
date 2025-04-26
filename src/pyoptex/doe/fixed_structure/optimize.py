@@ -11,7 +11,7 @@ from ._optimize_cy import _optimize_cython_impl
 
 
 @profile
-def optimize(params, max_it=10000, validate=False, eps=1e-4):
+def optimize(params, max_it=10, validate=False, eps=1e-4):
     """
     Optimize a model iteratively using the coordinate-exchange algorithm.
     Only specific groups at each level are updated to allow design augmentation.
