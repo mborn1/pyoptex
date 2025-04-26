@@ -199,7 +199,7 @@ def __correct_constraints(effect_types, effect_levels, grps, coords,
                 while c:
                     Y = __init_unconstrained(effect_types, effect_levels, grps_, 
                                             coords, Zs, Y, complete)
-                    c = np.any(constraints(Y[prev_runs]))
+                    c = np.any(constraints(Y[runs]))
 
                 # Update the runs
                 invalid_run = constraints(Y)
