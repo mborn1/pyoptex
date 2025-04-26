@@ -175,7 +175,7 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
 
     fig = go.Figure()
     fig.add_trace(go.Heatmap(
-        z=np.flipud(corr.to_numpy()), x=corr.columns, y=corr.columns,
+        z=np.flipud(corr.to_numpy()), x=corr.columns, y=corr.columns[::-1],
         hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{z}',
     ))
     fig.update_layout(
