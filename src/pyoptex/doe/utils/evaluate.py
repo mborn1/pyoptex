@@ -125,7 +125,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
 
     # Determine the encoded column names
     if model is None:
-        encoded_colnames = np.arange(Minv.shape[-1])
+        encoded_colnames = np.arange(X.shape[1])
     else:
         col_names = [str(f.name) for f in factors]
         encoded_colnames = model2encnames(model[col_names], effect_types)
@@ -173,7 +173,11 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
                 corr = corr[~bad][:, ~bad]
             bad = np.all(np.isnan(corr), axis=1)
 
-    fig = px.imshow(corr)
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(
+        z=np.flipud(corr.to_numpy()), x=corr.columns, y=corr.columns[::-1],
+        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{z}',
+    ))
     fig.update_layout(
         title='Correlation map',
         title_x=0.5
