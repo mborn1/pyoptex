@@ -221,7 +221,7 @@ def __correct_constraints(long[::1] effect_types not None,
                                 # Take every unique group value that we can optimize
                                 grp = np.array([co for co in unique_vals if co in grps[k]], dtype=np.int64)
                             grps_[k] = grp
-                            
+
                     # Regenerate until no longer all invalid
                     c = True
                     while c:
