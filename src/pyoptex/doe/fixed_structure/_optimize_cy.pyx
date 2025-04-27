@@ -31,8 +31,8 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
     # Type declarations for parameters accessed frequently
     cdef long[::1] effect_types = params.effect_types
     cdef long[::1] effect_levels = params.effect_levels
-    cdef object grps = params.grps
-    cdef object coords = params.coords # TODO: rework initialization for this
+    cdef list grps = params.grps
+    cdef list coords = params.coords
     cdef long[::1] colstart = params.colstart
     cdef long[:,::1] Zs = params.Zs
     cdef object fn = params.fn # Keep fn as a Python object for callbacks

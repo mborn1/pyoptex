@@ -138,7 +138,6 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         be_ratios = []
 
     # Extract parameter arrays
-    col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors])
     coords = [f.coords_ for f in factors]

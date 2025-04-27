@@ -1,17 +1,38 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 
 import numpy as np
+from numpy.random import PCG64
 cimport numpy as cnp
-from libc.stdio cimport printf
 
 cnp.import_array()
 
-def __init_unconstrained(long[::1] effect_types not None,
-                         long[::1] effect_levels not None,
-                         list grps not None,
-                         list coords not None,
-                         long[:, ::1] Zs not None,
-                         cnp.ndarray[double, ndim=2] Y not None,
+cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
+    cdef Py_ssize_t i
+    for i in range(n):
+        if arr[i]:
+            return True
+    return False
+
+cdef bint cython_all(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
+    cdef Py_ssize_t i
+    for i in range(n):
+        if not arr[i]:
+            return False
+    return True
+
+cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ssize_t n) noexcept:
+    cdef Py_ssize_t i
+    for i in range(n):
+        if not arr[idx[i]]:
+            return False
+    return True
+
+cpdef __init_unconstrained(long[::1] effect_types,
+                         long[::1] effect_levels,
+                         list grps,
+                         list coords,
+                         long[:, ::1] Zs,
+                         cnp.ndarray[double, ndim=2] Y,
                          bint complete=False):
     """
     This function generates a random design without 
@@ -198,12 +219,8 @@ def __correct_constraints(long[::1] effect_types not None,
                             runs[nruns] = k
                             nruns += 1
                 
-                # Extract the selected runs
-                for k in range(nruns):
-                    invalid_run_selected[k] = invalid_run[runs[k]]
-                
                 # Check if all invalid
-                if np.all(invalid_run_selected[:nruns]):
+                if cython_all_idx(invalid_run, runs, nruns):
                     # Specify which groups to regenerate
                     grps_ = [np.empty((0,), dtype=np.int64)] * n_factors
                     for k in range(n_factors):
@@ -232,7 +249,7 @@ def __correct_constraints(long[::1] effect_types not None,
                         # Validate if any of the runs are invalid
                         for k in range(nruns):
                             Y_selected_view[k] = Y_view[runs[k]]
-                        c = np.any(constraints(Y_selected[:nruns]))
+                        c = cython_any(constraints(Y_selected[:nruns]), nruns)
 
                     # Update the runs
                     invalid_run = constraints(Y)
