@@ -2,7 +2,7 @@ import re
 import setuptools
 from setuptools import Extension
 from Cython.Build import cythonize
-import numpy
+import numpy as np
 
 with open("src/pyoptex/__init__.py", "r", encoding="utf-8") as f:
     version = re.search(r'__version__ = [\'"](.*)[\'"]', f.read()).group(1)
@@ -12,8 +12,9 @@ extensions = [
     Extension(
         "pyoptex.doe.fixed_structure._optimize_cy",
         ["src/pyoptex/doe/fixed_structure/_optimize_cy.pyx"],
-        include_dirs=[numpy.get_include()],
-        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
+        include_dirs=[np.get_include()],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        language="c"
     )
 ]
 
