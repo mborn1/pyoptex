@@ -14,6 +14,21 @@ extensions = [
         ["src/pyoptex/doe/fixed_structure/_optimize_cy.pyx"],
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        language="c",
+        # extra_compile_args=["-O3"], 
+    ),
+    Extension(
+        "pyoptex.utils._design_cy",
+        ["src/pyoptex/utils/_design_cy.pyx"],
+        include_dirs=[np.get_include()],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        language="c"
+    ),
+    Extension(
+        "pyoptex.doe.fixed_structure._init_cy",
+        ["src/pyoptex/doe/fixed_structure/_init_cy.pyx"],
+        include_dirs=[np.get_include()],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
         language="c"
     )
 ]

@@ -3,12 +3,7 @@ Module containing the constraints functions.
 """
 
 import re
-
-import numba
 import numpy as np
-from numba.typed import List
-
-from ..utils.numba import numba_all_axis1
 from ..utils.design import encode_design
 
 
@@ -154,7 +149,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a decoded design, but normalized design matrix.
         """
-        return numba.njit(eval(f'lambda Y__: {str(self)}'))
+        return eval(f'lambda Y__: {str(self)}')
 
     def _encode(self):
         """
@@ -189,7 +184,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a encoded design design matrix.
         """
-        return numba.njit(eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np}))
+        return eval(f'lambda Y__: {self._encode()}', {'np': np})
 
     ##############################################
 
@@ -339,11 +334,14 @@ class CompCol(BinaryCol):
     def __encode__(self, col1, col2):
         assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
         if not col1.pre_normalized_encoded_:
-            encoded = encode_design(np.array([[col1.factor.normalize(col2.col)]]), np.array([len(col1.factor.levels)]), 
-                                    List([col1.factor.coords_]))[0]
+            encoded = encode_design(
+                np.array([[col1.factor.normalize(col2.col)]], dtype=np.float64), 
+                np.array([len(col1.factor.levels)], dtype=np.int64), 
+                [col1.factor.coords_]
+            )[0]
             col2.col_encoded_ = f'np.array({list(encoded)})'
             col1.pre_normalized_encoded_ = True
-        return f'numba_all_axis1({col1._encode()} {self.sep} {col2._encode()})'
+        return f'np.all({col1._encode()} {self.sep} {col2._encode()}, axis=1)'
 
     def _encode(self):
         if self.col.is_categorical:

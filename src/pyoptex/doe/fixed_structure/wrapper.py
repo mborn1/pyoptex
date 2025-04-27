@@ -4,10 +4,7 @@ Module for the interface to run the generic coordinate-exchange algorithm
 
 import numpy as np
 import pandas as pd
-import numba
-from numba.typed import List
 from tqdm import tqdm
-from threadpoolctl import threadpool_limits
 
 from ..constraints import no_constraints, mixture_constraints
 from ...utils.design import decode_design, obs_var_from_Zs
@@ -144,7 +141,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors])
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
     colstart = np.concatenate((
@@ -173,7 +170,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         
     # Define which groups to optimize
     lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
-    grps = List([lgrps[lvl] for lvl in effect_levels])
+    grps = [lgrps[lvl] for lvl in effect_levels]
 
     # Precompute run indices for each (factor, group) pair
     grp_runs = []
@@ -222,24 +219,21 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
     assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
 
-    numba.set_num_threads(1)
-    with threadpool_limits(limits=1, user_api='blas'):
+    # Pre initialize metric
+    params.fn.metric.preinit(params)
 
-        # Pre initialize metric
-        params.fn.metric.preinit(params)
+    # Main loop
+    best_metric = -np.inf
+    best_state = None
+    for _ in tqdm(range(n_tries)):
 
-        # Main loop
-        best_metric = -np.inf
-        best_state = None
-        for _ in tqdm(range(n_tries)):
+        # Optimize the design
+        Y, state = optimize(params, max_it, validate=validate)
 
-            # Optimize the design
-            Y, state = optimize(params, max_it, validate=validate)
-
-            # Store the results
-            if state.metric > best_metric:
-                best_metric = state.metric
-                best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+        # Store the results
+        if state.metric > best_metric:
+            best_metric = state.metric
+            best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
