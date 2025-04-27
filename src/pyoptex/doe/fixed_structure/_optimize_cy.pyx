@@ -18,7 +18,7 @@ cdef bint cython_equal(const double[::1] a, const double[::1] b, Py_ssize_t n) n
             return False
     return True
     
-cdef bint cython_any(unsigned char[::1] arr, Py_ssize_t n) noexcept:
+cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
     cdef Py_ssize_t i
     for i in range(n):
         if arr[i]:
@@ -36,6 +36,7 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
     cdef long[::1] colstart = params.colstart
     cdef long[:,::1] Zs = params.Zs
     cdef object fn = params.fn # Keep fn as a Python object for callbacks
+    cdef list grp_runs = params.grp_runs
 
     ###############################################
 
@@ -64,7 +65,7 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
 
     # Temporary arrays/views needed inside loops
     cdef long[::1] grp_view
-    cdef long[::1] runs = np.zeros(Y_view.shape[0], dtype=np.int64)
+    cdef long[::1] runs
     cdef double[::1] Ycoord = np.zeros(Y_view.shape[1], dtype=np.double)
     cdef double[::1] co = np.zeros(Y_view.shape[1], dtype=np.double)
     cdef double[:,::1] Xrows = np.zeros((X_view.shape[0], X_view.shape[1]), dtype=np.double)
@@ -77,7 +78,8 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
 
     # Make sure we are not stuck in infinite loop
     for it in range(max_it):
-        updated = False # Reset update flag for this iteration
+        # Reset update flag for this iteration
+        updated = False 
 
         # Loop over all factors
         for i in range(effect_types.shape[0]):
@@ -90,16 +92,9 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
             for j in range(grp_view.shape[0]):
                 grp_val = grp_view[j]
 
-                # Determine runs affected by this group: TODO: precompute
-                if level == 0:
-                    nruns = 1
-                    runs[0] = grp_val
-                else:
-                    nruns = 0
-                    for k in range(Zs.shape[1]):
-                        if Zs[level-1][k] == grp_val:
-                            runs[nruns] = k
-                            nruns += 1
+                # Determine runs affected by this group
+                runs = grp_runs[i][j]
+                nruns = runs.shape[0]
 
                 # Store the coordinate and affected rows
                 Ycoord[:slice_len] = Y_view[runs[0], colstart[i]:colstart[i+1]]

@@ -175,9 +175,20 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
     grps = List([lgrps[lvl] for lvl in effect_levels])
 
+    # Precompute run indices for each (factor, group) pair
+    grp_runs = []
+    for i in range(len(effect_levels)):
+        level = effect_levels[i]
+        grp_runs.append([])
+        for j in range(len(grps[i])):
+            if level == 0:
+                grp_runs[i].append(np.array([grps[i][j]]))
+            else:
+                grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
+        
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, ratios, 
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
         coords, prior, colstart, Zs, Vinv
     )
     
