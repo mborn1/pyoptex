@@ -30,6 +30,13 @@ extensions = [
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
         language="c"
+    ),
+    Extension(
+        "pyoptex._seed_cy",
+        ["src/pyoptex/_seed_cy.pyx"],
+        include_dirs=[np.get_include()],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        language="c"
     )
 ]
 
