@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from functools import cached_property
-from numba.typed import List
 from sklearn.utils.validation import check_X_y
 from sklearn.base import RegressorMixin as RegressorMixinSklearn
 
@@ -98,7 +97,7 @@ class RegressionMixin(RegressorMixinSklearn):
         a categorical factor with that many levels. Can be
         used for internal package functions such as 
         :py:func:`encode_model <pyoptex.utils.model.encode_model>`.
-    coords\_ : :py:class:`numba.typed.List`
+    coords\_ : list
         A list of 2d numpy arrays. Each element corresponds to
         the possible encodings of a factor. Retrieved using
         factor.coords\_ property.
@@ -170,7 +169,7 @@ class RegressionMixin(RegressorMixinSklearn):
             1 if f.is_continuous else len(f.levels) 
             for f in self._factors
         ])
-        self.coords_ = List([f.coords_ for f in self._factors])
+        self.coords_ = [f.coords_ for f in self._factors]
 
     @property
     def is_fitted(self):
@@ -614,7 +613,6 @@ class RegressionMixin(RegressorMixinSklearn):
             prediction formula.
 
             >>> # Imports
-            >>> from numba.typed import List
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
             >>> 
@@ -630,7 +628,7 @@ class RegressionMixin(RegressorMixinSklearn):
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
-            >>> coords = List([f.coords_ for f in factors])
+            >>> coords = [f.coords_ for f in factors]
             >>> 
             >>> # Normalize the factors
             >>> for f in factors:
@@ -690,7 +688,6 @@ class RegressionMixin(RegressorMixinSklearn):
             prediction formula.
 
             >>> # Imports
-            >>> from numba.typed import List
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
             >>> 
@@ -706,7 +703,7 @@ class RegressionMixin(RegressorMixinSklearn):
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
-            >>> coords = List([f.coords_ for f in factors])
+            >>> coords = [f.coords_ for f in factors]
             >>> 
             >>> # Normalize the factors
             >>> for f in factors:

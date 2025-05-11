@@ -63,4 +63,88 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
     Zs = [np.eye(Zi[-1]+1)[Zi] for Zi in Zs if Zi is not None]
     return V + sum(ratios[i] * Zs[i] @ Zs[i].T for i in range(len(Zs)))
 
+def x2fx(Yenc, modelenc):
+    """
+    Create the model matrix from the design matrix
+    and model specification.
 
+    Parameters
+    ----------
+    Yenc : np.ndarray[float64, ndim=2]
+        The encoded design matrix.
+    modelenc : np.ndarray[long, ndim=2]
+        The encoded model, specified as in MATLAB.
+
+    Returns
+    -------
+    Xenc : np.ndarray[float64, ndim=2]
+        The model matrix
+    """
+    return x2fx_cython_impl(np.ascontiguousarray(Yenc), np.ascontiguousarray(modelenc))
+
+def force_Zi_asc(Zi):
+    """
+    Force ascending groups. In other words [0, 0, 2, 1, 1, 1]
+    is transformed to [0, 0, 1, 2, 2, 2].
+
+    Parameters
+    ----------
+    Zi : np.array(1d)
+        The current grouping matrix
+    
+    Returns
+    -------
+    Zi : np.array(1d)
+        The grouping matrix with ascending groups
+    """
+    return force_Zi_asc_cython_impl(Zi)
+
+def encode_design(Y, effect_types, coords=None):
+    """
+    Encode the design according to the effect types.
+    Each categorical factor is encoded using
+    effect-encoding, unless the coordinates are specified.
+
+    It is the inverse of :py:func:`decode_design <pyoptex.utils.design.decode_design>`
+
+    Parameters
+    ----------
+    Y : np.array(2d)
+        The current design matrix.
+    effect_types : np.array(1d) 
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+    coords : None or list[np.ndarray]
+        The possible coordinates for each factor. 
+
+    Returns
+    -------
+    Yenc : np.array(2d)
+        The encoded design-matrix 
+    """
+    return encode_design_cython_impl(np.ascontiguousarray(Y), effect_types, coords)
+
+def decode_design(Yenc, effect_types, coords=None):
+    """
+    Decode the design according to the effect types.
+    Each categorical factor is decoded from
+    effect-encoding, unless the coordinates are specified.
+
+    It is the inverse of :py:func:`encode_design <pyoptex.utils.design.encode_design>`
+
+    Parameters
+    ----------
+    Y : np.array(2d)
+        The effect-encoded design matrix.
+    effect_types : np.array(1d) 
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+    coords: None or list[np.ndarray]
+        Coordinates to be used for decoding the categorical variables.
+
+    Returns
+    -------
+    Ydec : np.array(2d)
+        The decoded design-matrix 
+    """
+    return decode_design_cython_impl(np.ascontiguousarray(Yenc), effect_types, coords)

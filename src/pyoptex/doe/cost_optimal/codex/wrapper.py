@@ -4,7 +4,6 @@ Module for the interface to run the CODEX algorithm
 
 import numpy as np
 import pandas as pd
-from numba.typed import List
 
 from ...constraints import no_constraints, mixture_constraints
 from ....utils.design import decode_design, encode_design
@@ -164,7 +163,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list)
                              or isinstance(f.ratio, np.ndarray) else [f.ratio] 
               for f in factors]
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Align ratios
     nratios = max([len(r) for r in ratios])

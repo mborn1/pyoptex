@@ -4,7 +4,6 @@ Module for the interface to run the split^k-plot algorithm
 
 import numpy as np
 import pandas as pd
-from numba.typed import List
 from tqdm import tqdm
 
 from ...constraints import no_constraints, mixture_constraints
@@ -169,7 +168,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     effect_levels = np.array([f.re.level for f in factors])
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
     colstart = np.concatenate((
@@ -238,12 +237,12 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     # Define which groups to optimize
     lgrps = level_grps(old_plot_sizes, plot_sizes)
     if grps is None:
-        grps = List([lgrps[lvl] for lvl in effect_levels])
+        grps = [lgrps[lvl] for lvl in effect_levels]
     else:
-        grps = List([np.concatenate(
+        grps = [np.concatenate(
             (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
             dtype=np.int64
-        ) for i in range(len(effect_levels))])
+        ) for i in range(len(effect_levels))]
     
     # Create the parameters
     params = Parameters(

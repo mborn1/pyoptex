@@ -4,7 +4,7 @@ cimport numpy as cnp
 
 cnp.import_array()
 
-def x2fx(const double[:, ::1] Yenc not None, const long[:, ::1] modelenc not None):
+def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long[:, ::1] modelenc not None):
     """
     Cython implementation to create the model matrix from the design matrix
     and model specification.
@@ -48,7 +48,7 @@ def x2fx(const double[:, ::1] Yenc not None, const long[:, ::1] modelenc not Non
             Xenc_view[k, i] = p_val
     return Xenc
 
-def force_Zi_asc(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
+def force_Zi_asc_cython_impl(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
     """
     Force ascending groups. In other words [0, 0, 2, 1, 1, 1]
     is transformed to [0, 0, 1, 2, 2, 2].
@@ -78,7 +78,7 @@ def force_Zi_asc(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
 
     return Zi
 
-def encode_design(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
+def encode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
     """
     Encode the design according to the effect types.
     Each categorical factor is encoded using
@@ -143,7 +143,7 @@ def encode_design(const double[:, ::1] Y not None, const long[::1] effect_types 
 
     return Yenc
 
-def decode_design(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
+def decode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
     """
     Decode the design according to the effect types.
     Each categorical factor is decoded from

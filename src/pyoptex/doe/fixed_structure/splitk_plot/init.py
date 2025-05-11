@@ -4,7 +4,6 @@ Module for all init functions of the split^k-plot algorithm
 
 import numba
 import numpy as np
-from numba.typed import List
 
 from ...._profile import profile
 from ....utils.numba import numba_all_axis1
@@ -29,12 +28,12 @@ def __init_unconstrained(effect_types, effect_levels, grps, thetas,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List` (np.array(1d))
+    grps : list
         The groups for each factor to initialize.
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : :py:class:`numba.typed.List` (np.array(2d))
+    coords : list(np.array(2d))
         The coordinates for each factor to use.
     Y : np.array(2d)
         The design matrix to be initialized. May contain the
@@ -123,12 +122,12 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords,
         levels for a categorical factor.
     effect_levels : np.array(1d)
         The level of each factor.
-    grps : :py:class:`numba.typed.List` (np.array(1d))
+    grps : list(np.array(1d))
         The groups for each factor to initialize.
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : :py:class:`numba.typed.List` (np.array(2d))
+    coords : list(np.array(2d))
         The coordinates for each factor to use.
     plot_sizes : np.array(1d)
         The array of plot sizes, starting from the easy-to-change.
@@ -183,7 +182,6 @@ def __correct_constraints(effect_types, effect_levels, grps, thetas, coords,
                 )
                 for col, l in enumerate(effect_levels)
             ]
-            grps_ = List(grps_)
 
             ##################################################
             # REGENERATE BLOCK

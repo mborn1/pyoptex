@@ -115,7 +115,6 @@ class ConditionalRegressionMixin:
             prediction formula.
 
             >>> # Imports
-            >>> from numba.typed import List
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
             >>> 
@@ -131,7 +130,7 @@ class ConditionalRegressionMixin:
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
-            >>> coords = List([f.coords_ for f in factors])
+            >>> coords = [f.coords_ for f in factors]
             >>> 
             >>> # Normalize the factors
             >>> for f in factors:
@@ -194,7 +193,6 @@ class ConditionalRegressionMixin:
             prediction formula.
 
             >>> # Imports
-            >>> from numba.typed import List
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
             >>> 
@@ -210,7 +208,7 @@ class ConditionalRegressionMixin:
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
-            >>> coords = List([f.coords_ for f in factors])
+            >>> coords = [f.coords_ for f in factors]
             >>> 
             >>> # Normalize the factors
             >>> for f in factors:

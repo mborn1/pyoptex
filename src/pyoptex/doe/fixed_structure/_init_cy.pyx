@@ -12,14 +12,6 @@ cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
         if arr[i]:
             return True
     return False
-
-cdef bint cython_all(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
-    cdef Py_ssize_t i
-    for i in range(n):
-        if not arr[i]:
-            return False
-    return True
-
 cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ssize_t n) noexcept:
     cdef Py_ssize_t i
     for i in range(n):
