@@ -15,28 +15,39 @@ extensions = [
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
         language="c",
-        # extra_compile_args=["-O3"], 
+        extra_compile_args=["-O3", '-march=native'], 
     ),
     Extension(
         "pyoptex.utils._design_cy",
         ["src/pyoptex/utils/_design_cy.pyx"],
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
-        language="c"
+        language="c",
+        extra_compile_args=["-O3", '-march=native'],
     ),
     Extension(
         "pyoptex.doe.fixed_structure._init_cy",
         ["src/pyoptex/doe/fixed_structure/_init_cy.pyx"],
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
-        language="c"
+        language="c",
+            extra_compile_args=["-O3", '-march=native'],
     ),
     Extension(
         "pyoptex._seed_cy",
         ["src/pyoptex/_seed_cy.pyx"],
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
-        language="c"
+        language="c",
+        extra_compile_args=["-O3", '-march=native'],
+    ),
+    Extension(
+        "pyoptex.utils._comp_cy",
+        ["src/pyoptex/utils/_comp_cy.pyx"],
+        include_dirs=[np.get_include()],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        language="c",
+        extra_compile_args=["-O3", '-march=native'],
     )
 ]
 

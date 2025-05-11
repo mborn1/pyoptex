@@ -52,7 +52,6 @@ def obs_var_Zs(plot_sizes):
     Zs = tuple([np.repeat(np.arange(alpha), int(alphas[0] / alpha)) for alpha in alphas[1:]])
     return Zs
 
-@numba.njit
 def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to

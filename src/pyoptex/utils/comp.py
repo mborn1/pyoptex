@@ -5,8 +5,8 @@ import multiprocessing
 import numba
 import numpy as np
 
+from pyoptex.utils._comp_cy import outer_integral_cython_impl
 
-@numba.njit
 def outer_integral(arr):
     """
     Computes the integral of the outer products of the array rows 
@@ -23,10 +23,7 @@ def outer_integral(arr):
     out : np.array(2d)
         The integral of the outer product, up to the volume factor.
     """
-    out = np.zeros((arr.shape[-1], arr.shape[-1]))
-    for i in range(arr.shape[0]):
-        out += np.expand_dims(arr[i], 1) @ np.expand_dims(arr[i], 0)
-    return out / arr.shape[0]
+    return outer_integral_cython_impl(np.ascontiguousarray(arr))
 
 def timeout(func, *args, timeout=1, default=None):
     """
