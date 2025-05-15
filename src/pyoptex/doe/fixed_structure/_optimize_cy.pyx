@@ -29,12 +29,12 @@ cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
 cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps):
     """Cython implementation of the core coordinate-exchange logic."""
     # Type declarations for parameters accessed frequently
-    cdef long[::1] effect_types = params.effect_types
-    cdef long[::1] effect_levels = params.effect_levels
+    cdef long long[::1] effect_types = params.effect_types
+    cdef long long[::1] effect_levels = params.effect_levels
     cdef list grps = params.grps
     cdef list coords = params.coords
-    cdef long[::1] colstart = params.colstart
-    cdef long[:,::1] Zs = params.Zs
+    cdef long long[::1] colstart = params.colstart
+    cdef long long[:,::1] Zs = params.Zs
     cdef object fn = params.fn # Keep fn as a Python object for callbacks
     cdef list grp_runs = params.grp_runs
 
@@ -64,8 +64,8 @@ cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps
     cdef double new_metric, up
 
     # Temporary arrays/views needed inside loops
-    cdef long[::1] grp_view
-    cdef long[::1] runs
+    cdef long long[::1] grp_view
+    cdef long long[::1] runs
     cdef double[::1] Ycoord = np.zeros(Y_view.shape[1], dtype=np.double)
     cdef double[::1] co = np.zeros(Y_view.shape[1], dtype=np.double)
     cdef double[:,::1] Xrows = np.zeros((X_view.shape[0], X_view.shape[1]), dtype=np.double)

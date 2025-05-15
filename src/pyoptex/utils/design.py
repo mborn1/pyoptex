@@ -70,17 +70,17 @@ def x2fx(Yenc, modelenc):
 
     Parameters
     ----------
-    Yenc : np.ndarray[float64, ndim=2]
+    Yenc : np.ndarray(2d)
         The encoded design matrix.
-    modelenc : np.ndarray[long, ndim=2]
+    modelenc : np.ndarray(2d)
         The encoded model, specified as in MATLAB.
 
     Returns
     -------
-    Xenc : np.ndarray[float64, ndim=2]
+    Xenc : np.ndarray(2d)
         The model matrix
     """
-    return x2fx_cython_impl(np.ascontiguousarray(Yenc), np.ascontiguousarray(modelenc))
+    return x2fx_cython_impl(np.ascontiguousarray(Yenc), np.ascontiguousarray(modelenc, dtype=np.int64))
 
 def force_Zi_asc(Zi):
     """
@@ -97,7 +97,7 @@ def force_Zi_asc(Zi):
     Zi : np.array(1d)
         The grouping matrix with ascending groups
     """
-    return force_Zi_asc_cython_impl(Zi)
+    return force_Zi_asc_cython_impl(np.ascontiguousarray(Zi, dtype=np.int64))
 
 def encode_design(Y, effect_types, coords=None):
     """
@@ -122,7 +122,7 @@ def encode_design(Y, effect_types, coords=None):
     Yenc : np.array(2d)
         The encoded design-matrix 
     """
-    return encode_design_cython_impl(np.ascontiguousarray(Y), effect_types, coords)
+    return encode_design_cython_impl(np.ascontiguousarray(Y), np.ascontiguousarray(effect_types, dtype=np.int64), coords)
 
 def decode_design(Yenc, effect_types, coords=None):
     """
@@ -147,4 +147,4 @@ def decode_design(Yenc, effect_types, coords=None):
     Ydec : np.array(2d)
         The decoded design-matrix 
     """
-    return decode_design_cython_impl(np.ascontiguousarray(Yenc), effect_types, coords)
+    return decode_design_cython_impl(np.ascontiguousarray(Yenc), np.ascontiguousarray(effect_types, dtype=np.int64), coords)

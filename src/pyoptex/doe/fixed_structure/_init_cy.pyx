@@ -19,11 +19,11 @@ cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ss
             return False
     return True
 
-cpdef __init_unconstrained(long[::1] effect_types,
-                         long[::1] effect_levels,
+cpdef __init_unconstrained(long long[::1] effect_types,
+                         long long[::1] effect_levels,
                          list grps,
                          list coords,
-                         long[:, ::1] Zs,
+                         long long[:, ::1] Zs,
                          cnp.ndarray[double, ndim=2] Y,
                          bint complete=False):
     """
@@ -61,8 +61,8 @@ cpdef __init_unconstrained(long[::1] effect_types,
         The initialized design matrix.
     """
     cdef int i, j, n_replicates, ngrps
-    cdef long typ, level
-    cdef long[::1] lgrps, Z
+    cdef long long typ, level
+    cdef long long[::1] lgrps, Z
     cdef double[::1] r, choices
     cdef double[:, ::1] Y_view = Y
     
@@ -143,12 +143,12 @@ cpdef __init_unconstrained(long[::1] effect_types,
 
     return Y
 
-def __correct_constraints(long[::1] effect_types not None,
-                          long[::1] effect_levels not None,
+def __correct_constraints(long long[::1] effect_types not None,
+                          long long[::1] effect_levels not None,
                           list grps not None,
                           list coords not None,
                           object constraints not None,
-                          long[:, ::1] Zs not None,
+                          long long[:, ::1] Zs not None,
                           cnp.ndarray[double, ndim=2] Y not None,
                           bint complete=False):
 
@@ -165,14 +165,14 @@ def __correct_constraints(long[::1] effect_types not None,
 
     # Loop variables
     cdef int[::1] runs = np.zeros(Y_view.shape[0], dtype=np.int32)
-    cdef long[::1] Z = np.zeros(Y_view.shape[0], dtype=np.int64)
+    cdef long long[::1] Z = np.zeros(Y_view.shape[0], dtype=np.int64)
     cdef unsigned char[::1] invalid_run_selected = np.zeros(Y_view.shape[0], dtype=np.bool_)
     cdef unsigned char[::1] permitted_to_optimize = np.zeros(Y_view.shape[0], dtype=np.bool_)
     cdef cnp.ndarray[double, ndim=2] Y_selected = np.zeros((Y_view.shape[0], Y_view.shape[1]), dtype=np.float64)
     cdef double[:, ::1] Y_selected_view = Y_selected
 
     cdef int i, j, k, l, level, nruns, ngrps
-    cdef long[::1] lgrps, unique_vals, grp
+    cdef long long[::1] lgrps, unique_vals, grp
     cdef list grps_
     cdef bint c
     

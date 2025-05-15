@@ -5,7 +5,7 @@ cimport numpy as cnp
 cnp.import_array()
 
 def outer_integral_cython_impl(const double[:, ::1] arr not None):
-    cdef int i, j, k, nrows, ncols
+    cdef Py_ssize_t i, j, k, nrows, ncols
     cdef cnp.ndarray[cnp.double_t, ndim=2] out
     
     nrows = arr.shape[0]

@@ -4,7 +4,7 @@ cimport numpy as cnp
 
 cnp.import_array()
 
-def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long[:, ::1] modelenc not None):
+def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long long[:, ::1] modelenc not None):
     """
     Cython implementation to create the model matrix from the design matrix
     and model specification.
@@ -13,7 +13,7 @@ def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long[:, ::1] mode
     ----------
     Yenc : np.ndarray[float64, ndim=2]
         The encoded design matrix.
-    modelenc : np.ndarray[long, ndim=2]
+    modelenc : np.ndarray[long long, ndim=2]
         The encoded model, specified as in MATLAB.
 
     Returns
@@ -22,18 +22,18 @@ def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long[:, ::1] mode
         The model matrix
     """
     # Get dimensions
-    cdef int n_runs = Yenc.shape[0]
-    cdef int n_factors = Yenc.shape[1]
-    cdef int n_terms = modelenc.shape[0]
+    cdef Py_ssize_t n_runs = Yenc.shape[0]
+    cdef Py_ssize_t n_factors = Yenc.shape[1]
+    cdef Py_ssize_t n_terms = modelenc.shape[0]
 
     # Initialize output array
     cdef cnp.ndarray[cnp.double_t, ndim=2] Xenc = np.zeros((n_runs, n_terms), dtype=np.float64)
     cdef double[:, ::1] Xenc_view = Xenc
 
     # Loop variables
-    cdef int i, j, k
+    cdef Py_ssize_t i, j, k
     cdef double p_val
-    cdef const long[::1] term
+    cdef const long long[::1] term
 
     for i in range(n_terms): 
         term = modelenc[i]
@@ -48,7 +48,7 @@ def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long[:, ::1] mode
             Xenc_view[k, i] = p_val
     return Xenc
 
-def force_Zi_asc_cython_impl(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
+def force_Zi_asc_cython_impl(long long[::1] Zi not None):
     """
     Force ascending groups. In other words [0, 0, 2, 1, 1, 1]
     is transformed to [0, 0, 1, 2, 2, 2].
@@ -63,11 +63,11 @@ def force_Zi_asc_cython_impl(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
     Zi : np.array(1d)
         The grouping matrix with ascending groups
     """
-    cdef long[::1] Zi_view = Zi
+    cdef long long[::1] Zi_view = Zi
 
-    cdef long c_asc = 0
-    cdef long c = Zi_view[0]
-    cdef int i
+    cdef long long c_asc = 0
+    cdef long long c = Zi_view[0]
+    cdef Py_ssize_t i
 
     Zi_view[0] = c_asc
     for i in range(1, Zi_view.shape[0]):
@@ -78,7 +78,7 @@ def force_Zi_asc_cython_impl(cnp.ndarray[cnp.long_t, ndim=1] Zi not None):
 
     return Zi
 
-def encode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
+def encode_design_cython_impl(const double[:, ::1] Y not None, const long long[::1] effect_types not None, list coords=None):
     """
     Encode the design according to the effect types.
     Each categorical factor is encoded using
@@ -102,12 +102,12 @@ def encode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
         The encoded design-matrix 
     """
     # Extract parameters
-    cdef int n_runs = Y.shape[0]
-    cdef int n_factors = Y.shape[1]
-    cdef long[::1] cols = np.zeros(n_factors, dtype=np.int64)
-    cdef long ncols = 0
+    cdef Py_ssize_t n_runs = Y.shape[0]
+    cdef Py_ssize_t n_factors = Y.shape[1]
+    cdef long long[::1] cols = np.zeros(n_factors, dtype=np.int64)
+    cdef long long ncols = 0
 
-    cdef int i
+    cdef Py_ssize_t i
     for i in range(n_factors):
         if effect_types[i] > 1:
             cols[i] = effect_types[i] - 1  
@@ -120,7 +120,8 @@ def encode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
     cdef double[:, ::1] Yenc_view = Yenc
     
     # Loop over factors
-    cdef int j, k, start, val
+    cdef Py_ssize_t j, k, start
+    cdef int val
     cdef double[:, ::1] coord
     for i in range(n_runs):
         start = 0
@@ -143,7 +144,7 @@ def encode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
 
     return Yenc
 
-def decode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] effect_types not None, list coords=None):
+def decode_design_cython_impl(const double[:, ::1] Y not None, const long long[::1] effect_types not None, list coords=None):
     """
     Decode the design according to the effect types.
     Each categorical factor is decoded from
@@ -167,13 +168,13 @@ def decode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
         The decoded design-matrix 
     """
     # Extract parameters
-    cdef int n_runs = Y.shape[0]
-    cdef int n_factors = effect_types.shape[0]
+    cdef Py_ssize_t n_runs = Y.shape[0]
+    cdef Py_ssize_t n_factors = effect_types.shape[0]
     cdef cnp.ndarray[cnp.double_t, ndim=2] Ydec = np.zeros((n_runs, n_factors), dtype=np.float64)
     cdef double[:, ::1] Ydec_view = Ydec
     
     # Loop variables
-    cdef int i, j, k, l, ncols, max_idx, start
+    cdef Py_ssize_t i, j, k, l, ncols, start
     cdef bint all_match
     cdef double max_val
     cdef double[:, ::1] coord
@@ -194,12 +195,12 @@ def decode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
                 if coords is None:
                     if Y[i, start] == -1:
                         # Last value in the encoding
-                        Ydec_view[i, j] = ncols
+                        Ydec_view[i, j] = <double>ncols
                     else:
                         # Search for the one
                         for k in range(ncols):
                             if Y[i, start + k] == 1:
-                                Ydec_view[i, j] = k
+                                Ydec_view[i, j] = <double>k
                                 break
 
                 else:
@@ -217,7 +218,7 @@ def decode_design_cython_impl(const double[:, ::1] Y not None, const long[::1] e
 
                         # Set the value
                         if all_match:
-                            Ydec_view[i, j] = k
+                            Ydec_view[i, j] = <double>k
                             break
 
                 # Increase the counter

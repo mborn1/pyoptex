@@ -124,7 +124,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         ratios = np.array([
             np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
             for ratio in ratios
-        ]).T
+        ], dtype=np.float64).T
 
         # Split regular and blocking ratios
         if nblocks == 0:
@@ -138,37 +138,37 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         be_ratios = []
 
     # Extract parameter arrays
-    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors], dtype=np.int64)
+    effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors], dtype=np.int64)
     coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
     colstart = np.concatenate((
         [0], 
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ))
+    ), dtype=np.int64)
 
     # Compute Zs and Vinv
     if len(re) > 0:
-        Zs = np.array([np.array(r.Z) for r in re], dtype=np.int64)
-        V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios])
+        Zs = np.array([np.array(r.Z, dtype=np.int64) for r in re])
+        V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios], dtype=np.float64)
     else:
         Zs = np.empty((0, 0), dtype=np.int64)
-        V = np.expand_dims(np.eye(nruns), 0)
+        V = np.expand_dims(np.eye(nruns, dtype=np.float64), 0)
 
     # Augment V with the random blocking effects
     if len(block_effects) > 0:
-        beZs = np.array([np.array(be.Z) for be in block_effects], dtype=np.int64)
+        beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
         V += np.array([
             obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) 
             for r in be_ratios
-        ])
+        ], dtype=np.float64)
         
     # Invert V
     Vinv = np.linalg.inv(V)
         
     # Define which groups to optimize
-    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
+    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1, dtype=np.int64) for Z in Zs]
     grps = [lgrps[lvl] for lvl in effect_levels]
 
     # Precompute run indices for each (factor, group) pair
@@ -178,7 +178,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         grp_runs.append([])
         for j in range(len(grps[i])):
             if level == 0:
-                grp_runs[i].append(np.array([grps[i][j]]))
+                grp_runs[i].append(np.array([grps[i][j]], dtype=np.int64))
             else:
                 grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
         
