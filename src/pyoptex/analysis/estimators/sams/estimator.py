@@ -3,11 +3,12 @@ Module for the SAMS regressor.
 """
 
 import numpy as np
-import pandas as pd
 import ruptures as rpt
+import plotly.graph_objects as go
 from functools import reduce
 from sklearn.cluster import KMeans
 from tqdm import tqdm
+from plotly.subplots import make_subplots
 
 from ....utils.design import obs_var_from_Zs
 from ....utils.model import identityY2X, sample_model_dep_onebyone
@@ -553,7 +554,7 @@ class SamsRegressor(MultiRegressionMixin):
 
                 # Perform branch and bound
                 results_ = results['model'][cluster_i][skipn:]
-                submodels, freq = topn_selection(
+                submodels, freq = self._topn_selection(
                     results_, self._nterms_bnb, self.n_encoded_features_, self.topn_bnb, self.bnb_timeout
                 )
                 m_.extend(submodels)
@@ -636,7 +637,7 @@ class SamsRegressor(MultiRegressionMixin):
             fig.update_yaxes(title='', row=1)
 
             # Plot the raster
-            fig_ = plot_raster(
+            fig = plot_raster(
                 self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
                 self.skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))

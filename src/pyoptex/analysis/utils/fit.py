@@ -50,6 +50,11 @@ def r2adj(fit):
             fit.model.exog_re, fit.model.exog_vc, fit.model.use_sqrt
         ).fit()
 
+        # If unable to estimate random effect variance, set to zero to avoid instability (similar to lme4)
+        nans = np.isnan(fit0.bse[fit0.k_fe:])
+        fit0.params[fit0.k_fe:][nans] = 0
+        fit0.vcomp[nans] = 0
+
         # Extract the groups
         vc_mats = fit.model.exog_vc.mats
         Zs = np.stack([np.argmax(vc_mats[i][0], axis=1) for i in range(len(vc_mats))]).T
@@ -142,6 +147,11 @@ def fit_mixedlm(X, y, groups):
 
     # Fit the model
     fit = sm.MixedLM(y, X, np.ones(len(X)), exog_vc=exog_vc).fit()
+
+    # If unable to estimate random effect variance, set to zero to avoid instability (similar to lme4)
+    nans = np.isnan(fit.bse[fit.k_fe:])
+    fit.params[fit.k_fe:][nans] = 0
+    fit.vcomp[nans] = 0
 
     # Add additional values
     fit.rsquared = cached_property(
