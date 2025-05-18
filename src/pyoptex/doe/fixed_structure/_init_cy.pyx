@@ -75,7 +75,7 @@ cpdef __init_unconstrained(long long[::1] effect_types,
 
             if typ == 1:
                 # Continuous factor
-                r = np.random.rand(ngrps) * 2 - 1
+                r = np.random.rand(ngrps) * 2.0 - 1.0
             else:
                 # Discrete factor
                 choices = np.arange(typ, dtype=np.float64)

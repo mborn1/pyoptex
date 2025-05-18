@@ -39,9 +39,6 @@ else:
     extra_compile_args.append("-O3")
 
 # Define Cython extensions
-print( [
-    (path.relative_to(pathlib.Path('src')).as_posix().replace('/', '.')[:-4],
-        [str(path)]) for path in search_pyx(pathlib.Path('src'))])
 extensions = [
     Extension(
         path.relative_to(pathlib.Path('src')).as_posix().replace('/', '.')[:-4],
