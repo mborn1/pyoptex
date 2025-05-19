@@ -5,103 +5,10 @@ Module for all init functions of the split^k-plot algorithm
 import numba
 import numpy as np
 
+from ._init_cy import __init_unconstrained
 from ...._profile import profile
 from ....utils.numba import numba_all_axis1
 from ....utils.design import encode_design
-
-
-@numba.njit
-def __init_unconstrained(effect_types, effect_levels, grps, thetas, 
-                         coords, Y, complete=False):
-    """
-    This function generates a random design without 
-    considering any design constraints.
-
-    .. note::
-        The resulting design matrix `Y` is not encoded.
-
-    Parameters
-    ----------
-    effect_types : np.array(1d)
-        The effect types of each factor, representing 
-        a 1 for a continuous factor and the number of 
-        levels for a categorical factor.
-    effect_levels : np.array(1d)
-        The level of each factor.
-    grps : list
-        The groups for each factor to initialize.
-    thetas : np.array(1d)
-        The array of thetas.
-        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : list(np.array(2d))
-        The coordinates for each factor to use.
-    Y : np.array(2d)
-        The design matrix to be initialized. May contain the
-        some fixed settings if not optimizing all groups.
-        This matrix should not be encoded.
-    complete : bool
-        Whether to use the coordinates for initialization
-        or initialize fully randomly.
-
-    Returns
-    -------
-    Y : np.array(2d)
-        The initialized design matrix.
-    """
-    ##################################################
-    # UNCONSTRAINED DESIGN
-    ##################################################
-    # Loop over all columns
-    for col in range(effect_types.size):
-        # Extract parameters
-        level = effect_levels[col]
-        typ = effect_types[col]
-
-        # Generate random values
-        lgrps = grps[col]
-        n = len(lgrps)
-        size = thetas[level]
-
-        if complete:
-            if typ == 1:
-                # Continuous factor
-                r = np.random.rand(n) * 2 - 1
-            else:
-                # Discrete factor
-                choices = np.arange(typ, dtype=np.float64)
-                if typ >= n:
-                    r = np.random.choice(choices, n, replace=False)
-                else:
-                    n_replicates = n // choices.size
-                    r = np.random.permutation(
-                        np.concatenate((
-                            np.repeat(choices, n_replicates), 
-                            np.random.choice(choices, n - choices.size * n_replicates)
-                        ))
-                    )
-        else:
-            # Extract the possible coordinates
-            if typ > 1:
-                # Convert to decoded values for categorical factors
-                choices = np.arange(len(coords[col]), dtype=np.float64)
-            else:
-                choices = coords[col].flatten()
-
-            # Pick from the choices and try to have all of them atleast once
-            if choices.size >= n:
-                r = np.random.choice(choices, n, replace=False)
-            else:
-                n_replicates = n // choices.size
-                r = np.random.permutation(np.concatenate((
-                    np.repeat(choices, n_replicates), 
-                    np.random.choice(choices, n - choices.size * n_replicates)
-                )))
-        
-        # Fill design
-        for i, grp in enumerate(lgrps):
-            Y[grp*size: (grp+1)*size, col] = r[i]
-
-    return Y
 
 @numba.njit
 def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, 

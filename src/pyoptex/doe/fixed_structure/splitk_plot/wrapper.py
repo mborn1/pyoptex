@@ -243,11 +243,12 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
             (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
             dtype=np.int64
         ) for i in range(len(effect_levels))]
-    
+    grp_runs = None # Not implemented yet for this optimization
+
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, ratios, 
-        coords, prior, colstart, Zs, Vinv, plot_sizes, cs, alphas, thetas, thetas_inv,
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
+        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv, plot_sizes, cs, alphas, thetas, thetas_inv,
         use_formulas
     )
     

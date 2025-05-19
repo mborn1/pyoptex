@@ -185,7 +185,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     # Create the parameters
     params = Parameters(
         fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
-        coords, prior, colstart, Zs, Vinv
+        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv
     )
     
     return params

@@ -1,7 +1,6 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 
 import numpy as np
-from numpy.random import PCG64
 cimport numpy as cnp
 
 cnp.import_array()
@@ -19,8 +18,8 @@ cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ss
             return False
     return True
 
-cpdef __init_unconstrained(long long[::1] effect_types,
-                         long long[::1] effect_levels,
+cpdef __init_unconstrained(const long long[::1] effect_types,
+                         const long long[::1] effect_levels,
                          list grps,
                          list coords,
                          long long[:, ::1] Zs,
@@ -60,8 +59,8 @@ cpdef __init_unconstrained(long long[::1] effect_types,
     Y : np.array(2d)
         The initialized design matrix.
     """
-    cdef int i, j, n_replicates, ngrps
-    cdef long long typ, level
+    cdef Py_ssize_t i, k
+    cdef long long typ, level, ngrps, n_replicates, j
     cdef long long[::1] lgrps, Z
     cdef double[::1] r, choices
     cdef double[:, ::1] Y_view = Y
@@ -143,8 +142,8 @@ cpdef __init_unconstrained(long long[::1] effect_types,
 
     return Y
 
-def __correct_constraints(long long[::1] effect_types not None,
-                          long long[::1] effect_levels not None,
+def __correct_constraints(const long long[::1] effect_types not None,
+                          const long long[::1] effect_levels not None,
                           list grps not None,
                           list coords not None,
                           object constraints not None,
