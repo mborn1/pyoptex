@@ -5,6 +5,7 @@ Module for all metrics of the cost optimal designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
+from ..utils.init import full_factorial
 from .cov import no_cov
 from .init import init
 
@@ -110,6 +111,73 @@ class Dopt(Metric):
             np.prod(np.maximum(np.linalg.det(M), 0)), 
             1/(X.shape[1] * len(Vinv))
         )
+    
+class DoptBayesian(Metric):
+    """
+    The Bayesian D-optimality criterion evaluated using the 
+    Hermite-Gauss quadrature rule for a log-norm prior distribution.
+
+    Attributes
+    ----------
+    cov : func(Y, X, Zs, Vinv, costs)
+        A function computing the covariate parameters
+        and potential extra random effects.
+    factors :
+    nroots : The number of roots from the quadrature rule to use.
+    loc : The location parameter of the log-normal distribution.
+    scale : The scale parameter of the log-normal distribution.
+    """
+    def __init__(self, factors, nroots=3, loc=0, scale=np.log(np.power(10, 1/3))**2, cov=None):
+        super().__init__(cov)
+        self.nroots = nroots
+        self.loc = loc
+        self.scale = scale
+
+        # Compute where to evaluate the ratios
+        sample_points, weights = np.polynomial.hermite.hermgauss(self.nroots)
+        ratios = np.exp(self.loc + sample_points * np.sqrt(self.scale) * np.sqrt(2))
+
+        # Compute the set of ratios to evaluate
+        grouped_factors = [f for f in factors if f.grouped]
+        self.ratios = full_factorial(
+            np.arange(len(factors) + 1), 
+            [ratios.reshape(-1, 1) if f.grouped else np.array([[1.]]) for f in factors]
+        )
+        self.weights = np.prod(full_factorial(
+            np.arange(len(grouped_factors) + 1), 
+            [weights.reshape(-1, 1) for f in grouped_factors]
+        ), axis=1)
+
+    def call(self, Y, X, Zs, Vinv, costs):
+        """
+        Computes the Bayesian D-optimality criterion evaluated using the 
+        Hermite-Gauss quadrature rule for a log-norm prior distribution.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The design matrix
+        X : np.array(2d)
+            The model matrix
+        Zs : list(np.array(1d))
+            The grouping matrices
+        Vinv : np.array(3d)
+            The inverses of the multiple covariance matrices for each
+            set of a-priori variance ratios.
+        costs : list(np.array(1d), float, np.array(1d))
+            The list of different costs.
+
+        Returns
+        -------
+        metric : float
+            The D-optimality criterion.
+        """
+        # Compute covariates
+        _, X, _, Vinv = self.cov(Y, X, Zs, Vinv, costs)
+        M = X.T @ Vinv @ X
+
+        # Compute gauss hermite quadrature
+        return 1/(X.shape[1]) * np.sum(self.weights * np.log(np.maximum(np.linalg.det(M), 0)))
 
 class Aopt(Metric):
     """
