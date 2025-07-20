@@ -2,8 +2,47 @@
 
 import numpy as np
 cimport numpy as cnp
+cimport cython
 
 cnp.import_array()
+
+cdef void _cython_all_axis1(
+        unsigned char[::1] out, const unsigned char[::1] arr, 
+        Py_ssize_t dim0, Py_ssize_t dim1
+    ) noexcept:
+    cdef Py_ssize_t i, j
+    cdef bint all_true
+
+    for i in range(dim0):
+        all_true = True
+        for j in range(dim1):
+            if not arr[i*dim1 + j]:
+                all_true = False
+                break
+        out[i] = all_true
+
+# cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
+#     cdef Py_ssize_t i
+#     for i in range(n):
+#         if arr[i]:
+#             return True
+#     return False
+
+cdef bint cython_all(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
+    cdef Py_ssize_t i
+    for i in range(n):
+        if not arr[i]:
+            return False
+    return True
+
+
+# cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ssize_t n) noexcept:
+#     cdef Py_ssize_t i
+#     for i in range(n):
+#         if not arr[idx[i]]:
+#             return False
+#     return True
+
 
 cpdef __init_unconstrained(const long long[::1] effect_types,
                             const long long[::1] effect_levels,
@@ -116,116 +155,113 @@ cpdef __init_unconstrained(const long long[::1] effect_types,
 
 
 
-
-
-cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
-    cdef Py_ssize_t i
-    for i in range(n):
-        if arr[i]:
-            return True
-    return False
-cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ssize_t n) noexcept:
-    cdef Py_ssize_t i
-    for i in range(n):
-        if not arr[idx[i]]:
-            return False
-    return True
-
 def __correct_constraints(const long long[::1] effect_types not None,
                           const long long[::1] effect_levels not None,
                           list grps not None,
-                          const long long[::1] thetas,
+                          const long long[::1] thetas not None,
                           list coords not None,
-                          const long long[::1] plot_sizes,
+                          const long long[::1] plot_sizes not None,
                           object constraints not None,
                           cnp.ndarray[double, ndim=2] Y not None,
                           bint complete=False):
-
-    # Extract parameters
-    cdef int n_factors = effect_types.shape[0]
-    cdef double[:, ::1] Y_view = Y
+    cdef Py_ssize_t i, j, k
 
     # Determine which runs are invalid
-    cdef unsigned char[::1] invalid_run = constraints(Y)
+    cdef unsigned char[::1] invalid_run = np.ascontiguousarray(constraints(Y), dtype=np.uint8)
 
+    # Calculate the cumulative product of the plot sizes
+    cdef long long[::1] cum_plot_sizes = cython.view.array(
+        shape=(plot_sizes.shape[0]+1,), 
+        itemsize=cython.sizeof(cython.longlong), 
+        format='q'
+    )
+    cum_plot_sizes[0] = 1
+    for i in range(plot_sizes.shape[0]):
+        cum_plot_sizes[i+1] = cum_plot_sizes[i] * plot_sizes[i]
 
-    # # Store aggregated values of invalid run per level
-    # level_all_invalid = [invalid_run]
-    # for i in range(plot_sizes.size - 1):
-    #     all_invalid = numba_all_axis1(level_all_invalid[i].reshape(-1, plot_sizes[i]))
-    #     level_all_invalid.append(all_invalid)
-
+    # Determine the total number of runs
+    cdef long long nb_runs = cum_plot_sizes[plot_sizes.shape[0]]
+    
     # Loop variables
-    cdef long long i, j, level, jmp
-    cdef long long ngrps = 1
+    cdef cnp.ndarray[long long] empty_grps = np.arange(0, dtype=np.int64)
+    cdef cnp.ndarray[long long] filtered_grps = np.empty(nb_runs, dtype=np.int64)
+    cdef long long[::1] filtered_grps_view = filtered_grps
+    cdef unsigned char[::1] all_invalid = cython.view.array(
+        shape=(nb_runs,), 
+        itemsize=cython.sizeof(cython.uchar), 
+        format='B'
+    )
+    cdef Py_ssize_t nb_plots, plot_idx, factor_idx
+    cdef list grps_list = [None] * effect_types.shape[0]
+    cdef long long[::1] grps_factor
+    cdef long long lvl_factor, grp_start, grp_end, jmp
+    cdef bint is_in_grps, is_invalid
+    cdef unsigned char[::1] c_res    
 
-    for i in range(plot_sizes.size - 1, -1, -1):
-        level = effect_levels[i]
-        jmp = thetas[level]
-        ngrps *= plot_sizes[i]
-        all_invalid = ... # Compute aggregation of invalid runs
+    # Loop over all levels
+    for i in range(plot_sizes.shape[0] - 1, -1, -1):
+        # Determine the jump size
+        jmp = thetas[i]
+        nb_plots = nb_runs // cum_plot_sizes[i]
 
-        for j in range(ngrps):
-            # Specify which groups to regenerate
-            # grps_ = [np.empty((0,), dtype=np.int64)] * n_factors
-            # for k in range(n_factors):
-            #     # Only regenerate levels that are not yet optimized
-            #     if effect_levels[k] in zidx[j:]:
-            #         if effect_levels[k] == 0:
-            #             # Take every runs that we can optimize
-            #             grp = np.array([co for co in runs[:nruns] if co in grps[k]], dtype=np.int64)
-            #         else:
-            #             # Detect unique group values
-            #             for l in range(nruns):
-            #                 Z[l] = Zs[effect_levels[k]-1][runs[l]]
-            #             unique_vals = np.unique(Z[:nruns])
+        # Determine which plots are invalid
+        _cython_all_axis1(all_invalid, invalid_run, nb_plots, cum_plot_sizes[i])
 
-            #             # Take every unique group value that we can optimize
-            #             grp = np.array([co for co in unique_vals if co in grps[k]], dtype=np.int64)
-            #         grps_[k] = grp
+        # Loop over all plots
+        for plot_idx in range(nb_plots):
+            # Check if invalid
+            if all_invalid[plot_idx]:
 
+                # Specify which groups to update
+                for factor_idx in range(effect_types.shape[0]):
+                    lvl_factor = effect_levels[factor_idx]
+                    grps_factor = grps[factor_idx]
 
-        
+                    # Check if the level is lower than the current level    
+                    if lvl_factor < i:
+                        # Determine the start and end of the groups
+                        grp_start = plot_idx * jmp // thetas[lvl_factor]
+                        grp_end = (plot_idx + 1) * jmp // thetas[lvl_factor]
 
-    # for level, all_invalid in zip(range(plot_sizes.size - 1, -1, -1), level_all_invalid[::-1]):
-    #     # Define the jump
-    #     jmp = thetas[level]
+                        # Filter the groups
+                        k = 0
+                        for j in range(grps_factor.shape[0]):
+                            if grps_factor[j] >= grp_start and grps_factor[j] < grp_end:
+                                filtered_grps_view[k] = grps_factor[j]
+                                k += 1
 
-    #     ##################################################
-    #     # SELECT ENTIRELY INVALID BLOCKS
-    #     ##################################################
-    #     # Loop over all groups in the level
-    #     for grp in np.where(all_invalid)[0]:
-    #         # Specify which groups to update
-    #         grps_ = [
-    #             np.array([
-    #                 g for g in grps[col] 
-    #                 if g >= grp*jmp/thetas[l] and g < (grp+1)*jmp/thetas[l]
-    #             ], dtype=np.int64) 
-    #             if l < level else (
-    #                 np.arange(grp, grp+1, dtype=np.int64) 
-    #                 if (l == level and grp in grps[col])
-    #                 else np.arange(0, dtype=np.int64)
-    #             )
-    #             for col, l in enumerate(effect_levels)
-    #         ]
+                        # Add the filtered groups to the list
+                        grps_list[factor_idx] = filtered_grps[:k].copy()
+                    else:
+                        if lvl_factor == i:
+                            # Check if the group is in the list
+                            is_in_grps = False
+                            for j in range(grps_factor.shape[0]):
+                                if grps_factor[j] == plot_idx:
+                                    is_in_grps = True
+                                    break
 
-    #         ##################################################
-    #         # REGENERATE BLOCK
-    #         ##################################################
-    #         # Loop until no longer all invalid
-    #         while all_invalid[grp]:
-    #             # Adjust the design
-    #             Y = __init_unconstrained(effect_types, effect_levels, grps_, 
-    #                                      thetas, coords, Y, complete)
-    #             # Validate the constraints
-    #             c = constraints(Y[grp*jmp:(grp+1)*jmp])
-    #             # Update all invalid
-    #             for l in range(level):
-    #                 level_all_invalid[l][grp*int(jmp/thetas[l]):(grp+1)*int(jmp/thetas[l])] = c
-    #                 c = numba_all_axis1(c.reshape(-1, plot_sizes[l]))
-    #             all_invalid[grp] = c[0]
+                            # Add the group to the list
+                            if is_in_grps:
+                                grps_list[factor_idx] = np.array([plot_idx], dtype=np.int64)
+                            else:
+                                grps_list[factor_idx] = empty_grps
+                        else:
+                            # Add the empty groups to the list
+                            grps_list[factor_idx] = empty_grps
+            
+                # Loop until no longer all invalid
+                is_invalid = True
+                while is_invalid:
+                    # Adjust the design
+                    __init_unconstrained(effect_types, effect_levels, grps_list, 
+                                         thetas, coords, Y, complete)
+                    
+                    # Validate the constraints
+                    invalid_run[plot_idx*jmp:(plot_idx+1)*jmp] = \
+                            np.ascontiguousarray(constraints(Y[plot_idx*jmp:(plot_idx+1)*jmp]), dtype=np.uint8)
 
-
+                    # Check if the constraints are invalid
+                    is_invalid = cython_all(invalid_run[plot_idx*jmp:(plot_idx+1)*jmp], jmp)
 
     return Y

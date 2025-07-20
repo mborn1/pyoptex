@@ -2,111 +2,11 @@
 Module for all init functions of the split^k-plot algorithm
 """
 
-import numba
 import numpy as np
 
-from ._init_cy import __init_unconstrained
+from ._init_cy import __init_unconstrained, __correct_constraints
 from ...._profile import profile
-from ....utils.numba import numba_all_axis1
 from ....utils.design import encode_design
-
-@numba.njit
-def __correct_constraints(effect_types, effect_levels, grps, thetas, coords, 
-                          plot_sizes, constraints, Y, complete=False):
-    """
-    Corrects a design matrix to be within the `constraints`.
-    It alters the factors starting from the most hard to change factors 
-    to the most easy to change until all constraints are met.
-
-    .. note::
-        The resulting design matrix `Y` is not encoded.
-
-    Parameters
-    ----------
-    effect_types : np.array(1d)
-        The effect types of each factor, representing 
-        a 1 for a continuous factor and the number of 
-        levels for a categorical factor.
-    effect_levels : np.array(1d)
-        The level of each factor.
-    grps : list(np.array(1d))
-        The groups for each factor to initialize.
-    thetas : np.array(1d)
-        The array of thetas.
-        thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    coords : list(np.array(2d))
-        The coordinates for each factor to use.
-    plot_sizes : np.array(1d)
-        The array of plot sizes, starting from the easy-to-change.
-    constraints : func
-        The constraints function, validating the design matrix.
-        Should return True if the constraints are violated.
-    Y : np.array(2d)
-        The design matrix to be initialized. May contain the
-        some fixed settings if not optimizing all groups.
-        This matrix should not be encoded.
-    complete : bool
-        Whether to use the coordinates for initialization
-        or initialize fully randomly.
-
-    Returns
-    -------
-    Y : np.array(2d)
-        The initialized design matrix.
-    """
-    # Check which runs are invalid
-    invalid_run = np.ascontiguousarray(constraints(Y))
-
-    # Store aggregated values of invalid run per level
-    level_all_invalid = [invalid_run]
-    for i in range(plot_sizes.size - 1):
-        all_invalid = numba_all_axis1(level_all_invalid[i].reshape(-1, plot_sizes[i]))
-        level_all_invalid.append(all_invalid)
-
-    ##################################################
-    # LEVEL SELECTION
-    ##################################################
-    # Loop over all levels
-    for level, all_invalid in zip(range(plot_sizes.size - 1, -1, -1), level_all_invalid[::-1]):
-        # Define the jump
-        jmp = thetas[level]
-
-        ##################################################
-        # SELECT ENTIRELY INVALID BLOCKS
-        ##################################################
-        # Loop over all groups in the level
-        for grp in np.where(all_invalid)[0]:
-            # Specify which groups to update
-            grps_ = [
-                np.array([
-                    g for g in grps[col] 
-                    if g >= grp*jmp/thetas[l] and g < (grp+1)*jmp/thetas[l]
-                ], dtype=np.int64) 
-                if l < level else (
-                    np.arange(grp, grp+1, dtype=np.int64) 
-                    if (l == level and grp in grps[col])
-                    else np.arange(0, dtype=np.int64)
-                )
-                for col, l in enumerate(effect_levels)
-            ]
-
-            ##################################################
-            # REGENERATE BLOCK
-            ##################################################
-            # Loop until no longer all invalid
-            while all_invalid[grp]:
-                # Adjust the design
-                Y = __init_unconstrained(effect_types, effect_levels, grps_, 
-                                         thetas, coords, Y, complete)
-                # Validate the constraints
-                c = constraints(Y[grp*jmp:(grp+1)*jmp])
-                # Update all invalid
-                for l in range(level):
-                    level_all_invalid[l][grp*int(jmp/thetas[l]):(grp+1)*int(jmp/thetas[l])] = c
-                    c = numba_all_axis1(c.reshape(-1, plot_sizes[l]))
-                all_invalid[grp] = c[0]
-
-    return Y
 
 @profile
 def initialize_feasible(params, complete=False, max_tries=1000):

@@ -182,10 +182,13 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             else:
                 grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
         
+    # Convert prior to numpy array
+    prior = np.ascontiguousarray(prior) if prior is not None else None
+
     # Create the parameters
     params = Parameters(
         fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
-        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv
+        coords, prior, colstart, Zs, Vinv
     )
     
     return params
