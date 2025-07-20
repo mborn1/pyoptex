@@ -21,27 +21,12 @@ cdef void _cython_all_axis1(
                 break
         out[i] = all_true
 
-# cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
-#     cdef Py_ssize_t i
-#     for i in range(n):
-#         if arr[i]:
-#             return True
-#     return False
-
 cdef bint cython_all(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
     cdef Py_ssize_t i
     for i in range(n):
         if not arr[i]:
             return False
     return True
-
-
-# cdef bint cython_all_idx(const unsigned char[::1] arr, const int[::1] idx, Py_ssize_t n) noexcept:
-#     cdef Py_ssize_t i
-#     for i in range(n):
-#         if not arr[idx[i]]:
-#             return False
-#     return True
 
 
 cpdef __init_unconstrained(const long long[::1] effect_types,
@@ -169,18 +154,8 @@ def __correct_constraints(const long long[::1] effect_types not None,
     # Determine which runs are invalid
     cdef unsigned char[::1] invalid_run = np.ascontiguousarray(constraints(Y), dtype=np.uint8)
 
-    # Calculate the cumulative product of the plot sizes
-    cdef long long[::1] cum_plot_sizes = cython.view.array(
-        shape=(plot_sizes.shape[0]+1,), 
-        itemsize=cython.sizeof(cython.longlong), 
-        format='q'
-    )
-    cum_plot_sizes[0] = 1
-    for i in range(plot_sizes.shape[0]):
-        cum_plot_sizes[i+1] = cum_plot_sizes[i] * plot_sizes[i]
-
     # Determine the total number of runs
-    cdef long long nb_runs = cum_plot_sizes[plot_sizes.shape[0]]
+    cdef long long nb_runs = thetas[plot_sizes.shape[0]]
     
     # Loop variables
     cdef cnp.ndarray[long long] empty_grps = np.arange(0, dtype=np.int64)
@@ -202,10 +177,10 @@ def __correct_constraints(const long long[::1] effect_types not None,
     for i in range(plot_sizes.shape[0] - 1, -1, -1):
         # Determine the jump size
         jmp = thetas[i]
-        nb_plots = nb_runs // cum_plot_sizes[i]
+        nb_plots = nb_runs // thetas[i]
 
         # Determine which plots are invalid
-        _cython_all_axis1(all_invalid, invalid_run, nb_plots, cum_plot_sizes[i])
+        _cython_all_axis1(all_invalid, invalid_run, nb_plots, thetas[i])
 
         # Loop over all plots
         for plot_idx in range(nb_plots):
