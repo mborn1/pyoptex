@@ -48,7 +48,7 @@ def x2fx_cython_impl(const double[:, ::1] Yenc not None, const long long[:, ::1]
             Xenc_view[k, i] = p_val
     return Xenc
 
-def force_Zi_asc_cython_impl(long long[::1] Zi not None):
+def force_Zi_asc_cython_impl(cnp.ndarray[cnp.int64_t, ndim=1] Zi not None):
     """
     Force ascending groups. In other words [0, 0, 2, 1, 1, 1]
     is transformed to [0, 0, 1, 2, 2, 2].

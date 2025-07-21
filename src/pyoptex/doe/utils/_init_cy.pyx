@@ -8,7 +8,7 @@ cnp.import_array()
 def init_single_unconstrained_cython_impl(
         const long long[::1] colstart not None,
         list coords,
-        double[:, ::1] run,
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] run,
         const long long[::1] effect_types not None,
     ):
     """
@@ -19,9 +19,10 @@ def init_single_unconstrained_cython_impl(
     cdef long long[::1] lvls
     cdef double[:, ::1] choices
     cdef double[::1] random_values
+    cdef double[:, ::1] run_view = run
 
     cdef long long n_factors = colstart.size - 1
-    cdef Py_ssize_t n_runs = run.shape[0]
+    cdef Py_ssize_t n_runs = run_view.shape[0]
 
     if coords is None:
         # Continuous sampling
@@ -34,15 +35,15 @@ def init_single_unconstrained_cython_impl(
             if factor_type == 1: 
                 # Continuous factor
                 random_values = np.random.rand(n_runs) * 2.0 - 1.0
-                run[:, start_col] = random_values
+                run_view[:, start_col] = random_values
             else: 
                 # Categorical factor
                 lvls = np.random.randint(factor_type, size=n_runs, dtype=np.int64)              
                 for j in range(n_runs):
                     if lvls[j] == factor_type - 1:
-                        run[j, start_col:end_col] = -1.0
+                        run_view[j, start_col:end_col] = -1.0
                     else:
-                        run[j, start_col + lvls[j]] = 1.0
+                        run_view[j, start_col + lvls[j]] = 1.0
     else:
         for i in range(n_factors):
             # Extract parameters
@@ -56,7 +57,7 @@ def init_single_unconstrained_cython_impl(
             # Generate random sampling
             lvls = np.random.randint(choices.shape[0], size=n_runs, dtype=np.int64)
             for j in range(n_runs):
-                run[j, start_col:end_col] = choices[lvls[j]]
+                run_view[j, start_col:end_col] = choices[lvls[j]]
     
-    return run
+    return run_view
 

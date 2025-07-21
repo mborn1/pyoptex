@@ -67,7 +67,7 @@ constraints = parse_constraints_script(
 #######################################################################
 
 # Simulation parameters
-nsims = 10
+nsims = 1000
 nreps = 1
 fn = default_fn(nsims, factors, cost_fn, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn, prior=prior)
@@ -94,18 +94,18 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 #######################################################################
 
-# Generic evaluation
-from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
-design_heatmap(Y, factors).show()
-plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
+# # Generic evaluation
+# from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+# design_heatmap(Y, factors).show()
+# plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
-# Specific evaluation
-from pyoptex.doe.cost_optimal.evaluate import (
-    evaluate_metrics, plot_fraction_of_design_space, 
-    plot_estimation_variance_matrix, estimation_variance
-)
-print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
-plot_fraction_of_design_space(Y, params).show()
-plot_estimation_variance_matrix(Y, params, model).show()
-print(estimation_variance(Y, params))
+# # Specific evaluation
+# from pyoptex.doe.cost_optimal.evaluate import (
+#     evaluate_metrics, plot_fraction_of_design_space, 
+#     plot_estimation_variance_matrix, estimation_variance
+# )
+# print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
+# plot_fraction_of_design_space(Y, params).show()
+# plot_estimation_variance_matrix(Y, params, model).show()
+# print(estimation_variance(Y, params))
 

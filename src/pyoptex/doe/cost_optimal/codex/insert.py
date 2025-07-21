@@ -5,7 +5,6 @@ Module for all insert functions of the CODEX algorithm
 import numpy as np
 
 from ...._profile import profile
-from ....utils.numba import numba_insert_axis0
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
 from .formulas import (NO_UPDATE, detect_block_end_from_start,
                        insert_update_vinv)
@@ -99,8 +98,8 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         new_X = params.fn.Y2X(new_run)
 
     # Create the new design
-    Y = numba_insert_axis0(state.Y, pos, new_run[0])
-    X = numba_insert_axis0(state.X, pos, new_X[0])
+    Y = np.insert(state.Y, pos, new_run[0], axis=0)
+    X = np.insert(state.X, pos, new_X[0], axis=0)
 
     # Update Zs and Vinv
     if any(Zi is not None for Zi in state.Zs):
@@ -191,8 +190,8 @@ def insert_optimal(new_run, state, params):
     # Loop over all possible positions
     for k in range(state.Y.shape[0], nprior-1, -1):
         # Insert run
-        Yn = numba_insert_axis0(state.Y, k, new_run[0])
-        Xn = numba_insert_axis0(state.X, k, new_X[0])
+        Yn = np.insert(state.Y, k, new_run[0], axis=0)
+        Xn = np.insert(state.X, k, new_X[0], axis=0)
 
         # Compute new observation variance
         if any(Zi is not None for Zi in state.Zs):
