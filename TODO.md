@@ -1,2 +1,1 @@
-* splitk_plot: optimize, formulas
-* utils: init
+* splitk_plot: formulas

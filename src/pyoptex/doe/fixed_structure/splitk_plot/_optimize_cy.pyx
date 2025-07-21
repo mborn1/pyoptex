@@ -19,8 +19,10 @@ cimport numpy as cnp
 from libc.math cimport isinf, abs
 
 # Import State for type checking, though we'll handle its components
-from ..utils import State
 from .utils import Update
+
+from ..utils import State
+from ..validation import validate_state
 
 # Ensure NumPy C API is initialized (important for Cython extensions using NumPy)
 cnp.import_array()
@@ -39,7 +41,7 @@ cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
             return True
     return False
 
-cpdef _optimize_cython_impl(object params, int max_it, double eps) noexcept:
+cpdef _optimize_cython_impl(object params, int max_it, double eps):
     """
     Optimize a model iteratively using the coordinate-exchange algorithm.
     Only specific groups at each level are updated to allow design augmentation.
@@ -135,8 +137,8 @@ cpdef _optimize_cython_impl(object params, int max_it, double eps) noexcept:
 
                 # Extract the runs
                 row_start = grp*jmp
-                row_end = (grp+1)*jmp
-                nb_rows = row_end - row_start
+                row_end = row_start + jmp
+                nb_rows = jmp
 
                 # Extract the coordinates and X rows
                 Ycoord[:nb_cols] = Y_view[row_start, col_start:col_end]

@@ -12,9 +12,9 @@ from ..metric import (
     Iopt as Iopto,
     Aliasing as Aliasingo,
 )
-from .formulas import (det_update_UD, inv_update_UD,
-                       inv_update_UD_no_P)
-from ._formulas_cy import compute_update_UD
+from ._formulas_cy import (
+    compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
+)
 
 
 class SplitkPlotMetricMixin:

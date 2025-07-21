@@ -9,7 +9,7 @@ cnp.import_array()
 cpdef compute_update_UD(
         long long level, long long grp, double[:,::1] Xi_old, double[:,::1] X, 
         long long[::1] plot_sizes, double[:,::1] c, long long[::1] thetas, double[::1] thetas_inv
-    ) noexcept:
+    ):
     """
     Compute the update to the information matrix after making
     a single coordinate adjustment. This update is expressed
@@ -132,9 +132,9 @@ cpdef compute_update_UD(
             U_view[co, k] = U_view[star_offset+co, k] - U_view[star_offset+ustart, k] + U_view[ustart, k]
 
         # Store D_view
-        for j in range(nb_c):
-            D_view[j, co] = -c[j, j]
-            D_view[j, star_offset+co] = c[j, j]
+        for k in range(nb_c):
+            D_view[k, co] = -c[k, j]
+            D_view[k, star_offset+co] = c[k, j]
 
         # Update the variables for the next iteration
         ustart = co
@@ -142,3 +142,144 @@ cpdef compute_update_UD(
 
     # Return values
     return U, D
+
+
+cpdef det_update_UD(
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] U, 
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] D, 
+        cnp.ndarray[cnp.double_t, ndim=3, mode='c'] Minv
+    ):
+    """
+    Compute the determinant adjustment as a factor.
+    In other words: :math:`|M^*|=\\alpha*|M|`. The new
+    information matrix originates from the following update
+    formula: :math:`M^* = M + U^T D U`.
+
+    The actual update is described as
+
+    .. math::
+
+        \\alpha = |D| |P| = |D| |D^{-1} + U M^{-1} U.T|
+
+    Parameters
+    ----------
+    U : np.array(2d)
+        The U matrix in the update.
+    D : np.array(2d)
+        The diagonal D matrix in the update. It is
+        inserted as a 1d array representing the diagonal
+        for each set of a-priori variance ratios.
+    Minv: np.array(3d)
+        The current inverses of the information matrices
+        for each set of a-priori variance ratios.
+
+    Returns
+    -------
+    alpha : float
+        The update factor.
+    P : np.array(3d)
+        The P matrix of the update.
+    """
+    cdef Py_ssize_t i, j, k
+    cdef double D_prod
+    cdef long long nb_c = D.shape[0]
+    cdef long long nb_updates = D.shape[1]
+
+    # Create updates
+    cdef cnp.ndarray[cnp.double_t, ndim=3, mode='c'] P = np.zeros((nb_c, nb_updates, nb_updates), dtype=np.float64)
+    cdef cnp.ndarray[cnp.double_t, ndim=1, mode='c'] updates = np.zeros(nb_c, dtype=np.float64)
+
+    # Create views
+    cdef double[:,:,::1] P_view = P
+    cdef double[::1] updates_view = updates
+    cdef double[:,::1] D_view = D
+
+    # Loop over the sets of a-priori variance ratios
+    for j in range(nb_c):
+        # Compute P
+        P[j] = U @ Minv[j] @ U.T
+        D_prod = 1.0
+        for i in range(nb_updates):
+            P_view[j, i, i] += 1/D_view[j, i]
+            D_prod *= D_view[j, i]
+
+        # Compute update
+        updates_view[j] = np.linalg.det(P[j]) * D_prod
+
+    # Compute determinant update
+    return updates, P
+
+cpdef inv_update_UD(
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] U, 
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] D, 
+        cnp.ndarray[cnp.double_t, ndim=3, mode='c'] Minv,
+        cnp.ndarray[cnp.double_t, ndim=3, mode='c'] P
+    ):
+    """
+    Compute the update of the inverse of the information matrix.
+    In other words: :math:`M^{-1}^* = M^{-1} - M_{up}`. The new
+    information matrix originates from the following update
+    formula: :math:`M^* = M + U^T D U`.
+
+    The actual update is described as
+
+    .. math::
+
+        M_{up} = M^{-1} U^T P^{-1} U M^{-1}
+
+    .. math::
+        P = D^{-1} + U M^{-1} U.T
+
+    Parameters
+    ----------
+    U : np.array(2d)
+        The U matrix in the update
+    D : np.array(2d)
+        The diagonal D matrix in the update. It is
+        inserted as a 1d array representing the diagonal
+        for each set of a-priori variance ratios.
+    Minv: np.array(3d)
+        The current inverses of the information matrices
+        for each set of a-priori variance ratios.
+    P : np.array(3d)
+        The P matrix if already pre-computed.
+
+    Returns
+    -------
+    Mup : np.array(3d)
+        The updates to the inverses of the information
+        matrices.
+    """
+    cdef Py_ssize_t i
+    cdef long long nb_c = Minv.shape[0]
+    cdef cnp.ndarray[cnp.double_t, ndim=3, mode='c'] Mup = np.zeros_like(Minv)
+    cdef cnp.ndarray[cnp.double_t, ndim=2, mode='c'] MU
+    for i in range(nb_c):
+        MU = Minv[i] @ U.T
+        Mup[i] = (MU) @ np.linalg.solve(P[i], MU.T)
+    return Mup
+
+cpdef inv_update_UD_no_P(
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] U, 
+        cnp.ndarray[cnp.double_t, ndim=2, mode='c'] D, 
+        cnp.ndarray[cnp.double_t, ndim=3, mode='c'] Minv
+    ):
+    """
+    See :py:func:`inv_update_UD <pyoptex.doe.splitk_plot.formulas.inv_update_UD>`,
+    but without precomputing the P-matrix.
+    """
+    # Initialize variables
+    cdef Py_ssize_t i, j
+    cdef long long nb_c = D.shape[0]
+    cdef long long nb_updates = D.shape[1]
+    cdef cnp.ndarray[cnp.double_t, ndim=3, mode='c'] P = np.zeros((nb_c, nb_updates, nb_updates), dtype=np.float64)
+    cdef double[:,:,::1] P_view = P
+    cdef double[:,::1] D_view = D
+
+    # Compute P
+    for j in range(nb_c):
+        P[j] = U @ Minv[j] @ U.T
+        for i in range(nb_updates):
+            P_view[j, i, i] += 1/D_view[j, i]
+    
+    return inv_update_UD(U, D, Minv, P)

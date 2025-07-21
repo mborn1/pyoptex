@@ -26,7 +26,7 @@ cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
     return False
 
 # Define the Cython implementation function
-cpdef _optimize_cython_impl(object params, int max_it, double eps) noexcept:
+cpdef _optimize_cython_impl(object params, int max_it, double eps):
     """Cython implementation of the core coordinate-exchange logic."""
     # Type declarations for parameters accessed frequently
     cdef long long[::1] effect_types = params.effect_types
