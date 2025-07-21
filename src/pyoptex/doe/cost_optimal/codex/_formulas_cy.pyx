@@ -6,7 +6,7 @@ cimport numpy as cnp
 
 cnp.import_array()
 
-cpdef inv_PpD_numba(double[:,:,::1] P, double[::1] ratios):
+cpdef inv_PpD(double[:,:,::1] P, double[::1] ratios):
     """
     Part of update formulas, see article for information.
     """
@@ -155,7 +155,7 @@ cpdef _group_update_vinv(
             P_view[j, 1, 1] -= SV_view[j, 1, T_from_after[i]]
 
     # Perform the update
-    PpDinv = inv_PpD_numba(P, ratios)
+    PpDinv = inv_PpD(P, ratios)
     for i in range(len(Vinv)):
         Vinv[i] -= VR[i] @ (PpDinv[i] @ SV[i])
 

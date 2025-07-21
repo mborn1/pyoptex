@@ -2,7 +2,6 @@
 Module containing the update formulas for the Vinv updates of the CODEX algorithm
 """
 
-import numba
 import numpy as np
 
 from ...._profile import profile

@@ -1,1 +1,0 @@
-* splitk_plot: formulas

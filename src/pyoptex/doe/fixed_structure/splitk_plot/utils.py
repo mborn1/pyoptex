@@ -4,7 +4,6 @@ Module for all utility functions of the split^k-plot algorithm
 
 from collections import namedtuple
 
-import numba
 import numpy as np
 import pandas as pd
 

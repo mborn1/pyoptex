@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .design import x2fx
-from .numba import numba_choice_bool_axis0
-
+from .comp import choice_bool
 
 def partial_rsm(nquad, ntfi, nlin):
     """
@@ -874,7 +873,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
             
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     elif mode == 'weak':
         # Loop to generate a sample
@@ -885,7 +884,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     elif mode == 'strong':
         # Compute total number of dependencies
@@ -899,7 +898,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     else:
         raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
