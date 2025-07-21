@@ -240,7 +240,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update
@@ -365,7 +365,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update
@@ -501,7 +501,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update

@@ -3,7 +3,6 @@
 import numpy as np
 cimport numpy as cnp
 
-# Initialize NumPy C-API (important for Cython modules using NumPy)
 cnp.import_array()
 
 def init_single_unconstrained_cython_impl(
