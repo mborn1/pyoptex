@@ -248,8 +248,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     # Create the parameters
     params = Parameters(
         fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
-        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv, plot_sizes, cs, alphas, thetas, thetas_inv,
-        use_formulas
+        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs), 
+        alphas, thetas, thetas_inv, use_formulas
     )
     
     return params

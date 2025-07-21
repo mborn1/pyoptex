@@ -37,7 +37,7 @@ def optimize(params, max_it=10000, validate=False, eps=1e-4):
     """
     # Call the Cython implementation
     # It handles initialization, looping, and Python callbacks internally
-    Y, X, metric = _optimize_cython_impl(params, max_it, validate, eps)
+    Y, X, metric = _optimize_cython_impl(params, max_it, eps)
 
     # Construct the final state object
     state = State(Y, X, metric)

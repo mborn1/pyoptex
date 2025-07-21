@@ -171,7 +171,7 @@ def __correct_constraints(const long long[::1] effect_types not None,
     cdef long long[::1] grps_factor
     cdef long long lvl_factor, grp_start, grp_end, jmp
     cdef bint is_in_grps, is_invalid
-    cdef unsigned char[::1] c_res    
+    cdef unsigned char[::1] invalid_run_view 
 
     # Loop over all levels
     for i in range(plot_sizes.shape[0] - 1, -1, -1):
@@ -233,8 +233,8 @@ def __correct_constraints(const long long[::1] effect_types not None,
                                          thetas, coords, Y, complete)
                     
                     # Validate the constraints
-                    invalid_run[plot_idx*jmp:(plot_idx+1)*jmp] = \
-                            np.ascontiguousarray(constraints(Y[plot_idx*jmp:(plot_idx+1)*jmp]), dtype=np.uint8)
+                    invalid_run_view = np.ascontiguousarray(constraints(Y[plot_idx*jmp:(plot_idx+1)*jmp]), dtype=np.uint8)
+                    invalid_run[plot_idx*jmp:(plot_idx+1)*jmp] = invalid_run_view
 
                     # Check if the constraints are invalid
                     is_invalid = cython_all(invalid_run[plot_idx*jmp:(plot_idx+1)*jmp], jmp)

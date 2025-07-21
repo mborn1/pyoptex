@@ -1,3 +1,5 @@
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+
 """
 Module for the split^k-plot coordinate-exchange algorithm.
 """
@@ -37,7 +39,7 @@ cdef bint cython_any(const unsigned char[::1] arr, Py_ssize_t n) noexcept:
             return True
     return False
 
-cpdef _optimize_cython_impl(object params, int max_it, bint validate, double eps):
+cpdef _optimize_cython_impl(object params, int max_it, double eps) noexcept:
     """
     Optimize a model iteratively using the coordinate-exchange algorithm.
     Only specific groups at each level are updated to allow design augmentation.
