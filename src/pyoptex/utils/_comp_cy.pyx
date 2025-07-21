@@ -4,7 +4,7 @@ cimport numpy as cnp
 
 cnp.import_array()
 
-cpdef outer_integral_cython_impl(const double[:, ::1] arr not None):
+cpdef outer_integral_cython_impl(const double[:, ::1] arr):
     cdef Py_ssize_t i, j, k, nrows, ncols
     cdef cnp.ndarray[cnp.double_t, ndim=2] out
     
@@ -21,10 +21,10 @@ cpdef outer_integral_cython_impl(const double[:, ::1] arr not None):
       
     return out / nrows
 
-cpdef int2bool_cython_impl(const long long[::1] arr not None, long long n, long long size):
+cpdef int2bool_cython_impl(const long long[::1] arr, long long n, long long size):
     # Create the output array
-    cdef cnp.ndarray[cnp.bool_t, ndim=2] out = np.zeros((n, size), dtype=np.bool_)
-    cdef cnp.bool_t[:, ::1] out_view = out
+    cdef cnp.ndarray[cnp.uint8_t, ndim=2] out = np.zeros((n, size), dtype=np.uint8)
+    cdef cnp.uint8_t[:, ::1] out_view = out
 
     # Convert to boolean
     for i in range(n):
@@ -32,7 +32,7 @@ cpdef int2bool_cython_impl(const long long[::1] arr not None, long long n, long 
 
     return out
 
-cpdef choice_bool(const cnp.bool_t[:, ::1] valids, int axis=0):
+cpdef choice_bool(const unsigned char[:, ::1] valids, int axis=0):
     """
     For each row in valids, chooses a random index of the true
     elements in that row. For example, if valids
@@ -54,13 +54,17 @@ cpdef choice_bool(const cnp.bool_t[:, ::1] valids, int axis=0):
     cdef Py_ssize_t i, j, k
     cdef Py_ssize_t n = valids.shape[0]
     cdef Py_ssize_t m = valids.shape[1]
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] out
+    cdef cnp.int64_t[::1] out_view
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] idx
+    cdef cnp.int64_t[::1] idx_view
 
     # Initialize the output array
     if axis == 0:
-        cdef cnp.ndarray[cnp.int64_t, ndim=1] out = np.zeros(n, dtype=np.int64)
-        cdef cnp.int64_t[::1] out_view = out
-        cdef cnp.ndarray[cnp.int64_t, ndim=1] idx = np.empty(m, dtype=np.int64)
-        cdef cnp.int64_t[::1] idx_view = idx
+        out = np.zeros(n, dtype=np.int64)
+        out_view = out
+        idx = np.empty(m, dtype=np.int64)
+        idx_view = idx
 
         for i in range(n):
             # Check which indices are viable
@@ -77,10 +81,10 @@ cpdef choice_bool(const cnp.bool_t[:, ::1] valids, int axis=0):
                 out_view[i] = -1
 
     else:
-        cdef cnp.ndarray[cnp.int64_t, ndim=1] out = np.zeros(m, dtype=np.int64)
-        cdef cnp.int64_t[::1] out_view = out
-        cdef cnp.ndarray[cnp.int64_t, ndim=1] idx = np.empty(n, dtype=np.int64)
-        cdef cnp.int64_t[::1] idx_view = idx
+        out = np.zeros(m, dtype=np.int64)
+        out_view = out
+        idx = np.empty(n, dtype=np.int64)
+        idx_view = idx
 
         for i in range(m):
             # Check which indices are viable
