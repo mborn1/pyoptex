@@ -230,6 +230,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         # Augment the design
         prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
 
+        # Make prior contiguous for cython
+        prior = np.ascontiguousarray(prior)
     else:
         # Nothing to start from
         old_plot_sizes = np.zeros_like(plot_sizes)
@@ -248,7 +250,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     # Create the parameters
     params = Parameters(
         fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
-        coords, np.ascontiguousarray(prior), colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs), 
+        coords, prior, colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs), 
         alphas, thetas, thetas_inv, use_formulas
     )
     

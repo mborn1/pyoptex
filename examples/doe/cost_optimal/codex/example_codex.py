@@ -67,7 +67,7 @@ constraints = parse_constraints_script(
 #######################################################################
 
 # Simulation parameters
-nsims = 1000
+nsims = 10
 nreps = 1
 fn = default_fn(nsims, factors, cost_fn, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn, prior=prior)
