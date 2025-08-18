@@ -31,9 +31,6 @@ jobs:
 
       - name: Build the wheels
         uses: pypa/cibuildwheel@v2.19
-        env:
-          # You can add build options here if needed
-          # CIBW_BUILD: "cp39-*"  # Example: only build for Python 3.9
 
       - name: Store wheels as a workflow artifact
         uses: actions/upload-artifact@v4
