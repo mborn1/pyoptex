@@ -160,7 +160,8 @@ def __correct_constraints(const long long[::1] effect_types not None,
 
     # Determine in which order to correct the constraints
     cdef int[::1] zidx = np.zeros(Zs.shape[0] + 1, dtype=np.int32)
-    zidx[:Zs.shape[0]] = np.argsort(np.array([len(np.unique(zi)) for zi in Zs], dtype=np.int32)) + 1
+    if Zs.shape[0] > 0:
+        zidx[:Zs.shape[0]] = np.argsort(np.array([len(np.unique(zi)) for zi in Zs], dtype=np.int32)) + 1
 
     # Loop variables
     cdef int[::1] runs = np.zeros(Y_view.shape[0], dtype=np.int32)

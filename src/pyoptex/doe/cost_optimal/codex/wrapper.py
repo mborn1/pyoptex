@@ -171,7 +171,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     ratios = np.array([
         np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
         for ratio in ratios
-    ]).T
+    ]).T.astype(np.float64)
 
     # Define the starting columns
     colstart = np.concatenate((

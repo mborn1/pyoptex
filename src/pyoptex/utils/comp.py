@@ -63,7 +63,7 @@ def int2bool(arr, size):
     arr = arr.reshape(n, arr.shape[-1])
 
     # Convert to boolean
-    out = int2bool_cython_impl(arr, n, size)
+    out = int2bool_cython_impl(arr, n, size, arr.shape[1])
 
     # Return the reshaped array
     return out.reshape(*original_shape[:-1], size)

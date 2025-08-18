@@ -23,7 +23,7 @@ cpdef inv_PpD(double[:,:,::1] P, double[::1] ratios):
 
     return out
 
-cpdef _group_update_vinv(
+cpdef group_update_vinv(
         cnp.ndarray[cnp.double_t, ndim=3, mode='c'] Vinv,
         long long[::1] Zi,
         long long row_start,

@@ -65,7 +65,7 @@ constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', fac
 validate_plot_sizes(factors, model)
 
 # Parameter initialization
-n_tries = 1000
+n_tries = 10
 
 # Create the set of operators
 fn = default_fn(factors, metric, Y2X, constraints=constraints)

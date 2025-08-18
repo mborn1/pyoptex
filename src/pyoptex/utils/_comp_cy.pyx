@@ -21,14 +21,15 @@ cpdef outer_integral_cython_impl(const double[:, ::1] arr):
       
     return out / nrows
 
-cpdef int2bool_cython_impl(const long long[::1] arr, long long n, long long size):
+cpdef int2bool_cython_impl(const long long[:, ::1] arr, long long n, long long size, long long arr_size):
     # Create the output array
     cdef cnp.ndarray[cnp.uint8_t, ndim=2] out = np.zeros((n, size), dtype=np.uint8)
     cdef cnp.uint8_t[:, ::1] out_view = out
 
     # Convert to boolean
     for i in range(n):
-        out_view[i, arr[i]] = True
+        for j in range(arr_size):
+            out_view[i, arr[i, j]] = True
 
     return out
 
