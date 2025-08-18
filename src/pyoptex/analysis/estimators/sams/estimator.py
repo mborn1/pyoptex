@@ -586,7 +586,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         return self
 
-    def plot_selection(self, ntop=5):
+    def plot_selection(self, ntop=5, model=None):
         """
         Creates a raster plot of the fitted SAMS procedure.
 
@@ -604,6 +604,15 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Extract top raster terms
         raster_terms = reduce(np.union1d, self.models_[:ntop])
+
+        # Create 
+        if model is not None:
+            assert model.shape == (self.n_encoded_features_, len(self.features_names_in_)), 'Shape of inputted model variable incorrect'
+            effect_labels = ['int.']
+            for eff in model[1:].itertuples():
+                effect_labels.append(f'${"*".join([f"x_{i}" if p == 1 else f"x_{i}^{p}" for i, p in enumerate(eff[1:]) if p >= 1])}$')
+        else:
+            effect_labels = [f'x{i}' for i in range(self.n_encoded_features_)]
 
         # Check for amount of clusters
         if self.kmeans_ is not None and self.kmeans_.dists is not None:
@@ -637,7 +646,7 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Plot the raster
             fig_ = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
+                self.results_, effect_labels,
                 self.skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
             )
@@ -645,7 +654,7 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             # Plot simple raster
             fig = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
+                self.results_, effect_labels,
                 self.skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_
             )
