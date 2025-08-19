@@ -32,6 +32,9 @@ jobs:
 
       - name: Build the wheels
         uses: pypa/cibuildwheel@v2.19
+        env:
+          # Skip all 32-bit (i686) builds
+          CIBW_SKIP: "*-manylinux_i686"
 
       - name: Store wheels as a workflow artifact
         uses: actions/upload-artifact@v4
