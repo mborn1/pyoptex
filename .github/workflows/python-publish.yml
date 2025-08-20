@@ -3,10 +3,9 @@
 name: Build and Release Wheels
 
 # Run this workflow when you create a new release on GitHub
-# on:
-#   release:
-#     types: [published]
-on: push
+on:
+  release:
+    types: [published]
 
 permissions:
   contents: read
