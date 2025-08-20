@@ -136,7 +136,7 @@ def fit_mixedlm(X, y, groups):
         attributes.
     """
     # Retrieve dummy encoding for each group
-    dummies = [pd.get_dummies(group) for group in groups]
+    dummies = [pd.get_dummies(group).astype(int) for group in groups]
 
     # Create the mixed lm spec
     exog_vc = VCSpec(

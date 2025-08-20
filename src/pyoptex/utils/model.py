@@ -203,38 +203,38 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
       
       .. math::
         
-        \sum_{k=1}^3 \\beta_k x_k
+        \\sum_{k=1}^3 \\beta_k x_k
     * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
     * process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
-        \\alpha_0 + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\alpha_0 + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'lin'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 [\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \sum_{i=1}^2 [\sum_{k=1}^2 \sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 [\\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \\sum_{i=1}^2 [\\sum_{k=1}^2 \\sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \\sum_{k=1}^2 z_k^2
       
     .. warning::
         This function is only to see the model used by
@@ -367,11 +367,11 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
       
       .. math::
         
-        \sum_{k=1}^3 \\beta_k x_k
+        \\sum_{k=1}^3 \\beta_k x_k
     * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
-        \sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
     * process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
@@ -380,25 +380,25 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 [\\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \\sum_{i=1}^2 [\\sum_{k=1}^2 \\sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \\sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 [\\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \\sum_{i=1}^2 [\\sum_{k=1}^2 \\sum_{
 
     Parameters
     ----------
