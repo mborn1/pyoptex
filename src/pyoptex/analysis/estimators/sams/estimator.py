@@ -47,7 +47,7 @@ class SamsRegressor(MultiRegressionMixin):
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
     forced_model : np.array(1d)
-        Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
+        Any terms that must be included in the model. Commonly np.array([0], dtype=np.int)
         is used to force the intercept when the intercept is the first column in
         the normalized, encoded model matrix. This model must itself fulfill the
         heredity constraints.
@@ -103,28 +103,28 @@ class SamsRegressor(MultiRegressionMixin):
         the documentation on customizing SAMS.
     tqdm : bool
         Whether to use tqdm to track the progress
-    sams_model\_ : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
+    sams_model\\_ : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
         A SAMS model used in sampling and fitting data during the SAMS procedure.
-    results\_ : np.array(1d)
+    results\\_ : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         These are the returned models from the SAMS procedure.
-    models\_ : list(np.array(1d))
+    models\\_ : list(np.array(1d))
         The list of models, ordered by entropy.
-    entropies\_ : np.array(1d)
-        The entropy of each exported model in `models\_`. In
+    entropies\\_ : np.array(1d)
+        The entropy of each exported model in `models\\_`. In
         case of multiple clusters, the entropies are calculated
         within the respective cluster.
-    selection_metrics\_ : np.array(1d)
-        Alias for `entropies\_`.
-    frequencies\_ : np.array(1d)
-        The occurence frequency of each submodel in `models\_`
-    kmeans\_ : None or :py:class:`sklearn.cluster.Kmeans`
+    selection_metrics\\_ : np.array(1d)
+        Alias for `entropies\\_`.
+    frequencies\\_ : np.array(1d)
+        The occurence frequency of each submodel in `models\\_`
+    kmeans\\_ : None or :py:class:`sklearn.cluster.Kmeans`
         A kmeans object used to cluster the raster plot. Added 
         a parameter `skips` equal to 5% of the cluster size to
         be skipped for entropy calculations.
-    metric_name\_ : str  
+    metric_name\\_ : str  
         The name of the selection metric.
     """
 
@@ -157,7 +157,7 @@ class SamsRegressor(MultiRegressionMixin):
         mode : None or 'weak' or 'strong'
             The heredity mode during sampling.
         forced_model : np.array(1d)
-            Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
+            Any terms that must be included in the model. Commonly np.array([0], dtype=np.int64)
             is used to force the intercept when the intercept is the first column in
             the normalized, encoded model matrix. This model must itself fulfill the
             heredity constraints.
@@ -327,7 +327,7 @@ class SamsRegressor(MultiRegressionMixin):
         ----------
         results : np.array(1d)
             A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
             and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         sizes : iterable(int)
             An iterable of ints with the fixed sizes of the submodels.

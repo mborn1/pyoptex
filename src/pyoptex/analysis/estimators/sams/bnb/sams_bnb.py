@@ -42,7 +42,7 @@ class SamsBnB(BnB):
     models : np.array(2d)
         The returned results from the SAMS simulation.
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64).
     nterms : int
         The total number of fixed effects in the encoded, normalized
@@ -79,7 +79,7 @@ class SamsBnB(BnB):
         models : np.array(2d)
             The returned results from the SAMS simulation.
             A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
             and one scalar ('metric', np.float64).
         nterms : int
             The total number of fixed effects in the encoded, normalized

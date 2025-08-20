@@ -43,7 +43,7 @@ class RegressionMixin(RegressorMixinSklearn):
     .. note::
         Regressor should be able to handle both OLS and
         mixed models, or raise an error otherwise. Use
-        `fit_fn\_` attribute to fit a model given some
+        `fit_fn\\_` attribute to fit a model given some
         terms and data. It automatically accounts for OLS
         vs. mixed model.
 
@@ -55,17 +55,17 @@ class RegressionMixin(RegressorMixinSklearn):
 
     Parameters
     ----------
-    terms\_ : np.array(1d)
+    terms\\_ : np.array(1d)
         The indices of the terms (= columns in X)
         in the model.
-    coef\_ : np.array(1d)
+    coef\\_ : np.array(1d)
         An array of coefficients corresponding to
         the terms.
-    scale\_ : float
+    scale\\_ : float
         The scale (= variance of the fit).
-    vcomp\_ : float
+    vcomp\\_ : float
         The estimates of any presented variance components.
-    fit\_ : optional
+    fit\\_ : optional
         The result of calling
 
         >>> fit_fn_(X, y, self.terms_)
@@ -85,36 +85,36 @@ class RegressionMixin(RegressorMixinSklearn):
         The names of any random effect columns. Every random effect
         is interpreted as a string column and encoded using 
         effect encoding.
-    n_features_in\_ : int
+    n_features_in\\_ : int
         The number of features. Equals len(self._factors).
-    features_names_in\_ : list(str)
+    features_names_in\\_ : list(str)
         The names of the features.
-    n_encoded_features\_ : int
+    n_encoded_features\\_ : int
         The number of encoded features. Is the result of Y2X(Y).shape[1].
-    effect_types\_ : np.array(1d)
+    effect_types\\_ : np.array(1d)
         An array indicating the type of each factor (effect). A
         1 indicates a continuous variable, anything higher indicates
         a categorical factor with that many levels. Can be
         used for internal package functions such as 
         :py:func:`encode_model <pyoptex.utils.model.encode_model>`.
-    coords\_ : list
+    coords\\_ : list
         A list of 2d numpy arrays. Each element corresponds to
         the possible encodings of a factor. Retrieved using
-        factor.coords\_ property.
-    y_mean\_ : float
+        factor.coords\\_ property.
+    y_mean\\_ : float
         The mean y-value, used in normalization.
-    y_std\_ : float
+    y_std\\_ : float
         The standard deviation of the y-value, used in normalization.
-    fit_fn\_ : func(X, y, terms)
+    fit_fn\\_ : func(X, y, terms)
         A fit function used to fit a model from data and the specified
         terms. When random effects are specified, this fits a 
         mixed model, otherwise an OLS is fitted.
-    Zs\_ : np.array(2d)
+    Zs\\_ : np.array(2d)
         The groups of each random effect. Zs.shape[0] == len(self._re)
         and Zs.shape[1] == len(X). For example, if the first row is
         [0, 0, 1, 1], then the first two runs are in group 0 according
         to the first random effect, and the last two runs are in group 1.
-    is_fitted\_ : bool
+    is_fitted\\_ : bool
         Whether the regressor has been fitted.
     """
 
@@ -255,7 +255,7 @@ class RegressionMixin(RegressorMixinSklearn):
         Preprocesses before fitting the data.
         Applies _preprocess_X and normalizes the
         output variable. Also creates
-        the `fit_fn\_` attribute by analyzing the
+        the `fit_fn\\_` attribute by analyzing the
         random effects.
 
         Parameters
@@ -311,8 +311,8 @@ class RegressionMixin(RegressorMixinSklearn):
     def _fit(self, X, y):
         """
         To be implemented by the user. It should fit the data
-        and create attributes terms\_, coef\_, scale\_, vcomp\_,
-        and optionally fit\_.
+        and create attributes terms\\_, coef\\_, scale\\_, vcomp\\_,
+        and optionally fit\\_.
         See :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin`
         for more information.
 
@@ -457,7 +457,7 @@ class RegressionMixin(RegressorMixinSklearn):
 
         .. math::
 
-            V = \sigma_{\epsilon}^2 I_N + \sum_{i=1}^k \sigma_{\gamma_i}^2 Z_i Z_i^T
+            V = \\sigma_{\\epsilon}^2 I_N + \\sum_{i=1}^k \\sigma_{\\gamma_i}^2 Z_i Z_i^T
 
         When no random effects are specified, this reduces to a scaled
         identity matrix.
@@ -752,7 +752,7 @@ class RegressionMixin(RegressorMixinSklearn):
     def summary(self):
         """
         Generates a summary of the fit in case it was stored
-        during training in the `fit\_` attribute. Use as
+        during training in the `fit\\_` attribute. Use as
 
         >>> print(regr.summary())
         """
@@ -801,7 +801,7 @@ class MultiRegressionMixin(RegressionMixin):
 
     .. note::
         Prediction happens based on the top model (is the first model 
-        in `models\_`). To predict based on any other model, fit that
+        in `models\\_`). To predict based on any other model, fit that
         specific model using
         :py:class:`SimpleRegressor <pyoptex.analysis.estimators.simple_model.SimpleRegressor>`.
 
@@ -819,13 +819,13 @@ class MultiRegressionMixin(RegressionMixin):
 
     Parameters
     ----------
-    models\_ : list(np.array(1d))
-        The list of models, sorted by the selection_metrics\_ (highest metric first).
+    models\\_ : list(np.array(1d))
+        The list of models, sorted by the selection_metrics\\_ (highest metric first).
         Each model is an integer array specifying the selected terms.
-    selection_metrics\_ : np.array(1d)
+    selection_metrics\\_ : np.array(1d)
         The metric of each model, sorted highest first. The selection metric
         defines the order in which the models should be analyzed.
-    metric_name\_ : str
+    metric_name\\_ : str
         The name of the selection metric.
     """
 
