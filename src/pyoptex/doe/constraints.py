@@ -80,11 +80,9 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     script = re.sub(r'"(.*?)"', lambda m: f'Col("{m.group(1)}", None)', script)
     script = re.sub(r'`(.*?)`', name2col, script)
     script = script.replace('^', '**')
-    print(script)
     script = 'Col('.join(extract_cst(x) for x in script.split('Col('))
     if not exclude:
         script = f'~({script})'
-    print(script)
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 
                          'CompCol': CompCol, 'factors': factors, 'eps': Col(eps, None)})
     return tree
