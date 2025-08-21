@@ -494,13 +494,13 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Extract the skip
             if len(bkps) == 1:
-                skipn = 0
+                self._skipn = 0
             else:
                 # Take the last breakpoint
-                skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
+                self._skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
         else:
-            skipn = self.skipn
-        results = results[skipn:]
+            self._skipn = self.skipn
+        results = results[self._skipn:]
 
         # Possibly cluster
         if self.ncluster is None:
@@ -639,7 +639,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Plot the raster
             fig = plot_raster(
                 self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
-                self.skipn, 'r2(adj)', self.forced_model, 
+                self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
             )
 
@@ -647,7 +647,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Plot simple raster
             fig = plot_raster(
                 self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
-                self.skipn, 'r2(adj)', self.forced_model, 
+                self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_
             )
 
