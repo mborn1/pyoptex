@@ -493,12 +493,12 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Extract the skip
             if len(bkps) == 1:
-                skipn = 0
+                self.skipn = 0
             else:
                 # Take the last breakpoint
-                skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
-        else:
-            skipn = self.skipn
+                self.skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
+
+        skipn = self.skipn
         results = results[skipn:]
 
         # Possibly cluster
