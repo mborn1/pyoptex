@@ -753,7 +753,7 @@ def decode_term(term, model, factors):
         if len(modelenc_term) == 0:
             new_term[i] = term[i]
         else:
-            model_term = np.searchsorted(colstart, modelenc_term, side='left')
+            model_term = np.searchsorted(colstart, modelenc_term, side='right') - 1
             empty_term[model_term] = modelenc[term[i], modelenc_term]
             new_term[i] = np.argmax(np.all(model == empty_term, axis=1))
             empty_term[:] = 0
