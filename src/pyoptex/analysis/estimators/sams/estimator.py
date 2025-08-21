@@ -291,7 +291,7 @@ class SamsRegressor(MultiRegressionMixin):
             assert len(self.est_ratios) == len(self._re), 'Every random effect must have an estimated ratio when specified, in the same order'
         assert self.topn_bnb > 0, 'Must select at least one submodel for each fixed size, topn_bnb must be larger than 0'
         if self.nterms_bnb is not None:
-            if isinstance(self.nterms_bnb):
+            if isinstance(self.nterms_bnb, int):
                 assert self.nterms_bnb > 0, 'When an integer is specified for nterms_bnb, it must be larger than zero'
         assert self.bnb_timeout > 0, 'Must specify a strictly positive number of seconds for the branch-and-bound to run'
         if self.forced_model is not None:
