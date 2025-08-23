@@ -3,6 +3,7 @@ Module containing all the generic model functions
 """
 
 from collections import Counter
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -181,7 +182,7 @@ def model2Y2X(model, factors):
     modelenc = encode_model(model, effect_types)
 
     # Create transformation function for polynomial models
-    Y2X = lambda Y: x2fx(Y, modelenc)
+    Y2X = partial(x2fx, modelenc=modelenc)
 
     return Y2X
 

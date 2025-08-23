@@ -6,6 +6,60 @@ import re
 import numpy as np
 from ..utils.design import encode_design
 
+class ConstraintsFunc:
+    """
+    Extension of python `functools.partial` with lazy
+    evaluation of the function string for the constraints.
+    On first call, the function string is evaluated and the
+    resulting function is cached.
+
+    Attributes
+    ----------
+    fn : str or callable
+        The function string to evaluate, or a callable function
+        if the function has been called before.
+    kwargs : dict
+        The keyword arguments to pass to the function.
+    evaluated : bool
+        Whether the function has been evaluated. This determines
+        the type of the `fn` attribute.
+    """
+    def __init__(self, fn, **kwargs):
+        """
+        Creation of the function object.
+
+        Parameters
+        ----------
+        fn : str
+            The function string to evaluate on first call.
+        kwargs : dict
+            The keyword arguments to pass to the function.
+        """
+        self.fn = fn
+        self.kwargs = kwargs
+        self.evaluated = False
+
+    def __call__(self, *args, **kwargs):
+        """
+        Calls the function and evaluates it if necessary.
+
+        Parameters
+        ----------
+        *args : tuple
+            The arguments to pass to the function.
+        **kwargs : dict
+            The keyword arguments to pass to the function.
+
+        Returns
+        -------
+        result : np.array(1d)
+            The result of the function call which is a
+            boolean array.
+        """
+        if not self.evaluated:
+            self.fn = eval(self.fn, {'np': np})
+            self.evaluated = True
+        return self.fn(*args, **self.kwargs, **kwargs)
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
@@ -161,7 +215,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a decoded design, but normalized design matrix.
         """
-        return eval(f'lambda Y__: {str(self)}')
+        return ConstraintsFunc(f'lambda Y__: {str(self)}')
 
     def _encode(self):
         """
@@ -196,7 +250,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a encoded design design matrix.
         """
-        return eval(f'lambda Y__: {self._encode()}', {'np': np})
+        return ConstraintsFunc(f'lambda Y__: {self._encode()}')
 
     ##############################################
 
