@@ -685,10 +685,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         assert isinstance(model, pd.DataFrame), 'The specified model must be a dataframe'
 
         # Encode the labels
-        labels = model2encnames(
-            model, 
-            np.array([1 if f.is_continuous else len(f.levels) for f in self._factors])
-        )
+        labels = model2encnames(model, self.effect_types_)
 
         return self.formula(labels)
 

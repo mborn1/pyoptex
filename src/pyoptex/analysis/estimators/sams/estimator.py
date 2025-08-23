@@ -11,7 +11,7 @@ from tqdm import tqdm
 from plotly.subplots import make_subplots
 
 from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X, sample_model_dep_onebyone
+from ....utils.model import identityY2X, sample_model_dep_onebyone, model2encnames
 from ....utils.comp import timeout
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
@@ -587,7 +587,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         return self
 
-    def plot_selection(self, ntop=5):
+    def plot_selection(self, ntop=5, model=None):
         """
         Creates a raster plot of the fitted SAMS procedure.
 
@@ -595,6 +595,10 @@ class SamsRegressor(MultiRegressionMixin):
         ----------
         ntop : int
             The number of top model terms to indicate in the raster plot.
+        model : pd.DataFrame
+            The dataframe of the model used in
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` used to
+            label the raster plot.
 
         Returns
         -------
@@ -602,6 +606,12 @@ class SamsRegressor(MultiRegressionMixin):
             The Plotly Figure object of the raster plot.
         """
         assert self.is_fitted, 'You must fit the regressor before plotting the selection plot'
+
+        # Create default term labels
+        if model is not None:
+            terms = model2encnames(model, self.effect_types_)
+        else:
+            terms = [f'x{i}' for i in range(self.n_encoded_features_)]
 
         # Extract top raster terms
         raster_terms = reduce(np.union1d, self.models_[:ntop])
@@ -638,7 +648,7 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Plot the raster
             fig = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
+                self.results_, terms,
                 self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
             )
@@ -646,7 +656,7 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             # Plot simple raster
             fig = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
+                self.results_, terms,
                 self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_
             )
