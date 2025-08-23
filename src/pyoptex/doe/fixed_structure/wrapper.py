@@ -227,20 +227,27 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     # Main loop
     best_metric = -np.inf
     best_state = None
-    for _ in tqdm(range(n_tries)):
+    try:
+        for _ in tqdm(range(n_tries)):
 
-        # Optimize the design
-        Y, state = optimize(params, max_it, validate=validate)
+            # Optimize the design
+            Y, state = optimize(params, max_it, validate=validate)
 
-        # Store the results
-        if state.metric > best_metric:
-            best_metric = state.metric
-            best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+            # Store the results
+            if state.metric > best_metric:
+                best_metric = state.metric
+                best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+    except KeyboardInterrupt:
+        print('Interrupted: returning current results...')
 
     # Decode the design
-    Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
-    for f in params.factors:
-        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    if best_state is not None:
+        Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
+        Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+        for f in params.factors:
+            Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    else:
+        Y = None
 
+    # Return the design and the final state
     return Y, best_state
