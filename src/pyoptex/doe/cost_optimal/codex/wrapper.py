@@ -240,15 +240,27 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
     # Simulation
-    best_state = simulate(params, nsims=nsims, validate=validate)
     try:
-        for i in range(nreps-1):
-            try:
-                state = simulate(params, nsims=nsims, validate=validate)
-                if state.metric > best_state.metric:
-                    best_state = state
-            except ValueError as e:
-                print(e)
+        # Create the first state
+        best_state, interrupted = simulate(params, nsims=nsims, validate=validate)
+
+        # If not yet interrupted, run the rest of the repetitions
+        if not interrupted:
+            for _ in range(nreps-1):
+                try:
+                    # Run another simulation
+                    state, interrupted = simulate(params, nsims=nsims, validate=validate)
+
+                    # Check if the new state is better
+                    if state.metric > best_state.metric:
+                        best_state = state
+
+                    # Check if the simulation was interrupted
+                    if interrupted:
+                        break
+                
+                except ValueError as e:
+                    print(e)
     except KeyboardInterrupt:
         print('Interrupted: returning current results')
 

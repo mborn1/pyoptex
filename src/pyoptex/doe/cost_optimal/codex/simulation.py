@@ -31,7 +31,12 @@ def simulate(params, nsims=100, validate=False):
     best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
         The best found state containing the encoded design matrix, 
         model matrix, costs, metric, etc.
+    interrupted : bool
+        Whether the simulation was interrupted by the user.
     """
+    # Check for an interruption
+    interrupted = False
+
     # Initialize stats
     params.stats['it'] = 0
     params.stats['rejections'] = 0
@@ -76,73 +81,77 @@ def simulate(params, nsims=100, validate=False):
 
     #######################################################################
 
-    for i in tqdm(range(nsims)):
-        # Set iteration
-        params.stats['it'] = i
+    try:
+        for i in tqdm(range(nsims)):
+            # Set iteration
+            params.stats['it'] = i
 
-        # Create a new random run
-        accepted_sample = False
-        while not accepted_sample:
-            new_run = params.fn.sample(state, params).reshape((1, -1))
-            accepted_sample = not params.fn.constraints(new_run)[0]
+            # Create a new random run
+            accepted_sample = False
+            while not accepted_sample:
+                new_run = params.fn.sample(state, params).reshape((1, -1))
+                accepted_sample = not params.fn.constraints(new_run)[0]
 
-        # Insert in ideal position
-        new_state = params.fn.insert(new_run, state, params)
-        validate and validate_state(new_state, params)
-
-        # Remove runs to be within cost constraints
-        new_state = params.fn.remove(new_state, params)
-        validate and validate_state(new_state, params)
-
-        # Optimization
-        for opt in params.fn.optimizers:
-            new_state = opt.call(new_state, params)
+            # Insert in ideal position
+            new_state = params.fn.insert(new_run, state, params)
             validate and validate_state(new_state, params)
 
-        # Collect stats
-        params.stats['metrics'][i] = new_state.metric
+            # Remove runs to be within cost constraints
+            new_state = params.fn.remove(new_state, params)
+            validate and validate_state(new_state, params)
 
-        # Accept
-        cost_transition = (
-            np.all(new_state.cost_Y <= new_state.max_cost) 
-            and np.any(state.cost_Y > state.max_cost)
-        )
-        accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() \
-            or cost_transition or np.isinf(state.metric) or np.isnan(state.metric)
-        if accept:
-            # Update the state and temperature
-            state = new_state
-            params.fn.temp.accepted()
-            params.fn.restart.accepted()
+            # Optimization
+            for opt in params.fn.optimizers:
+                new_state = opt.call(new_state, params)
+                validate and validate_state(new_state, params)
 
-            # Fix numerical issues with inverse update formulas
-            Vinv = np.array([
-                np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) 
-                for ratios in params.ratios
-            ])
-            metric = params.fn.metric.call(
-                state.Y, state.X, state.Zs, Vinv, state.costs
-            )
-            state = State(
-                state.Y, state.X, state.Zs, Vinv, metric, 
-                state.cost_Y, state.costs, state.max_cost
-            )
+            # Collect stats
+            params.stats['metrics'][i] = new_state.metric
 
-            # Set the best state
+            # Accept
             cost_transition = (
-                np.all(state.cost_Y <= state.max_cost) 
-                and np.any(best_state.cost_Y > best_state.max_cost)
+                np.all(new_state.cost_Y <= new_state.max_cost) 
+                and np.any(state.cost_Y > state.max_cost)
             )
-            if state.metric > best_state.metric or cost_transition:
-                best_state = state
-        else:
-            params.fn.temp.rejected()
-            params.fn.restart.rejected()
-            params.stats['rejections'] += 1
+            accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() \
+                or cost_transition or np.isinf(state.metric) or np.isnan(state.metric)
+            if accept:
+                # Update the state and temperature
+                state = new_state
+                params.fn.temp.accepted()
+                params.fn.restart.accepted()
 
-        # Restart policy
-        state = params.fn.restart.call(state, best_state)
-        validate and validate_state(state, params)
+                # Fix numerical issues with inverse update formulas
+                Vinv = np.array([
+                    np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) 
+                    for ratios in params.ratios
+                ])
+                metric = params.fn.metric.call(
+                    state.Y, state.X, state.Zs, Vinv, state.costs
+                )
+                state = State(
+                    state.Y, state.X, state.Zs, Vinv, metric, 
+                    state.cost_Y, state.costs, state.max_cost
+                )
+
+                # Set the best state
+                cost_transition = (
+                    np.all(state.cost_Y <= state.max_cost) 
+                    and np.any(best_state.cost_Y > best_state.max_cost)
+                )
+                if state.metric > best_state.metric or cost_transition:
+                    best_state = state
+            else:
+                params.fn.temp.rejected()
+                params.fn.restart.rejected()
+                params.stats['rejections'] += 1
+
+            # Restart policy
+            state = params.fn.restart.call(state, best_state)
+            validate and validate_state(state, params)
+    except KeyboardInterrupt:
+        interrupted = True
+        print('Interrupted: optimizing and returning current results...')
 
     # Final optimization
     optimized = True
@@ -161,6 +170,6 @@ def simulate(params, nsims=100, validate=False):
         print(e)
 
     # Return the best state
-    return best_state
+    return best_state, interrupted
         
 
