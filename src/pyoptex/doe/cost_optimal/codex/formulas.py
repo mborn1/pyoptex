@@ -2,10 +2,10 @@
 Module containing the update formulas for the Vinv updates of the CODEX algorithm
 """
 
-import numba
 import numpy as np
 
 from ...._profile import profile
+from ._formulas_cy import group_update_vinv as group_update_vinv_cy
 
 # Variable in a to indicate no update is necessary
 NO_UPDATE = -1
@@ -39,7 +39,7 @@ def ce_update_vinv(Vinv, Zi, b, ratios):
         row_start, row_end, group_from, group_to = x
 
         # Update Vinv and Zi
-        Vinv = group_update_vinv(Vinv, Zi, x, ratios)
+        Vinv = group_update_vinv_cy(Vinv, Zi, row_start, row_end, group_from, group_to, ratios)
         Zi[row_start:row_end] = group_to
     
     return Zi, Vinv
@@ -86,7 +86,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
             row_start, row_end, group_from, group_to = b[i]
 
             # Apply update
-            Vinvn = group_update_vinv(Vinvn, Zsn[i], b[i], ratios[:, i])
+            Vinvn = group_update_vinv_cy(Vinvn, Zsn[i], row_start, row_end, group_from, group_to, ratios[:, i])
             Zsn[i][row_start:row_end] = group_to
 
     return Zsn, Vinvn
@@ -131,7 +131,7 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
             row_start, row_end, group_from, group_to = b[i]
 
             # Apply update
-            Vinvn = group_update_vinv(Vinvn, Zsn[i], b[i], ratios[:, i])
+            Vinvn = group_update_vinv_cy(Vinvn, Zsn[i], row_start, row_end, group_from, group_to, ratios[:, i])
             Zsn[i][row_start:row_end] = group_to  
 
     return Zsn, Vinvn
@@ -246,7 +246,7 @@ def del_vinv_update(Vinv, pos, ratios):
     keep[pos] = False
 
     # The baseline
-    Vinvn = Vinv[:, keep][:, :, keep]
+    Vinvn = np.ascontiguousarray(Vinv[:, :, keep][:, keep, :])
 
     # Update
     b = Vinv[:, pos, keep]
@@ -255,59 +255,3 @@ def del_vinv_update(Vinv, pos, ratios):
     
     return Vinvn
 
-###################################
-
-# Expanded multiplications with R and S
-# Slower than regular matrix multiplications
-
-@numba.njit
-def inv_PpD_numba(P, ratios=1):
-    """
-    Part of update formulas, see article for information.
-    """
-    P[:, 0, 0] += 1/ratios
-    P[:, 1, 1] += 1/ratios
-    out = np.empty(P.shape)
-    for i in range(len(P)):
-        out[i] = np.linalg.inv(P[i])
-    return out
-
-
-@numba.njit
-def _group_update_vinv(Vinv, Zi, b, ratios):
-    """
-    Part of update formulas, see article for information.
-    """
-    # Expand change
-    row_start, row_end, group_from, group_to = b
-
-    # Define T
-    T_from = (Zi==group_from)
-    T_to = (Zi==group_to)
-
-    # Compute update submatrices
-    VR = np.empty((Vinv.shape[0], Vinv.shape[1], 2))
-    VR[:, :, 0] = np.sum(Vinv[:, :, row_start:row_end], axis=2)
-    VR[:, :, 1] = np.sum(Vinv[:, :, :row_start][:, :, T_to[:row_start]], axis=2)\
-                    + np.sum(Vinv[:, :, row_end:][:, :, T_to[row_end:]], axis=2)\
-                    - np.sum(Vinv[:, :, :row_start][:, :, T_from[:row_start]], axis=2)\
-                    - np.sum(Vinv[:, :, row_end:][:, :, T_from[row_end:]], axis=2)
-    SV = np.empty((VR.shape[0], VR.shape[2], VR.shape[1]))
-    SV[:, 0, :] = VR[:, :, 1] + (
-        2*np.sum(Vinv[:, :, row_start:row_end][:, :, ~T_from[row_start:row_end]], axis=2)
-        + 2*np.sum(Vinv[:, :, row_start:row_end][:, :, T_to[row_start:row_end]], axis=2)
-    )
-    SV[:, 1, :] = VR[:, :, 0]
-    P = np.empty((Vinv.shape[0], 2, 2))
-    P[:, :, 0] = np.sum(SV[:, :, row_start:row_end], axis=2)
-    P[:, :, 1] = np.sum(SV[:, :, :row_start][:, :, T_to[:row_start]], axis=2)\
-                    + np.sum(SV[:, :, row_end:][:, :, T_to[row_end:]], axis=2)\
-                    - np.sum(SV[:, :, :row_start][:, :, T_from[:row_start]], axis=2)\
-                    - np.sum(SV[:, :, row_end:][:, :, T_from[row_end:]], axis=2)
-
-    # Perform the update
-    PpDinv = inv_PpD_numba(P, ratios)
-    for i in range(len(Vinv)):
-        Vinv[i] -= VR[i] @ (PpDinv[i] @ SV[i])
-
-    return Vinv

@@ -4,10 +4,7 @@ Module for the interface to run the generic coordinate-exchange algorithm
 
 import numpy as np
 import pandas as pd
-import numba
-from numba.typed import List
 from tqdm import tqdm
-from threadpoolctl import threadpool_limits
 
 from ..constraints import no_constraints, mixture_constraints
 from ...utils.design import decode_design, obs_var_from_Zs
@@ -127,7 +124,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         ratios = np.array([
             np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
             for ratio in ratios
-        ]).T
+        ], dtype=np.float64).T
 
         # Split regular and blocking ratios
         if nblocks == 0:
@@ -141,43 +138,56 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         be_ratios = []
 
     # Extract parameter arrays
-    col_names = [str(f.name) for f in factors]
-    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors])
-    coords = List([f.coords_ for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors], dtype=np.int64)
+    effect_levels = np.array([re.index(f.re) + 1 if f.re is not None else 0 for f in factors], dtype=np.int64)
+    coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
     colstart = np.concatenate((
         [0], 
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ))
+    ), dtype=np.int64)
 
     # Compute Zs and Vinv
     if len(re) > 0:
-        Zs = np.array([np.array(r.Z) for r in re], dtype=np.int64)
-        V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios])
+        Zs = np.array([np.array(r.Z, dtype=np.int64) for r in re])
+        V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios], dtype=np.float64)
     else:
         Zs = np.empty((0, 0), dtype=np.int64)
-        V = np.expand_dims(np.eye(nruns), 0)
+        V = np.expand_dims(np.eye(nruns, dtype=np.float64), 0)
 
     # Augment V with the random blocking effects
     if len(block_effects) > 0:
-        beZs = np.array([np.array(be.Z) for be in block_effects], dtype=np.int64)
+        beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
         V += np.array([
             obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) 
             for r in be_ratios
-        ])
+        ], dtype=np.float64)
         
     # Invert V
     Vinv = np.linalg.inv(V)
         
     # Define which groups to optimize
-    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1) for Z in Zs]
-    grps = List([lgrps[lvl] for lvl in effect_levels])
+    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1, dtype=np.int64) for Z in Zs]
+    grps = [lgrps[lvl] for lvl in effect_levels]
+
+    # Precompute run indices for each (factor, group) pair
+    grp_runs = []
+    for i in range(len(effect_levels)):
+        level = effect_levels[i]
+        grp_runs.append([])
+        for j in range(len(grps[i])):
+            if level == 0:
+                grp_runs[i].append(np.array([grps[i][j]], dtype=np.int64))
+            else:
+                grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
+        
+    # Convert prior to numpy array
+    prior = np.ascontiguousarray(prior) if prior is not None else None
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, ratios, 
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
         coords, prior, colstart, Zs, Vinv
     )
     
@@ -211,15 +221,13 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
     assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
 
-    numba.set_num_threads(1)
-    with threadpool_limits(limits=1, user_api='blas'):
+    # Pre initialize metric
+    params.fn.metric.preinit(params)
 
-        # Pre initialize metric
-        params.fn.metric.preinit(params)
-
-        # Main loop
-        best_metric = -np.inf
-        best_state = None
+    # Main loop
+    best_metric = -np.inf
+    best_state = None
+    try:
         for _ in tqdm(range(n_tries)):
 
             # Optimize the design
@@ -229,11 +237,17 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
             if state.metric > best_metric:
                 best_metric = state.metric
                 best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+    except KeyboardInterrupt:
+        print('Interrupted: returning current results...')
 
     # Decode the design
-    Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
-    for f in params.factors:
-        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    if best_state is not None:
+        Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
+        Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+        for f in params.factors:
+            Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    else:
+        Y = None
 
+    # Return the design and the final state
     return Y, best_state

@@ -4,7 +4,6 @@ Module for the interface to run the split^k-plot algorithm
 
 import numpy as np
 import pandas as pd
-from numba.typed import List
 from tqdm import tqdm
 
 from ...constraints import no_constraints, mixture_constraints
@@ -169,7 +168,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     effect_levels = np.array([f.re.level for f in factors])
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
     colstart = np.concatenate((
@@ -231,6 +230,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         # Augment the design
         prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
 
+        # Make prior contiguous for cython
+        prior = np.ascontiguousarray(prior)
     else:
         # Nothing to start from
         old_plot_sizes = np.zeros_like(plot_sizes)
@@ -238,18 +239,19 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     # Define which groups to optimize
     lgrps = level_grps(old_plot_sizes, plot_sizes)
     if grps is None:
-        grps = List([lgrps[lvl] for lvl in effect_levels])
+        grps = [lgrps[lvl] for lvl in effect_levels]
     else:
-        grps = List([np.concatenate(
+        grps = [np.concatenate(
             (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
             dtype=np.int64
-        ) for i in range(len(effect_levels))])
-    
+        ) for i in range(len(effect_levels))]
+    grp_runs = None # Not implemented yet for this optimization
+
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, ratios, 
-        coords, prior, colstart, Zs, Vinv, plot_sizes, cs, alphas, thetas, thetas_inv,
-        use_formulas
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
+        coords, prior, colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs), 
+        alphas, thetas, thetas_inv, use_formulas
     )
     
     return params
@@ -288,20 +290,26 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     # Main loop
     best_metric = -np.inf
     best_state = None
-    for _ in tqdm(range(n_tries)):
+    try:
+        for _ in tqdm(range(n_tries)):
 
-        # Optimize the design
-        Y, state = optimize(params, max_it, validate=validate)
+            # Optimize the design
+            Y, state = optimize(params, max_it, validate=validate)
 
-        # Store the results
-        if state.metric > best_metric:
-            best_metric = state.metric
-            best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+            # Store the results
+            if state.metric > best_metric:
+                best_metric = state.metric
+                best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
+    except KeyboardInterrupt:
+        print('Interrupted: returning current results...')
 
     # Decode the design
-    Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
-    for f in params.factors:
-        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    if best_state is not None:
+        Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
+        Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+        for f in params.factors:
+            Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    else:
+        Y = None
 
     return Y, best_state

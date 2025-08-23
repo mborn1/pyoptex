@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import comb
 
 from ....utils.model import sample_model_dep_onebyone
-from ....utils.numba import numba_int2bool
+from ....utils.comp import int2bool
 
 def entropies_approx(submodels, freqs, model_size, dep, mode, 
                      forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6):
@@ -60,7 +60,7 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
     samples = sampler(dep, model_size, N, forced, mode)
 
     # Convert samples to a boolean array
-    samples = numba_int2bool(samples, len(dep))
+    samples = int2bool(samples, len(dep))
 
     # Initialize entropies
     entropies = np.empty(len(submodels), dtype=np.float64)

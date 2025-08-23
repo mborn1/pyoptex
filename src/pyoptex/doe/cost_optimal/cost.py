@@ -2,7 +2,7 @@
 Module containing all the cost functions of the cost optimal designs
 """
 
-from functools import wraps
+from functools import wraps, partial
 
 import numba
 import numpy as np
@@ -11,7 +11,24 @@ import pandas as pd
 from ...utils.design import decode_design
 
 
-def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=False):
+def _fn_no_params(f, Y, params):
+    return f(Y)
+
+def _fn_decoded(f, Y, params):
+    # Decode the design to a dataframe
+    Y = decode_design(Y, params.effect_types, coords=params.coords)
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+    return f(Y, params)
+
+def _fn_denormalized(f, Y, params):
+    # Decode the design to a dataframe
+    Y = decode_design(Y, params.effect_types, coords=params.coords)
+    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
+    for f in params.factors:
+        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    return f(Y, params)
+
+def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
     """
     Cost function decorator code.
 
@@ -19,8 +36,6 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
     ----------
     f : func(Y, params) or func(Y)
         The cost function to be wrapped.
-    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
-        A list of factors for the design.
     denormalize : bool
         Whether to denormalize (and decode) the data before passing it to `f`.
     decoded : bool
@@ -37,66 +52,29 @@ def __cost_fn(f, factors=None, denormalize=True, decoded=True, contains_params=F
     """
 
     # Check if parameters are required (prevents direct use of numba.njit compilation)
-    if contains_params:
-        fn1 = f
-    else:
-        @wraps(f)
-        def fn1(Y, params):
-            # pylint: disable=unused-argument
-            return f(Y)
+    if not contains_params:
+        f = wraps(f)(partial(_fn_no_params, f))
 
     # Check for denormalization in the cost function
     if denormalize:
-        # Extract factor parameters
-        col_names = [str(f.name) for f in factors]
-
-        # Compute denormalization parameters
-        norm_mean = np.array([f.mean for f in factors])
-        norm_scale = np.array([f.scale for f in factors])
-
-        # Extract categorical factors
-        cat_factors = {str(f.name): {float(i): lname for i, lname in enumerate(f.levels)} 
-                        for f in factors if f.is_categorical}
-
         # Wrap the function
-        @wraps(fn1)
-        def fn(Y, params):
-            # Decode the design to a dataframe
-            Y = decode_design(Y, params.effect_types, coords=params.coords)
-            Y = (Y - norm_mean) / norm_scale
-            Y = pd.DataFrame(Y, columns=col_names)
-            for f, l in cat_factors.items():
-                Y[f] = Y[f].map(l)
-
-            return fn1(Y, params)
-
+        f = wraps(f)(partial(_fn_denormalized, f))
         NOTE = 'This cost function works on denormalized inputs'
 
     elif decoded:
         # Wrap the function
-        @wraps(fn1)
-        def fn(Y, params):
-            # Decode the design to a dataframe
-            Y = decode_design(Y, params.effect_types, coords=params.coords)
-            return fn1(Y, params)
-
+        f = wraps(f)(partial(_fn_decoded, f))
         NOTE = 'This cost function works on decoded categorical inputs'
 
     else:
-        # Wrap the function
-        @wraps(fn1)
-        def fn(Y, params):
-            return fn1(Y, params)
-
         NOTE = 'This cost function works on normalized (encoded) inputs'
 
     # Extend the documentation with a note on normalization
-    if fn.__doc__ is not None:
-        params_pos = fn.__doc__.find('    Parameters\n    ---------')
-        # pylint: disable=line-too-long
-        fn.__doc__ = fn.__doc__[:params_pos] + f'\n    .. note::\n        {NOTE}\n\n' + fn.__doc__[params_pos:]
+    if f.__doc__ is not None:
+        params_pos = f.__doc__.find('    Parameters\n    ---------')
+        f.__doc__ = f.__doc__[:params_pos] + f'\n    .. note::\n        {NOTE}\n\n' + f.__doc__[params_pos:]
 
-    return fn
+    return f
 
 def cost_fn(*args, **kwargs):
     """

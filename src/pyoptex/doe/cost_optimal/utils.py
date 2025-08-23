@@ -3,15 +3,11 @@ Module for all utility functions of the cost optimal designs
 """
 
 from collections import namedtuple
-
-import numba
 import numpy as np
-import pandas as pd
 
-from ...utils.design import create_default_coords, encode_design
-from ...utils.numba import numba_any_axis1, numba_diff_axis0
 from ...utils.factor import FactorMixin
 from ..constraints import no_constraints
+from ._utils_cy import obs_var_cy
 
 FunctionSet = namedtuple('FunctionSet', 'Y2X init cost metric constraints', defaults=(None,)*4 + (no_constraints,))
 Parameters = namedtuple('Parameters', 'fn factors colstart coords ratios effect_types grouped_cols prior stats use_formulas')
@@ -69,7 +65,7 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
             # Determine the borders of the groups
             borders = np.concatenate((
                 np.array([0]), 
-                np.where(numba_any_axis1(numba_diff_axis0(Yenc[:, colstart[i]:colstart[i+1]]) != 0))[0] + 1, 
+                np.where(np.any(np.diff(Yenc[:, colstart[i]:colstart[i+1]], axis=0) != 0, axis=1))[0] + 1, 
                 np.array([len(Yenc)])
             ))
 
@@ -79,7 +75,6 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
 
     return tuple(Zs)
 
-@numba.njit
 def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     """
     Directly computes the observation matrix from the design. Is similar to
@@ -103,35 +98,16 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     V : np.array(2d)
         The observation covariance matrix.
     """
-    # Determines the grouped columns
-    grouped_cols = grouped_cols if grouped_cols is not None \
-                    else np.ones(colstart.size - 1, dtype=np.bool_)
+    # Determines the grouped columns and ensure correct type
+    if grouped_cols is None:
+        grouped_cols = np.ones(colstart.size - 1, dtype=np.uint8)
+    else:
+        grouped_cols = np.asarray(grouped_cols, dtype=np.uint8)
 
-    # Initiates from random errors
-    V = np.eye(len(Yenc))
-
-    # Initializes the variance ratios
+    # Initializes the variance ratios and ensure correct type
     if ratios is None:
-        ratios = np.ones(colstart.size - 1)
-
-    # Updates the V-matrix for each factor
-    for i in range(colstart.size - 1):
-        # Check if grouped
-        if grouped_cols[i]:
-            # Determine the borders of the groups
-            borders = np.concatenate((
-                np.array([0]), 
-                np.where(numba_any_axis1(numba_diff_axis0(Yenc[:, colstart[i]:colstart[i+1]]) != 0))[0] + 1, 
-                np.array([len(Yenc)])
-            ))
-
-            # Determine the groups
-            grp = np.repeat(np.arange(len(borders)-1), np.diff(borders))
-
-            # Compute the grouping matrix
-            Z = np.eye(len(borders)-1)[grp]
-
-            # Update the V-matrix
-            V += ratios[i] * Z @ Z.T
+        ratios = np.ones(colstart.size - 1, dtype=np.double)
+    else:
+        ratios = np.asarray(ratios, dtype=np.double)
     
-    return V
+    return obs_var_cy(Yenc, colstart, ratios, grouped_cols)

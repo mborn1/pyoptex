@@ -32,7 +32,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
     """
     # Initialize variables

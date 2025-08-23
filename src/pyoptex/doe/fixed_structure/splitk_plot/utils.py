@@ -4,14 +4,13 @@ Module for all utility functions of the split^k-plot algorithm
 
 from collections import namedtuple
 
-import numba
 import numpy as np
 import pandas as pd
 
 from ..utils import Parameters as Parameterso, RandomEffect as RandomEffect
 
 Parameters = namedtuple('Parameters', ' '.join(Parameterso._fields) + ' plot_sizes c alphas thetas thetas_inv compute_update')
-Update = namedtuple('Update', 'level grp runs cols new_coord old_coord Xi_old old_metric')
+Update = namedtuple('Update', 'level grp run_start run_end col_start col_end new_coord old_coord Xi_old old_metric')
 
 __Plot__ = namedtuple('__Plot__', 'level size ratio', defaults=(0, 1, 1))
 class Plot(__Plot__):
@@ -52,7 +51,6 @@ def obs_var_Zs(plot_sizes):
     Zs = tuple([np.repeat(np.arange(alpha), int(alphas[0] / alpha)) for alpha in alphas[1:]])
     return Zs
 
-@numba.njit
 def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to

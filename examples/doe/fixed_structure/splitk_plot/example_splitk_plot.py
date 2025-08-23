@@ -89,15 +89,15 @@ print(Y)
 
 #########################################################################
 
-from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
-design_heatmap(Y, factors).show()
-plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
+# from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+# design_heatmap(Y, factors).show()
+# plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
-from pyoptex.doe.fixed_structure.evaluate import (
-    evaluate_metrics, plot_fraction_of_design_space, 
-    plot_estimation_variance_matrix, estimation_variance
-)
-print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
-plot_fraction_of_design_space(Y, params).show()
-plot_estimation_variance_matrix(Y, params, model).show()
-print(estimation_variance(Y, params))
+# from pyoptex.doe.fixed_structure.evaluate import (
+#     evaluate_metrics, plot_fraction_of_design_space, 
+#     plot_estimation_variance_matrix, estimation_variance
+# )
+# print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
+# plot_fraction_of_design_space(Y, params).show()
+# plot_estimation_variance_matrix(Y, params, model).show()
+# print(estimation_variance(Y, params))

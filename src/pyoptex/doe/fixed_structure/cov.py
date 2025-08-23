@@ -4,7 +4,6 @@ Module containing all the covariate functions for fixed structures.
 
 import numpy as np
 
-# pylint: disable=unused-argument
 def no_cov(Y, X, random=False, subset=None):
     """
     Function to indicate no covariate is added.

@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from numba.typed import List
 
 from ...utils.design import encode_design
 from ...utils.model import model2encnames
@@ -107,7 +106,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     
     # Create the design parameters
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Normalize Y
     for f in factors:

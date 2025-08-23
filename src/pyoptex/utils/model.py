@@ -3,13 +3,13 @@ Module containing all the generic model functions
 """
 
 from collections import Counter
+from functools import partial
 
 import numpy as np
 import pandas as pd
 
 from .design import x2fx
-from .numba import numba_choice_bool_axis0
-
+from .comp import choice_bool
 
 def partial_rsm(nquad, ntfi, nlin):
     """
@@ -182,7 +182,7 @@ def model2Y2X(model, factors):
     modelenc = encode_model(model, effect_types)
 
     # Create transformation function for polynomial models
-    Y2X = lambda Y: x2fx(Y, modelenc)
+    Y2X = partial(x2fx, modelenc=modelenc)
 
     return Y2X
 
@@ -204,38 +204,38 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
       
       .. math::
         
-        \sum_{k=1}^3 \\beta_k x_k
+        \\sum_{k=1}^3 \\beta_k x_k
     * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
     * process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
-        \\alpha_0 + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\alpha_0 + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'lin'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 [\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \sum_{i=1}^2 [\sum_{k=1}^2 \sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 [\\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \\sum_{i=1}^2 [\\sum_{k=1}^2 \\sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \\sum_{k=1}^2 z_k^2
       
     .. warning::
         This function is only to see the model used by
@@ -368,38 +368,38 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
       
       .. math::
         
-        \sum_{k=1}^3 \\beta_k x_k
+        \\sum_{k=1}^3 \\beta_k x_k
     * mixture = [('A', 'B'), 'tfi] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l
     * process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
-        \\alpha_0 + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\alpha_0 + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'lin'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'} will yield
       
       .. math::
       
-        \sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \sum_{k=1}^2 \\alpha_k z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        \\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\sum_{k=1}^2 \\alpha_k z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='lin' will yield (as defined by `Kowalski et al. (2002) <https://www.jstor.org/stable/1270686>`_)
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 \\alpha_{k,l} z_k z_l + \\sum_{k=1}^2 z_k^2
     
     * mixture = [('A', 'B'), 'tfi'], process = {'D': 'quad', 'E': 'quad'}, cross_order='tfi' will yield
       
       .. math::
 
-        &\sum_{k=1}^3 \\beta_k x_k + \sum_{k=1}^2 \sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
-        &\sum_{k=1}^2 [ \sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \sum_{k=1}^1 \sum_{l=k+1}^2 [\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \sum_{i=1}^2 [\sum_{k=1}^2 \sum_{l=k+1}^3 \\gamma_{k,l,i} x_k x_l] z_i + \sum_{k=1}^2 z_k^2
+        &\\sum_{k=1}^3 \\beta_k x_k + \\sum_{k=1}^2 \\sum_{l=k+1}^3 \\beta_{k,l} x_k x_l + \\\\
+        &\\sum_{k=1}^2 [ \\sum_{i=1}^3 \\gamma_{k,i} x_i ] z_k + \\sum_{k=1}^1 \\sum_{l=k+1}^2 [\\sum_{i=1}^3 \\gamma_{k,l,i} x_i] z_k z_l + \\sum_{i=1}^2 [\\sum_{k=1}^2 \\sum_{
 
     Parameters
     ----------
@@ -673,7 +673,7 @@ def order_dependencies(model, factors):
 
     return dep
 
-def model2strong(model, dep):
+def term2strong(term, dep):
     """
     Convert an existing model to its strong heredity
     variant according to the provided dependency matrix.
@@ -683,7 +683,7 @@ def model2strong(model, dep):
 
     Parameters
     ----------
-    model : np.array(1d)
+    term : np.array(1d)
         The array with indices of the terms included in the
         initial model
     dep : np.array(2d)
@@ -698,7 +698,7 @@ def model2strong(model, dep):
     """
     # Create a mask
     strong = np.zeros(dep.shape[0], dtype=np.bool_)
-    strong[model] = True
+    strong[term] = True
     nterms_old = 0
     nterms = np.sum(strong)
 
@@ -712,6 +712,56 @@ def model2strong(model, dep):
         nterms = np.sum(strong)
 
     return np.flatnonzero(strong)
+
+def decode_term(term, model, factors):
+    """
+    Decodes the encoded terms (the encoded categorical variables). 
+    For example, 'y ~ A_0 + A_1 + B * A_0' is decoded
+    to 'y ~ A + B * A' according to the given model matrix.  
+
+    Parameters
+    ----------
+    term : np.array(1d)
+        The encoded term.
+    model : np.array(2d) or pd.DataFrame
+        The model.
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
+        The list of factors in the design. This parameter is used to determine
+        whether the factor is continuous or categorical (and required decoding).
+
+    Returns
+    -------
+    decoded_term : np.array(1d)
+        The decoded term.
+    """
+    # Extract the start of each column in the encoded model
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    col_sizes = np.where(effect_types > 1, effect_types - 1, effect_types)
+    colstart = np.concatenate([[0], np.cumsum(col_sizes)])
+
+    # Convert the model to numpy if necessary
+    if isinstance(model, pd.DataFrame):
+        model = model[[str(factor.name) for factor in factors]].to_numpy()
+
+    # Encode the model
+    modelenc = encode_model(model, effect_types)
+
+    # Merge the categorical variables
+    new_term = term.copy()
+    empty_term = np.zeros(model.shape[1], dtype=np.int64)
+    for i in range(term.size):
+        modelenc_term = np.flatnonzero(modelenc[term[i]] != 0)
+        if len(modelenc_term) == 0:
+            new_term[i] = term[i]
+        else:
+            model_term = np.searchsorted(colstart, modelenc_term, side='right') - 1
+            empty_term[model_term] = modelenc[term[i], modelenc_term]
+            new_term[i] = np.argmax(np.all(model == empty_term, axis=1))
+            empty_term[:] = 0
+   
+    new_term = np.unique(new_term)
+
+    return new_term
 
 def permitted_dep_add(model, mode=None, dep=None, subset=None):
     """
@@ -874,7 +924,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
             
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     elif mode == 'weak':
         # Loop to generate a sample
@@ -885,7 +935,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     elif mode == 'strong':
         # Compute total number of dependencies
@@ -899,7 +949,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
             # Random sampling
-            out[:, i] = numba_choice_bool_axis0(valids)
+            out[:, i] = choice_bool(valids, axis=0)
 
     else:
         raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')

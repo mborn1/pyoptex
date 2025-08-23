@@ -48,7 +48,7 @@ regr = SamsRegressor(
 regr.fit(data.drop(columns='Y'), data['Y'])
 
 # Plot the raster plot
-regr.plot_selection().show()
+regr.plot_selection(model=model).show()
 
 # Print the summary
 print(regr.summary())

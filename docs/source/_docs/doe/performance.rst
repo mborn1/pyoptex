@@ -3,6 +3,60 @@
 Performance
 ===========
 
+.. _perf_single_core:
+
+Single core performance
+-----------------------
+
+Most often, the linear algebra operations in these algorithms operate on small
+matrices. However, libraries such as numpy and scipy are sometimes automatically
+installed and configured to parallelize operations over multiple threads and cores.
+This parallelization can lead to large synchronization overheads which negatively
+impact the performance.
+
+To avoid this, the user can force the algorithm to use a single core by calling
+the :py:func:`set_nb_cores <pyoptex.utils.runtime.set_nb_cores>` function before
+any import.
+
+>>> from pyoptex.utils.runtime import set_nb_cores
+>>> set_nb_cores(1)
+>>> 
+>>> import numpy as np
+>>> ...
+
+.. _perf_parallel:
+
+Parallelization
+---------------
+
+Whereas direct generation is best performed on a single core to avoid multithreading overheads,
+the generation algorithms themselves are "embarassingly parallel". This means that the generation
+can be parallelized over cores, without any necessary communication or synchronization between
+the cores.
+
+In pyoptex, the generation of designs can easily be parallelized
+using the :py:func:`parallel_generation <pyoptex.utils.runtime.parallel_generation>`
+helper function. For example, instead of calling
+
+>>> from pyoptex.doe.fixed_structure import create_splitk_plot_design
+>>> Y, state = create_splitk_plot_design(params, n_tries=n_tries)
+
+you can call
+
+
+>>> from pyoptex.utils.runtime import parallel_generation
+>>> Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries)
+
+which will parallelize the number of iterations over the available cores. If less cores
+should be used, the `ncores` argument can be passed to the 
+:py:func:`parallel_generation <pyoptex.utils.runtime.parallel_generation>` function as such
+
+
+.. note::
+    Make sure that each instance of the parallelization only uses a single core by calling
+    the :py:func:`set_nb_cores <pyoptex.utils.runtime.set_nb_cores>` function before
+    any import. See :ref:`perf_single_core` for more information.
+
 .. _perf_cost:
 
 Costs

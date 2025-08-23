@@ -12,8 +12,9 @@ from ..metric import (
     Iopt as Iopto,
     Aliasing as Aliasingo,
 )
-from .formulas import (compute_update_UD, det_update_UD, inv_update_UD,
-                       inv_update_UD_no_P)
+from ._formulas_cy import (
+    compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
+)
 
 
 class SplitkPlotMetricMixin:
@@ -240,7 +241,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update
@@ -365,7 +366,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update
@@ -501,7 +502,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         _, Xi_old = self.cov(
             np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
             update.Xi_old,
-            subset=update.runs
+            subset=slice(update.run_start, update.run_end)
         )
 
         # Compute U, D update

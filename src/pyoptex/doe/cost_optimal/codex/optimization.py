@@ -5,7 +5,6 @@ Module for all optimizaters of the CODEX algorithm
 import numpy as np
 
 from ...._profile import profile
-from ....utils.numba import numba_any_axis1, numba_diff_axis0
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
 from ...utils.init import full_factorial
 from .formulas import ce_update_vinv, detect_block_end_from_start
@@ -239,8 +238,8 @@ def ce_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), 
+                                        np.copy(state.Vinv, order='C'), 
+                                        np.copy(state.Zs[col], order='C'), 
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([
@@ -343,7 +342,7 @@ def ce_struct_optimizer(state, params):
         # Detect blocks
         blocks = np.concatenate((
             np.array([0], np.int64), 
-            np.where(numba_any_axis1(numba_diff_axis0(state.Y[:, params.colstart[col]:params.colstart[col+1]]) != 0))[0] + 1,
+            np.where(np.any(np.diff(state.Y[:, params.colstart[col]:params.colstart[col+1]], axis=0) != 0, axis=1))[0] + 1,
             np.array([len(state.Y)], np.int64)
         ))
 
@@ -397,8 +396,8 @@ def ce_struct_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), 
+                                        np.copy(state.Vinv, order='C'), 
+                                        np.copy(state.Zs[col], order='C'), 
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([
@@ -542,8 +541,8 @@ def pe_optimizer(state, params):
                                     Vinvn = state.Vinv
                                 else:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv), 
-                                        np.copy(state.Zs[col]), 
+                                        np.copy(state.Vinv, order='C'), 
+                                        np.copy(state.Zs[col], order='C'), 
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([

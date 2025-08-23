@@ -3,14 +3,63 @@ Module containing the constraints functions.
 """
 
 import re
-
-import numba
 import numpy as np
-from numba.typed import List
-
-from ..utils.numba import numba_all_axis1
 from ..utils.design import encode_design
 
+class ConstraintsFunc:
+    """
+    Extension of python `functools.partial` with lazy
+    evaluation of the function string for the constraints.
+    On first call, the function string is evaluated and the
+    resulting function is cached.
+
+    Attributes
+    ----------
+    fn : str or callable
+        The function string to evaluate, or a callable function
+        if the function has been called before.
+    kwargs : dict
+        The keyword arguments to pass to the function.
+    evaluated : bool
+        Whether the function has been evaluated. This determines
+        the type of the `fn` attribute.
+    """
+    def __init__(self, fn, **kwargs):
+        """
+        Creation of the function object.
+
+        Parameters
+        ----------
+        fn : str
+            The function string to evaluate on first call.
+        kwargs : dict
+            The keyword arguments to pass to the function.
+        """
+        self.fn = fn
+        self.kwargs = kwargs
+        self.evaluated = False
+
+    def __call__(self, *args, **kwargs):
+        """
+        Calls the function and evaluates it if necessary.
+
+        Parameters
+        ----------
+        *args : tuple
+            The arguments to pass to the function.
+        **kwargs : dict
+            The keyword arguments to pass to the function.
+
+        Returns
+        -------
+        result : np.array(1d)
+            The result of the function call which is a
+            boolean array.
+        """
+        if not self.evaluated:
+            self.fn = eval(self.fn, {'np': np})
+            self.evaluated = True
+        return self.fn(*args, **self.kwargs, **kwargs)
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
@@ -66,16 +115,29 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
         i = col_names.index(m.group(1))
         return f'Col({i}, factors[{i}], {colstart[i]})'
 
+    def create_cst_col(m):
+        cst = m.group(0)
+        if cst != '-':
+            cst = f'Col({cst}, None)'
+        return cst
+
+    def extract_cst(x):
+        # Extract the columns
+        closing_brace = x.find(')')
+        if closing_brace == -1:
+            cst = re.sub(r'[\.\d]+', create_cst_col, x)
+        else:
+            cst = x[:closing_brace] + re.sub(r'[\.\d]+', create_cst_col, x[closing_brace:]) 
+        return cst
+
     # Create the script
     script = re.sub(r'"(.*?)"', lambda m: f'Col("{m.group(1)}", None)', script)
     script = re.sub(r'`(.*?)`', name2col, script)
     script = script.replace('^', '**')
-    script = 'Col('.join(
-        x[:x.find(')')] + re.sub(r'[-\.\d]+', lambda m: f'Col({m.group(0)}, None)', x[x.find(')'):]) 
-        for x in script.split('Col(')
-    )
+    script = 'Col('.join(extract_cst(x) for x in script.split('Col('))
     if not exclude:
         script = f'~({script})'
+    print(script)
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 
                          'CompCol': CompCol, 'factors': factors, 'eps': Col(eps, None)})
     return tree
@@ -154,7 +216,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a decoded design, but normalized design matrix.
         """
-        return numba.njit(eval(f'lambda Y__: {str(self)}'))
+        return ConstraintsFunc(f'lambda Y__: {str(self)}')
 
     def _encode(self):
         """
@@ -189,7 +251,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a encoded design design matrix.
         """
-        return numba.njit(eval(f'lambda Y__: {self._encode()}', {'numba_all_axis1': numba_all_axis1, 'np': np}))
+        return ConstraintsFunc(f'lambda Y__: {self._encode()}')
 
     ##############################################
 
@@ -339,11 +401,14 @@ class CompCol(BinaryCol):
     def __encode__(self, col1, col2):
         assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
         if not col1.pre_normalized_encoded_:
-            encoded = encode_design(np.array([[col1.factor.normalize(col2.col)]]), np.array([len(col1.factor.levels)]), 
-                                    List([col1.factor.coords_]))[0]
+            encoded = encode_design(
+                np.array([[col1.factor.normalize(col2.col)]], dtype=np.float64), 
+                np.array([len(col1.factor.levels)], dtype=np.int64), 
+                [col1.factor.coords_]
+            )[0]
             col2.col_encoded_ = f'np.array({list(encoded)})'
             col1.pre_normalized_encoded_ = True
-        return f'numba_all_axis1({col1._encode()} {self.sep} {col2._encode()})'
+        return f'np.all({col1._encode()} {self.sep} {col2._encode()}, axis=1)'
 
     def _encode(self):
         if self.col.is_categorical:

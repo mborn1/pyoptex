@@ -1,13 +1,8 @@
-# This workflow will upload a Python Package to PyPI when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+# .github/workflows/build_wheels.yml
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: Build and Release Wheels
 
-name: Upload Python Package 
-
+# Run this workflow when you create a new release on GitHub
 on:
   release:
     types: [published]
@@ -16,32 +11,40 @@ permissions:
   contents: read
 
 jobs:
-  release-build:
-    runs-on: ubuntu-latest
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Define the operating systems to build on
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up QEMU (for ARM builds on Linux)
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
         with:
-          python-version: "3.x"
+          platforms: all
 
-      - name: Build release distributions
-        run: |
-          # NOTE: put your own distribution build steps here.
-          python -m pip install build
-          python -m build
+      - name: Build the wheels
+        uses: pypa/cibuildwheel@v2.19
+        env:
+          # Skip all 32-bit (i686) builds
+          CIBW_SKIP: "*-manylinux_i686"
 
-      - name: Upload distributions
+      - name: Store wheels as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-dists
-          path: dist/
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
 
-  pypi-publish:
+  upload_to_pypi:
+    name: Upload wheels to PyPI
+    needs: [build_wheels] # This job runs only after all wheels are built
     runs-on: ubuntu-latest
-    needs:
-      - release-build
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
@@ -53,13 +56,14 @@ jobs:
       url: https://pypi.org/project/pyoptex/${{ github.event.release.name }}
 
     steps:
-      - name: Retrieve release distributions
+      - name: Download all wheel artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-dists
-          path: dist/
+          path: dist
+          pattern: wheels-*
+          merge-multiple: true # Merge artifacts from different OSs into one directory
 
-      - name: Publish release distributions to PyPI
+      - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
+  #       with:
+  #         packages-dir: dist/

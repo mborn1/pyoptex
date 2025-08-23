@@ -53,7 +53,7 @@ def cost(Y):
 #######################################################################
 
 # Simulation parameters
-nsims = 1000
+nsims = 10
 nreps = 10
 fn = default_fn(nsims, factors, cost, metric, Y2X, constraints=constraints)
 params = create_parameters(factors, fn)

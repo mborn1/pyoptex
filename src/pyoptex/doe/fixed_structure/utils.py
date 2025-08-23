@@ -8,7 +8,7 @@ import numpy as np
 from ...utils.factor import FactorMixin
 
 FunctionSet = namedtuple('FunctionSet', 'metric Y2X constraints constraintso init')
-Parameters = namedtuple('Parameters', 'fn factors nruns effect_types effect_levels grps ratios coords prior colstart Zs Vinv')
+Parameters = namedtuple('Parameters', 'fn factors nruns effect_types effect_levels grps grp_runs ratios coords prior colstart Zs Vinv')
 State = namedtuple('State', 'Y X metric')
 
 __RandomEffect__ = namedtuple('__RandomEffect__', 'Z ratio', defaults=(None, 1))

@@ -4,7 +4,6 @@ Module for the interface to run the CODEX algorithm
 
 import numpy as np
 import pandas as pd
-from numba.typed import List
 
 from ...constraints import no_constraints, mixture_constraints
 from ....utils.design import decode_design, encode_design
@@ -164,7 +163,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list)
                              or isinstance(f.ratio, np.ndarray) else [f.ratio] 
               for f in factors]
-    coords = List([f.coords_ for f in factors])
+    coords = [f.coords_ for f in factors]
 
     # Align ratios
     nratios = max([len(r) for r in ratios])
@@ -172,7 +171,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     ratios = np.array([
         np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
         for ratio in ratios
-    ]).T
+    ]).T.astype(np.float64)
 
     # Define the starting columns
     colstart = np.concatenate((
@@ -241,15 +240,27 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'
 
     # Simulation
-    best_state = simulate(params, nsims=nsims, validate=validate)
     try:
-        for i in range(nreps-1):
-            try:
-                state = simulate(params, nsims=nsims, validate=validate)
-                if state.metric > best_state.metric:
-                    best_state = state
-            except ValueError as e:
-                print(e)
+        # Create the first state
+        best_state, interrupted = simulate(params, nsims=nsims, validate=validate)
+
+        # If not yet interrupted, run the rest of the repetitions
+        if not interrupted:
+            for _ in range(nreps-1):
+                try:
+                    # Run another simulation
+                    state, interrupted = simulate(params, nsims=nsims, validate=validate)
+
+                    # Check if the new state is better
+                    if state.metric > best_state.metric:
+                        best_state = state
+
+                    # Check if the simulation was interrupted
+                    if interrupted:
+                        break
+                
+                except ValueError as e:
+                    print(e)
     except KeyboardInterrupt:
         print('Interrupted: returning current results')
 

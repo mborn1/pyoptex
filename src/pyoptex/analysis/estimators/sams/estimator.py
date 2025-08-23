@@ -11,7 +11,7 @@ from tqdm import tqdm
 from plotly.subplots import make_subplots
 
 from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X, sample_model_dep_onebyone
+from ....utils.model import identityY2X, sample_model_dep_onebyone, model2encnames
 from ....utils.comp import timeout
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
@@ -47,7 +47,7 @@ class SamsRegressor(MultiRegressionMixin):
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
     forced_model : np.array(1d)
-        Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
+        Any terms that must be included in the model. Commonly np.array([0], dtype=np.int)
         is used to force the intercept when the intercept is the first column in
         the normalized, encoded model matrix. This model must itself fulfill the
         heredity constraints.
@@ -103,28 +103,28 @@ class SamsRegressor(MultiRegressionMixin):
         the documentation on customizing SAMS.
     tqdm : bool
         Whether to use tqdm to track the progress
-    sams_model\_ : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
+    sams_model\\_ : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
         A SAMS model used in sampling and fitting data during the SAMS procedure.
-    results\_ : np.array(1d)
+    results\\_ : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         These are the returned models from the SAMS procedure.
-    models\_ : list(np.array(1d))
+    models\\_ : list(np.array(1d))
         The list of models, ordered by entropy.
-    entropies\_ : np.array(1d)
-        The entropy of each exported model in `models\_`. In
+    entropies\\_ : np.array(1d)
+        The entropy of each exported model in `models\\_`. In
         case of multiple clusters, the entropies are calculated
         within the respective cluster.
-    selection_metrics\_ : np.array(1d)
-        Alias for `entropies\_`.
-    frequencies\_ : np.array(1d)
-        The occurence frequency of each submodel in `models\_`
-    kmeans\_ : None or :py:class:`sklearn.cluster.Kmeans`
+    selection_metrics\\_ : np.array(1d)
+        Alias for `entropies\\_`.
+    frequencies\\_ : np.array(1d)
+        The occurence frequency of each submodel in `models\\_`
+    kmeans\\_ : None or :py:class:`sklearn.cluster.Kmeans`
         A kmeans object used to cluster the raster plot. Added 
         a parameter `skips` equal to 5% of the cluster size to
         be skipped for entropy calculations.
-    metric_name\_ : str  
+    metric_name\\_ : str  
         The name of the selection metric.
     """
 
@@ -157,7 +157,7 @@ class SamsRegressor(MultiRegressionMixin):
         mode : None or 'weak' or 'strong'
             The heredity mode during sampling.
         forced_model : np.array(1d)
-            Any terms that must be included in the model. Commonly np.array([0], dtype=np.int\_)
+            Any terms that must be included in the model. Commonly np.array([0], dtype=np.int64)
             is used to force the intercept when the intercept is the first column in
             the normalized, encoded model matrix. This model must itself fulfill the
             heredity constraints.
@@ -291,7 +291,7 @@ class SamsRegressor(MultiRegressionMixin):
             assert len(self.est_ratios) == len(self._re), 'Every random effect must have an estimated ratio when specified, in the same order'
         assert self.topn_bnb > 0, 'Must select at least one submodel for each fixed size, topn_bnb must be larger than 0'
         if self.nterms_bnb is not None:
-            if isinstance(self.nterms_bnb):
+            if isinstance(self.nterms_bnb, int):
                 assert self.nterms_bnb > 0, 'When an integer is specified for nterms_bnb, it must be larger than zero'
         assert self.bnb_timeout > 0, 'Must specify a strictly positive number of seconds for the branch-and-bound to run'
         if self.forced_model is not None:
@@ -327,7 +327,7 @@ class SamsRegressor(MultiRegressionMixin):
         ----------
         results : np.array(1d)
             A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int\_), ('coeff', np.float64),
+            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
             and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         sizes : iterable(int)
             An iterable of ints with the fixed sizes of the submodels.
@@ -494,13 +494,13 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Extract the skip
             if len(bkps) == 1:
-                skipn = 0
+                self._skipn = 0
             else:
                 # Take the last breakpoint
-                skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
+                self._skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
         else:
-            skipn = self.skipn
-        results = results[skipn:]
+            self._skipn = self.skipn
+        results = results[self._skipn:]
 
         # Possibly cluster
         if self.ncluster is None:
@@ -587,7 +587,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         return self
 
-    def plot_selection(self, ntop=5):
+    def plot_selection(self, ntop=5, model=None):
         """
         Creates a raster plot of the fitted SAMS procedure.
 
@@ -595,6 +595,10 @@ class SamsRegressor(MultiRegressionMixin):
         ----------
         ntop : int
             The number of top model terms to indicate in the raster plot.
+        model : pd.DataFrame
+            The dataframe of the model used in
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` used to
+            label the raster plot.
 
         Returns
         -------
@@ -602,6 +606,12 @@ class SamsRegressor(MultiRegressionMixin):
             The Plotly Figure object of the raster plot.
         """
         assert self.is_fitted, 'You must fit the regressor before plotting the selection plot'
+
+        # Create default term labels
+        if model is not None:
+            terms = model2encnames(model, self.effect_types_)
+        else:
+            terms = [f'x{i}' for i in range(self.n_encoded_features_)]
 
         # Extract top raster terms
         raster_terms = reduce(np.union1d, self.models_[:ntop])
@@ -638,16 +648,16 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Plot the raster
             fig = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
-                self.skipn, 'r2(adj)', self.forced_model, 
+                self.results_, terms,
+                self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
             )
 
         else:
             # Plot simple raster
             fig = plot_raster(
-                self.results_, [f'x{i}' for i in range(self.n_encoded_features_)],
-                self.skipn, 'r2(adj)', self.forced_model, 
+                self.results_, terms,
+                self._skipn, 'r2(adj)', self.forced_model, 
                 raster_terms, self.kmeans_
             )
 
