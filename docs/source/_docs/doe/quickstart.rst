@@ -91,6 +91,10 @@ Create your first design
   If you would like a refresher on optimal design of experiments, see
   :ref:`doe`.
 
+.. note::
+  The examples below are generated without parallelization. It is highly recommended
+  to read the section :ref:`qc_parallel` to speed up the design generation.
+
 We will start by creating a fully randomized D-optimal design 
 with 20 runs, one categorical and two continuous factors, 
 using the coordinate-exchange algorithm. We are using the
@@ -185,6 +189,10 @@ The function :py:func:`create_fixed_structure_design <pyoptex.doe.fixed_structur
 returns a dataframe `Y` containing the design, and the final internal
 state of the algorithm which contains the encoded design matrix, model matrix,
 and metric value.
+
+.. note::
+  Whenever the generation takes too long, the user can cancel the generation by pressing CTRL+C once 
+  in the terminal which will cause the algorithm to halt and return the current best design.
 
 We can write the design to a csv
 
@@ -699,3 +707,55 @@ which are passed to the design generation functions.
         :align: center
 
         The covariance matrix of the parameter estimates.
+
+.. _qc_parallel:
+
+Parallelization
+---------------
+
+The generation of designs can easily be parallelized to speed up the generation significantly 
+using the :py:func:`parallel_generation <pyoptex.utils.runtime.parallel_generation>`
+helper function. There are two important aspects.
+
+The first is that when parallelizing the generation, each instance of the generation
+algorithm should run on its own core to prevent cache invalidation by other instances.
+Therefore, the :py:func:`set_nb_cores <pyoptex.utils.runtime.set_nb_cores>` function
+should be called before any import.
+
+>>> from pyoptex.utils.runtime import set_nb_cores
+>>> set_nb_cores(1)
+>>> 
+>>> import numpy as np
+>>> ...
+
+.. note::
+  In fact, the :py:func:`set_nb_cores <pyoptex.utils.runtime.set_nb_cores>` function
+  should be called even when not parallelizing in most cases. Due to the small size
+  of the matrices, the overhead of parallel linear algebra is significant and should
+  be avoided by forcing the algorithm to use a single core.
+
+The second is that the generation function should be parallelized over the number of
+replications or iterations, depending on the generation algorithm. For example, instead
+of calling
+
+>>> n_tries = 1000
+>>> Y, state = create_splitk_plot_design(params, n_tries=n_tries)
+
+you can call
+
+>>> from pyoptex.utils.runtime import parallel_generation
+>>> Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries)
+
+which will parallelize the number of iterations over the available cores. If less cores
+should be used, the `ncores` argument can be passed to the 
+:py:func:`parallel_generation <pyoptex.utils.runtime.parallel_generation>` function as such
+
+>>> Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries, ncores=2)
+
+which will parallelize the number of iterations over exactly 2 cores.
+
+An example for split-plot designs can be found at 
+|link-qc-pre|\ |version|\ |link-qc-mid0|\ example_splitplot_multiprocessing.py\ |link-qc-mid1|\ example_splitplot_multiprocessing.py\ |link-qc-post|
+and an example for cost-optimal designs can be found at
+|link-qc-pre|\ |version|\ |link-qc-mid0|\ example_cost_optimal_codex_mp.py\ |link-qc-mid1|\ example_cost_optimal_codex_mp.py\ |link-qc-post|
+
