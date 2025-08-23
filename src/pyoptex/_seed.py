@@ -15,4 +15,5 @@ def set_seed(n):
     @numba.njit
     def _set_seed(value):
         np.random.seed(value)
+    _set_seed(n)
     set_seed_cy(n)

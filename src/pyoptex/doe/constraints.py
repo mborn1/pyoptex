@@ -125,9 +125,9 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
         # Extract the columns
         closing_brace = x.find(')')
         if closing_brace == -1:
-            cst = re.sub(r'[-\.\d\+]+', create_cst_col, x)
+            cst = re.sub(r'[\.\d]+', create_cst_col, x)
         else:
-            cst = x[:closing_brace] + re.sub(r'[-\.\d\+]+', create_cst_col, x[closing_brace:]) 
+            cst = x[:closing_brace] + re.sub(r'[\.\d]+', create_cst_col, x[closing_brace:]) 
         return cst
 
     # Create the script
@@ -137,6 +137,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     script = 'Col('.join(extract_cst(x) for x in script.split('Col('))
     if not exclude:
         script = f'~({script})'
+    print(script)
     tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 
                          'CompCol': CompCol, 'factors': factors, 'eps': Col(eps, None)})
     return tree
