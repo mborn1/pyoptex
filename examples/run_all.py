@@ -14,7 +14,7 @@ from typing import List, Tuple, Dict
 import traceback
 
 
-def find_python_scripts(directory: str) -> List[Path]:
+def find_python_scripts(directory: Path) -> List[Path]:
     """
     Recursively find all Python scripts in the given directory.
     
