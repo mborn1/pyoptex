@@ -30,7 +30,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         outliers in the training dataset.
     """
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), 
-                 threshold=0.6, stat='norm'):
+                 threshold=1, stat='norm'):
         """
         Creates the outlier transformer
 
@@ -76,10 +76,12 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
 
         # Fit and compute errors
         pred = self._predict(X)
-        self.errors_ = pred - np.array(y)
+        self.errors_ = (pred - np.array(y)) * self.y_std_
 
         # Detect the outliers
-        self.outliers_ = self.quantile_outliers(self.errors_, self.threshold, stat=getattr(spstats, self.stat))
+        self.outliers_, self.distances_ = self.quantile_outliers(
+            self.errors_, self.threshold, stat=getattr(spstats, self.stat)
+        )
 
         # Return self
         return self
@@ -124,8 +126,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
             The predictions.
         """
         # Predict based on linear regression
-        return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) \
-                    * self.y_std_ + self.y_mean_
+        return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1)
 
     def quantile_outliers(self, errors, threshold, stat=spstats.norm):
         """
@@ -156,6 +157,9 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         te0 = stat.ppf(ppf)
         d0 = np.abs(se0 - te0)
 
+        # Start the distances 
+        distances = np.copy(d0)
+
         # Outlier mask
         outliers = np.zeros(len(d0), dtype=np.bool_)
 
@@ -174,10 +178,11 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
             ppf = np.linspace(0, 1, se1.size + 2)[1:-1]
             te1 = stat.ppf(ppf)
             d1 = np.abs(se1 - te1)
+            distances[~outliers] = d1
 
             # Set the distances on the correct positions
             d0 = np.zeros(outliers.size)
             d0[~outliers] = d1
 
         # Return outliers according to the original array
-        return outliers[np.argsort(idx)]
+        return outliers[np.argsort(idx)], distances[np.argsort(idx)]

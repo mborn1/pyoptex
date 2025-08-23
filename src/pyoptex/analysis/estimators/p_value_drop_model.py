@@ -120,6 +120,8 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
             # Check for a valid index
             if i < keep.size and pvalues[sorted_p_idx[i]] > threshold:
                 keep = np.delete(keep, sorted_p_idx[i])
+                if keep.size == 0:
+                    raise ValueError('No terms left in the model')
             else:
                 removed = False
 
@@ -162,7 +164,6 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
         """
         # Final assertion
         if self.mode is not None:
-            print(len(self.dependencies), X.shape)
             assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
 
         # Drop terms one-by-one based on p-value

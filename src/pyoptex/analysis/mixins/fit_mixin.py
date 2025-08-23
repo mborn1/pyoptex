@@ -9,8 +9,6 @@ from ..utils.fit import fit_ols, fit_mixedlm
 from ...utils.design import encode_design, obs_var_from_Zs
 from ...utils.model import model2encnames, identityY2X
 
-# TODO: implement quantile outlier transformer.
-
 class BaseMixin:
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):
         """
@@ -766,7 +764,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f} * {labels[t]}' for c, t in zip(self.coef_, self.terms_)) 
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_)) 
 
         return formula   
 
