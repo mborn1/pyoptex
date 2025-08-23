@@ -9,7 +9,7 @@ Single core performance
 -----------------------
 
 Most often, the linear algebra operations in these algorithms operate on small
-matrices. However, libraries such as numpy ans scipy are sometimes automatically
+matrices. However, libraries such as numpy and scipy are sometimes automatically
 installed and configured to parallelize operations over multiple threads and cores.
 This parallelization can lead to large synchronization overheads which negatively
 impact the performance.
