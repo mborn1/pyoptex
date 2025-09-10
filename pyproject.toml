@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
+license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 dependencies = [
     "numba~=0.61",
