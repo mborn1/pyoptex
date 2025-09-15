@@ -116,7 +116,13 @@ class ExponentialAccept:
         prob : float
             The acceptance probability.
         """
-        return np.exp(-d / self.T)
+        if d <= 0:  # New solution is better (or equal), accept with prob 1
+            return 1.0
+
+        val = -d / self.T
+        if val < -700:  # Clip to avoid underflow; np.exp is effectively 0 for val < -700
+            return 0.0
+        return np.exp(val)
 
     def accepted(self):
         """
