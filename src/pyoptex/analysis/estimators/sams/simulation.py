@@ -8,7 +8,7 @@ from tqdm import tqdm as tqdm_
 from .accept import ExponentialAccept
 
 
-def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01, tqdm=True):
+def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01, allow_duplicate=False, tqdm=True):
     """
     Sample models using SAMS algorithm.
 
@@ -25,6 +25,8 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         The number of models to sample.
     minprob : float
         The minimum probability before accepting.
+    allow_duplicate : bool
+        Whether to allow duplicate samples in the output
     tqdm : bool
         Whether to use tqdm to track the progress.
 
@@ -77,12 +79,12 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 metric0 = metric1
                 m = pm
 
-                # Store if unique: TODO faster by first validating on metric? Maybe a sorted array?
-                if not np.any(np.all(models[:model_it] == model, axis=1)):
+                # Store if unique
+                if allow_duplicate or not np.any(np.all(models[:model_it][np.abs(results['metric'][:model_it] - metric0) < 1e-8] == m, axis=1)):
                     
                     # Store the model
                     models[model_it] = m
-                    results[model_it] = m, fit.params, fit.metric
+                    results[model_it] = m, fit.params, metric0
 
                     # Increase progress
                     model_it += 1

@@ -838,6 +838,12 @@ class MultiRegressionMixin(RegressionMixin):
     models\\_ : list(np.array(1d))
         The list of models, sorted by the selection_metrics\\_ (highest metric first).
         Each model is an integer array specifying the selected terms.
+    model_coef\\_ : list(np.array(1d))
+        The coefficients of the `models\\_`.
+    model_scale\\_ : np.array(1d)
+        The scale of the `models\\_`.
+    model_vcomp\\_ : np.array(2d)
+        The variance components of the `models\\_`.
     selection_metrics\\_ : np.array(1d)
         The metric of each model, sorted highest first. The selection metric
         defines the order in which the models should be analyzed.
@@ -896,6 +902,16 @@ class MultiRegressionMixin(RegressionMixin):
         X, y = check_X_y(X, y, accept_sparse=True)
         self._fit(X, y)
 
+        # Fit all models
+        self.model_coef_ = [None] * len(self.models_)
+        self.model_scale_ = np.zeros(len(self.models_), dtype=np.float64)
+        self.model_vcomp_ = np.zeros((len(self.models_), len(self.re)), dtype=np.float64)
+        for i in range(len(self.models_)):
+            fit = self.fit_fn_(X, y, self.models_[i])
+            self.model_coef_[i] = fit.params[:fit.k_fe]
+            self.model_scale_[i] = fit.scale
+            self.model_vcomp_[i] = fit.vcomp
+            
         # Add additional parameters required for RegressionMixin
         self.terms_ = self.models_[0]
         self.fit_ = self.fit_fn_(X, y, self.terms_)
@@ -927,6 +943,158 @@ class MultiRegressionMixin(RegressionMixin):
         fig : :py:class:`plotly.graph_objects.Figure`        
         """
         raise NotImplementedError('No selection plot was implemented')
+    
+    def model_formula(self, model, idx=0):
+        """
+        Creates the prediction formula of the fit for the encoded and
+        normalized data. This function assumes the regressor was
+        fitted with the result of :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+        In that case, the model can be provided to automatically
+        generate the correct labels.
+
+        .. warning::
+            This formula is the prediction formula of the encoded and
+            normalized data. First apply factor normalization
+            and then categorical encoding before applying this
+            prediction formula.
+
+            >>> # Imports
+            >>> from pyoptex.utils import Factor
+            >>> from pyoptex.utils.design import encode_design
+            >>> 
+            >>> # Example factors
+            >>> factors = [
+            >>>     Factor('A'), 
+            >>>     Factor('B'),
+            >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
+            >>> ]
+            >>> 
+            >>> # Compute derived parameters
+            >>> effect_types = np.array([
+            >>>     1 if f.is_continuous else len(f.levels)
+            >>>     for f in factors
+            >>> ])
+            >>> coords = [f.coords_ for f in factors]
+            >>> 
+            >>> # Normalize the factors
+            >>> for f in factors:
+            >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
+            >>> 
+            >>> # Select correct order + to numpy
+            >>> data = data[[str(f.name) for f in factors]].to_numpy()
+            >>> 
+            >>> # Encode
+            >>> data = encode_design(data, effect_types, coords=coords)
+            >>> 
+            >>> # Transform according to the model
+            >>> data = Y2X(data)
+
+            
+        .. note::
+            If you did not create Y2X using
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
+            use
+            :py:func:`formula <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.formula>`.
+            You must manually specify the labels here.
+
+        Parameters
+        ----------
+        model : pd.DataFrame
+            The dataframe of the model used in
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+        idx : int
+            The index of the model to be printed in `models_`.
+
+        Returns
+        -------
+        formula : str
+            The prediction formula for encoded and normalized data.
+        """
+        # Make sure model is a dataframe
+        assert isinstance(model, pd.DataFrame), 'The specified model must be a dataframe'
+
+        # Encode the labels
+        labels = model2encnames(model, self.effect_types_)
+
+        return self.formula(labels, idx)
+
+    def formula(self, labels=None, idx=0):
+        """
+        Creates the prediction formula of the fit for the encoded and
+        normalized data. The labels for each term are given by the 
+        `labels` parameter.
+        The number of labels must be the number of parameters from Y2X,
+        i.e., len(labels) == Y2X(Y).shape[1].
+
+        .. warning::
+            This formula is the prediction formula of the encoded and
+            normalized data. First apply factor normalization
+            and then categorical encoding before applying this
+            prediction formula.
+
+            >>> # Imports
+            >>> from pyoptex.utils import Factor
+            >>> from pyoptex.utils.design import encode_design
+            >>> 
+            >>> # Example factors
+            >>> factors = [
+            >>>     Factor('A'), 
+            >>>     Factor('B'),
+            >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
+            >>> ]
+            >>> 
+            >>> # Compute derived parameters
+            >>> effect_types = np.array([
+            >>>     1 if f.is_continuous else len(f.levels)
+            >>>     for f in factors
+            >>> ])
+            >>> coords = [f.coords_ for f in factors]
+            >>> 
+            >>> # Normalize the factors
+            >>> for f in factors:
+            >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
+            >>> 
+            >>> # Select correct order + to numpy
+            >>> data = data[[str(f.name) for f in factors]].to_numpy()
+            >>> 
+            >>> # Encode
+            >>> data = encode_design(data, effect_types, coords=coords)
+            >>> 
+            >>> # Transform according to the model
+            >>> data = Y2X(data)
+
+            
+        .. note::
+            If you created Y2X using
+            :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
+            use
+            :py:func:`model_formula <pyoptex.analysis.mixins.fit_mixin.RegressionMixin.model_formula>`.
+            It will automatically assign the correct labels.
+
+        Parameters
+        ----------
+        labels : list(str)
+            The list of labels for each encoded, normalized term.
+        idx : int
+            The index of the model to be printed in `models_`.
+
+        Returns
+        -------
+        formula : str
+            The prediction formula for encoded and normalized data.
+        """
+        
+        if labels is None:
+            # Specify default x features
+            labels = [f'x{i}' for i in range(self.n_encoded_features_)]
+
+        # Validate the labels
+        assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
+
+        # Create the formula
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx])) 
+
+        return formula   
 
 class TransformerMixin(BaseMixin, TransformerMixinSklearn):
     """
