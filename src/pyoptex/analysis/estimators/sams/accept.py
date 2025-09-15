@@ -120,7 +120,7 @@ class ExponentialAccept:
             return 1.0
 
         val = -d / self.T
-        if val < -700:  # Clip to avoid overflow
+        if val < -700:  # Clip to avoid underflow; np.exp is effectively 0 for val < -700
             return 0.0
         return np.exp(val)
 
