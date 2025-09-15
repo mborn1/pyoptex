@@ -42,7 +42,7 @@ regr = SamsRegressor(
     factors, Y2X,
     dependencies=dependencies, mode='weak',
     forced_model=np.array([0], np.int64),
-    model_size=6, nb_models=5000, skipn=1000,
+    model_size=8, nb_models=5000, skipn=3000,
 )
 regr.fit(data.drop(columns='Y'), data['Y'])
 
@@ -53,7 +53,8 @@ regr.plot_selection(model=model).show()
 print(regr.summary())
 
 # Print the formula in encoded form
-print(regr.model_formula(model=model))
+for i in range(len(regr.models_)):
+    print(regr.model_formula(model=model, idx=i))
 
 # Predict
 data['pred'] = regr.predict(data.drop(columns='Y'))

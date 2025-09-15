@@ -67,6 +67,9 @@ class SamsRegressor(MultiRegressionMixin):
         ratios are used to make the SAMS procedure computationally feasible
         in mixed models. For every random effect, a ratio should be provided.
         Defaults to 1 for each random effect if None is specified.
+    allow_duplicate_sample : bool
+        Whether or not to allow duplicate samples to be stored in the final results of
+        the SAMS sampling procedure.
     max_cluster : int
         The maximum number of clusters to try when specifying 'auto'
         as `ncluster`. Atleast three are required for the elbow method. This
@@ -131,7 +134,7 @@ class SamsRegressor(MultiRegressionMixin):
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=(),
                     dependencies=None, mode=None, forced_model=None,
                     model_size=None, nb_models=10000, skipn='auto', est_ratios=None,
-                    max_cluster=8, ncluster=None,
+                    allow_duplicate_sample=False, max_cluster=8, ncluster=None,
                     topn_bnb=4, nterms_bnb=None, bnb_timeout=180,
                     entropy_sampler=sample_model_dep_onebyone, entropy_sampling_N=10000, 
                     entropy_model_order=None,
@@ -177,6 +180,9 @@ class SamsRegressor(MultiRegressionMixin):
             ratios are used to make the SAMS procedure computationally feasible
             in mixed models. For every random effect, a ratio should be provided.
             Defaults to 1 for each random effect if None is specified.
+        allow_duplicate_sample : bool
+            Whether or not to allow duplicate samples to be stored in the final results of
+            the SAMS sampling procedure.
         max_cluster : int
             The maximum number of clusters to try when specifying 'auto'
             as `ncluster`. Atleast three are required for the elbow method. This
@@ -223,6 +229,7 @@ class SamsRegressor(MultiRegressionMixin):
         self.nb_models = nb_models
         self.skipn = skipn
         self.est_ratios = est_ratios
+        self.allow_duplicate_sample = allow_duplicate_sample
         self.topn_bnb = topn_bnb
         self.nterms_bnb = nterms_bnb
         self.bnb_timeout = bnb_timeout
@@ -480,7 +487,7 @@ class SamsRegressor(MultiRegressionMixin):
             self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
         accept = ExponentialAccept(T0=(X.shape[0])*np.var(y)/10, rho=0.95, kappa=4)
         self.results_ = simulate_sams(self.sams_model_, self._model_size, accept_fn=accept, nb_models=self.nb_models,
-                                        tqdm=self.tqdm)
+                                        allow_duplicate=self.allow_duplicate_sample, tqdm=self.tqdm)
 
         # Sort the results
         idx = np.argsort(self.results_['metric'])
