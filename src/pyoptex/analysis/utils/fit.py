@@ -57,10 +57,10 @@ def r2adj(fit):
 
         # Extract the groups
         vc_mats = fit.model.exog_vc.mats
-        Zs = np.stack([np.argmax(vc_mats[i][0], axis=1) for i in range(len(vc_mats))]).T
+        Zs = np.stack([np.argmax(vc_mats[i][0], axis=1) for i in range(len(vc_mats))])
 
         # Compute intercept semi-variance
-        V0 = obs_var_from_Zs(Zs, nobs, fit0.params[fit.k_fe:]) * fit0.scale
+        V0 = obs_var_from_Zs(Zs, nobs, fit0.params[fit0.k_fe:]) * fit0.scale
         rss0 = np.sum(V0 * P.T) # = np.trace(V0 @ P)
 
         # Compute model semi-variance
