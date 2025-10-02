@@ -106,21 +106,20 @@ class BaseMixin:
         X : np.array(2d)
             The normalized, encoded model matrix of the data.
         """
-        # Normalize the factors
-        for f in self._factors:
-            X[str(f.name)] = f.normalize(X[str(f.name)])
+        # Initialize the numpy array
+        Xnp = np.zeros((len(X), self.n_features_in_), dtype=np.float64)
 
-        # Select correct order + to numpy
-        X = X[self.features_names_in_].to_numpy()
+        # Normalize the factor and store in the numpy array
+        for i, f in enumerate(self._factors):
+            Xnp[:, i] = f.normalize(X[str(f.name)]).to_numpy()
 
         # Encode
-        X = encode_design(X, self.effect_types_, coords=self.coords_)
+        Xnp = encode_design(Xnp, self.effect_types_, coords=self.coords_)
 
         # Transform
-        X = self._Y2X(X)
+        Xnp = self._Y2X(Xnp)
 
-        return X
-
+        return Xnp
 
     def _validate_fit(self, X, y):
         """
