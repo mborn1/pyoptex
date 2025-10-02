@@ -98,28 +98,28 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
         # Prediction figure
         fig.add_trace(go.Scatter(
             x=y_pred[c], y=y_true[c], mode='markers', 
-            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), **tt
         ), row=1, col=1)
 
         # Error figure 1
         fig.add_trace(go.Scatter(
             x=y_pred[c], y=error[c], mode='markers', 
-            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=1, col=2)
 
         # Error figure 2
         fig.add_trace(go.Scatter(
             x=c, y=error[c], mode='markers', 
-            marker_color=DEFAULT_PLOTLY_COLORS[i],
+            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=2, col=2)
 
         # QQ-plot
         fig.add_trace(go.Scatter(
             x=theoretical_quant[cquant], y=true_quant[cquant], 
-            mode='markers', marker_color=DEFAULT_PLOTLY_COLORS[i],
+            mode='markers', marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=2, col=1)
 
