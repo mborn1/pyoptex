@@ -66,8 +66,8 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
             (r, np.eye(Zi[-1] + 1)[Zi])
             for r, Zi in zip(ratios, Zs)
             if Zi is not None
-            )
         )
+    )
 
 def x2fx(Yenc, modelenc):
     """
