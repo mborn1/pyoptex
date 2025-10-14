@@ -60,8 +60,12 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
     if ratios is None:
         ratios = np.ones(len(Zs))
         
-    Zs = [np.eye(Zi[-1]+1)[Zi] for Zi in Zs if Zi is not None]
-    return V + sum(ratios[i] * Zs[i] @ Zs[i].T for i in range(len(Zs)))
+    return V + sum(
+        r * (Zi_dummy @ Zi_dummy.T)
+        for r, Zi in zip(ratios, Zs)
+        if Zi is not None
+        for Zi_dummy in [np.eye(Zi[-1]+1)[Zi]]
+    )
 
 def x2fx(Yenc, modelenc):
     """
