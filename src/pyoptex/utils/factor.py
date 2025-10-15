@@ -32,6 +32,9 @@ class FactorMixin:
     coords : list(np.array(2d))
         Only possible for categorical factors. The list of encodings of each level.
     """
+    # Define the normalization/denormalization precision constant
+    NORMALIZATION_PRECISION = 12
+
     def validate(self):
         """
         Validation of the settings. To be called in the __new__ constructor.
@@ -187,7 +190,7 @@ class FactorMixin:
             Categorical inputs become integers.
         """
         if self.is_continuous:
-            return np.round((data - self.mean) / self.scale, 12)
+            return np.round((data - self.mean) / self.scale, self.NORMALIZATION_PRECISION)
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
             if isinstance(data, str):
@@ -225,7 +228,7 @@ class FactorMixin:
             Categorical inputs become strings.
         """
         if self.is_continuous:
-            return data * self.scale + self.mean
+            return np.round(data * self.scale + self.mean, self.NORMALIZATION_PRECISION)
         else:
             m = {i: lname for i, lname in enumerate(self.levels)}
             if isinstance(data, int) or isinstance(data, float):
