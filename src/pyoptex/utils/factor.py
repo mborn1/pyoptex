@@ -187,7 +187,7 @@ class FactorMixin:
             Categorical inputs become integers.
         """
         if self.is_continuous:
-            return (data - self.mean) / self.scale
+            return np.round((data - self.mean) / self.scale, 12)
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
             if isinstance(data, str):
