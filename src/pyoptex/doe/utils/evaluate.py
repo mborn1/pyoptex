@@ -133,7 +133,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     corr = pd.DataFrame(X, columns=encoded_colnames).corr(method=method)
     return corr
 
-def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nans=True):
+def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nans=True, corr_abs=False):
     """
     Plots the map of correlations for the provided design.
 
@@ -152,6 +152,12 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
         The correlation method to use.
     drop_nans : bool
         Whether to drop rows and columns that are completely nan.
+    corr_abs : bool
+        Whether to drop the sign of the correlation. 
+        If True, the colors in the figure only display magnitudes 
+        using a sequential colormap ('Cividis').
+        If False, the colors of the figure show the sign, using 
+        a diverging colormap ('RdBu').
 
     Returns
     -------
@@ -163,22 +169,30 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     
     # Iteratively drop entire rows and columns of nans
     if drop_nans:
-        bad = np.all(np.isnan(corr), axis=1)
-        while np.any(bad):
-            if isinstance(corr, pd.DataFrame):
-                bad = bad.to_numpy()
-                corr = corr.iloc[~bad, ~bad]
-            else: 
-                corr = corr[~bad][:, ~bad]
-            bad = np.all(np.isnan(corr), axis=1)
+        while True:
+            bad = np.all(np.isnan(corr), axis=1).to_numpy()
+            if not bad.any():
+                break
+            corr = corr.iloc[~bad, ~bad]
+
+    # User can specify if they are interested in sign of correlation or just magnitude
+    if corr_abs:
+        z = np.flipud(corr.abs().to_numpy())
+        zmin, zmax, colorscale, title_suffix = 0, 1, 'Cividis', ' (absolute)'
+    else:
+        z = np.flipud(corr.to_numpy())
+        zmin, zmax, colorscale, title_suffix = -1, 1, 'RdBu', ''
 
     fig = go.Figure()
     fig.add_trace(go.Heatmap(
-        z=np.flipud(corr.to_numpy()), x=corr.columns, y=corr.columns[::-1],
-        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{z}',
+        z=z, x=corr.columns, y=corr.columns[::-1],
+        colorscale=colorscale,
+        text=np.flipud(corr.map(lambda v: f"{v:+.3f}").to_numpy()),
+        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{text}<extra></extra>',
+        zmin=zmin, zmax=zmax
     ))
     fig.update_layout(
-        title='Correlation map',
+        title=f'Correlation map{title_suffix}',
         title_x=0.5
     )
 
