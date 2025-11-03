@@ -163,14 +163,11 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     
     # Iteratively drop entire rows and columns of nans
     if drop_nans:
-        bad = np.all(np.isnan(corr), axis=1)
-        while np.any(bad):
-            if isinstance(corr, pd.DataFrame):
-                bad = bad.to_numpy()
-                corr = corr.iloc[~bad, ~bad]
-            else: 
-                corr = corr[~bad][:, ~bad]
-            bad = np.all(np.isnan(corr), axis=1)
+        while True:
+            bad = np.all(np.isnan(corr), axis=1).to_numpy()
+            if not bad.any():
+                break
+            corr = corr.iloc[~bad, ~bad]
 
     fig = go.Figure()
     fig.add_trace(go.Heatmap(
