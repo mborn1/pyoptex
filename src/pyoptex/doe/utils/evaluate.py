@@ -188,7 +188,7 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
         z=z, x=corr.columns, y=corr.columns[::-1],
         colorscale=colorscale,
         text=np.flipud(corr.map(lambda v: f"{v:+.3f}").to_numpy()),
-        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{text}',
+        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{text}<extra></extra>',
         zmin=zmin, zmax=zmax
     ))
     fig.update_layout(
