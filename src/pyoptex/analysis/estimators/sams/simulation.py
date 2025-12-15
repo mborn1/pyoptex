@@ -98,3 +98,45 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 accept_fn.rejected()
 
     return results
+
+def simulate_all(model, model_size, tqdm=True):
+    """
+    Sample and fits all possible models.
+
+    Parameters
+    ----------
+    model : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
+        The model to fit such as an OLS or a mixed model.
+    model_size : int
+        The total size of each overfitted model.
+    tqdm : bool
+        Whether to use tqdm to track the progress.
+
+    Returns
+    -------
+    results : np.array(1d)
+        A numpy array with a special datatype where each element contains
+        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
+        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+    """
+    # Generate all possible model combinations
+    models = model.all(model_size)
+    nb_models = len(models)
+
+    # Initialize model storage
+    rdtype = np.dtype([
+        ('model', np.int64, model_size), 
+        ('coeff', np.float64, model_size),
+        ('metric', np.float64)
+    ])   
+    results = np.zeros(nb_models, dtype=rdtype)
+
+    # Compute the metrics for all
+    for model_it, m in tqdm_(enumerate(models), disable=(not tqdm)):
+        # Store the model
+        fit = model.fit(m)
+
+        # Store the result
+        results[model_it] = m, fit.params, fit.metric
+
+    return results

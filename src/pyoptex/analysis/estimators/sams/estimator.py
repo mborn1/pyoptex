@@ -20,7 +20,7 @@ from .entropy import entropies, entropies_approx
 from .models.ols_model import OlsModel
 from .models.mixed_lm_model import MixedLMModel
 from .plot import plot_raster
-from .simulation import simulate_sams
+from .simulation import simulate_sams, simulate_all
 
 
 class SamsRegressor(MultiRegressionMixin):
@@ -55,12 +55,14 @@ class SamsRegressor(MultiRegressionMixin):
         The size of the overfitted models. Defaults to the number of runs
         divided by three. The overfitted model includes the forced model,
         and its size must thus be larger than the forced model.
-    nb_models : int
-        Th number of unique models to accept during the sams procedure.
-    skipn : int or 'auto'
+    nb_models : int or 'all'
+        The number of unique models to accept during the sams procedure.
+        If 'all' then all possible models are fitted.
+    skipn : int float or or 'auto'
         The number of worst-fitting models to skip during
-        branch-and-bound and entropy calculations. Defaults to 'auto'
-        which uses the elbow method and an additional 1% safety
+        branch-and-bound and entropy calculations. When specified as a float,
+        it must be a number between 0 and 1 to indicate a fraction.
+        Defaults to 'auto' which uses the elbow method and an additional 1% safety
         margin. Any int must be smaller than `nb_models`.
     est_ratios : None or np.array(1d)
         The estimated variance ratios to be used during SAMS. These
@@ -168,12 +170,14 @@ class SamsRegressor(MultiRegressionMixin):
             The size of the overfitted models. Defaults to the number of runs
             divided by three. The overfitted model includes the forced model,
             and its size must thus be larger than the forced model.
-        nb_models : int
+        nb_models : int or 'all'
             Th number of unique models to accept during the sams procedure.
-        skipn : int or 'auto'
+            If 'all', then all possible models will be fitted.
+        skipn : int float or or 'auto'
             The number of worst-fitting models to skip during
-            branch-and-bound and entropy calculations. Defaults to 'auto'
-            which uses the elbow method and an additional 1% safety
+            branch-and-bound and entropy calculations. When specified as a float,
+            it must be a number between 0 and 1 to indicate a fraction.
+            Defaults to 'auto' which uses the elbow method and an additional 1% safety
             margin. Any int must be smaller than `nb_models`.
         est_ratios : None or np.array(1d)
             The estimated variance ratios to be used during SAMS. These
@@ -290,10 +294,12 @@ class SamsRegressor(MultiRegressionMixin):
                 assert self.model_size > 0, 'The overfitted model size must be a positive number'
             else:
                 assert self.model_size > len(self.forced_model), 'The overfitted model size must be at least one larger than the forced model' 
-        assert self.nb_models > 0, 'Must have at least one model to simulate, nb_models must be larger than zero'
-        assert self.skipn == 'auto' or isinstance(self.skipn, int), 'Skipn must be "auto" or an integer'
-        if self.skipn != 'auto':
+        assert self.nb_models == 'all' or self.nb_models > 0, 'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
+        assert self.skipn == 'auto' or isinstance(self.skipn, int) or isinstance(self.skipn, float), 'Skipn must be "auto" or an integer or a float'
+        if isinstance(self.skipn, int) and self.nb_models != 'all':
             assert 0 <= self.skipn < self.nb_models, 'Cannot skip all SAMS models, skipn must be smaller than nb_models'
+        if isinstance(self.skipn, float):
+            assert 0 <= self.skipn < 1, 'If skipn is a floating point, it must be a fraction between [0, 1)'
         if self.est_ratios is not None:
             assert len(self.est_ratios) == len(self._re), 'Every random effect must have an estimated ratio when specified, in the same order'
         assert self.topn_bnb > 0, 'Must select at least one submodel for each fixed size, topn_bnb must be larger than 0'
@@ -358,6 +364,7 @@ class SamsRegressor(MultiRegressionMixin):
         # Initialize results
         models = list()
         counts = np.zeros(len(sizes) * topn, dtype=np.int64)
+        count_idx = 0
 
         # Compute BnB
         for i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
@@ -371,8 +378,11 @@ class SamsRegressor(MultiRegressionMixin):
             # Check for a result within the timeout
             if result is not None:
                 m, f = result
-                models.extend([i for i, _ in m])
-                counts[i*topn:(i+1)*topn] = f
+                for idx in range(len(m)):
+                    if f[idx] > 0:
+                        models.append(m[idx][0])
+                        counts[count_idx] = f[idx]
+                        count_idx += 1
             else:
                 break
 
@@ -486,8 +496,11 @@ class SamsRegressor(MultiRegressionMixin):
             V = obs_var_from_Zs(self.Zs_, len(X), self._est_ratios)
             self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
         accept = ExponentialAccept(T0=(X.shape[0])*np.var(y)/10, rho=0.95, kappa=4)
-        self.results_ = simulate_sams(self.sams_model_, self._model_size, accept_fn=accept, nb_models=self.nb_models,
-                                        allow_duplicate=self.allow_duplicate_sample, tqdm=self.tqdm)
+        if self.nb_models == 'all':
+            self.results_ = simulate_all(self.sams_model_, self._model_size, tqdm=self.tqdm)
+        else:
+            self.results_ = simulate_sams(self.sams_model_, self._model_size, accept_fn=accept, nb_models=self.nb_models,
+                                            allow_duplicate=self.allow_duplicate_sample, tqdm=self.tqdm)
 
         # Sort the results
         idx = np.argsort(self.results_['metric'])
@@ -505,6 +518,8 @@ class SamsRegressor(MultiRegressionMixin):
             else:
                 # Take the last breakpoint
                 self._skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
+        elif isinstance(self.skipn, float):
+            self._skipn = int(self.skipn * len(results))
         else:
             self._skipn = self.skipn
         results = results[self._skipn:]
