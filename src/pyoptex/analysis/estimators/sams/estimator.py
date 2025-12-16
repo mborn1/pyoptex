@@ -58,7 +58,7 @@ class SamsRegressor(MultiRegressionMixin):
     nb_models : int or 'all'
         The number of unique models to accept during the sams procedure.
         If 'all' then all possible models are fitted.
-    skipn : int float or or 'auto'
+    skipn : int, float or 'auto'
         The number of worst-fitting models to skip during
         branch-and-bound and entropy calculations. When specified as a float,
         it must be a number between 0 and 1 to indicate a fraction.
@@ -173,7 +173,7 @@ class SamsRegressor(MultiRegressionMixin):
         nb_models : int or 'all'
             Th number of unique models to accept during the sams procedure.
             If 'all', then all possible models will be fitted.
-        skipn : int float or or 'auto'
+        skipn : int, float or 'auto'
             The number of worst-fitting models to skip during
             branch-and-bound and entropy calculations. When specified as a float,
             it must be a number between 0 and 1 to indicate a fraction.
