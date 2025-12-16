@@ -4,6 +4,7 @@ Module for the SAMS base model.
 
 import numpy as np
 from collections import namedtuple
+from itertools import combinations
 
 from .....utils.model import permitted_dep_add
 
@@ -227,6 +228,27 @@ class Model:
 
         # Force uniqueness
         return self._sort(model)
+    
+    def all(self, model_size):
+        """
+        Generates an array of all possible models.
+        
+        Parameters
+        ----------
+        model_size : int
+            The number of terms per model.
+
+        Returns
+        -------
+        models : np.array(2d)
+            The list of all feasible models.
+        """
+        models = []
+        for model in combinations(range(len(self.dep)), model_size):
+            model = np.array(model)
+            if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(np.isin(self.forced, model, assume_unique=True)):
+                models.append(model)
+        return np.array(models)
 
     def fit(self, model):
         """
