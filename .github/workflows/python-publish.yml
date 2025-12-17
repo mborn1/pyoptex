@@ -15,9 +15,10 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         # Define the operating systems to build on
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-latest, macos-15-intel]
 
     steps:
       - name: Checkout repository
@@ -28,6 +29,22 @@ jobs:
         uses: docker/setup-qemu-action@v3
         with:
           platforms: all
+
+      - name: Setup LLVM for Windows ARM64
+        if: ${{ matrix.os == 'windows-11-arm' }}
+        uses: ./.github/windows_arm64_steps
+
+      - name: pkg-config-for-win
+        if: runner.os == 'windows'
+        run: |
+          choco install -y --no-progress --stoponfirstfailure --checksum 6004DF17818F5A6DBF19CB335CC92702 pkgconfiglite
+          $CIBW = "${{ github.workspace }}/.openblas"
+          # pkgconfig needs a complete path, and not just "./openblas since the
+          # build is run in a tmp dir (?)
+          # It seems somewhere in the env passing, `\` is not
+          # passed through, so convert it to '/'
+          $CIBW = $CIBW.replace("\","/")
+          echo "CIBW_ENVIRONMENT_WINDOWS=PKG_CONFIG_PATH=$CIBW" >> $env:GITHUB_ENV
 
       - name: Build the wheels
         uses: pypa/cibuildwheel@v3.3.0
@@ -41,29 +58,29 @@ jobs:
           name: wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
-  upload_to_pypi:
-    name: Upload wheels to PyPI
-    needs: [build_wheels] # This job runs only after all wheels are built
-    runs-on: ubuntu-latest
-    permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
-      id-token: write
+  # upload_to_pypi:
+  #   name: Upload wheels to PyPI
+  #   needs: [build_wheels] # This job runs only after all wheels are built
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     # IMPORTANT: this permission is mandatory for trusted publishing
+  #     id-token: write
 
-    # Dedicated environments with protections for publishing are strongly recommended.
-    # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
-    environment:
-      name: pypi
-      url: https://pypi.org/project/pyoptex/${{ github.event.release.name }}
+  #   # Dedicated environments with protections for publishing are strongly recommended.
+  #   # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
+  #   environment:
+  #     name: pypi
+  #     url: https://pypi.org/project/pyoptex/${{ github.event.release.name }}
 
-    steps:
-      - name: Download all wheel artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: wheels-*
-          merge-multiple: true # Merge artifacts from different OSs into one directory
-
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+  #   steps:
+  #     - name: Download all wheel artifacts
+  #       uses: actions/download-artifact@v4
   #       with:
-  #         packages-dir: dist/
+  #         path: dist
+  #         pattern: wheels-*
+  #         merge-multiple: true # Merge artifacts from different OSs into one directory
+
+  #     - name: Publish package to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  # #       with:
+  # #         packages-dir: dist/
