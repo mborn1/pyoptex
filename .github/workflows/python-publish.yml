@@ -30,6 +30,22 @@ jobs:
         with:
           platforms: all
 
+      - name: Setup LLVM for Windows ARM64
+        if: ${{ matrix.os == 'windows-11-arm' }}
+        uses: ./.github/windows_arm64_steps
+
+      - name: pkg-config-for-win
+        if: runner.os == 'windows'
+        run: |
+          choco install -y --no-progress --stoponfirstfailure --checksum 6004DF17818F5A6DBF19CB335CC92702 pkgconfiglite
+          $CIBW = "${{ github.workspace }}/.openblas"
+          # pkgconfig needs a complete path, and not just "./openblas since the
+          # build is run in a tmp dir (?)
+          # It seems somewhere in the env passing, `\` is not
+          # passed through, so convert it to '/'
+          $CIBW = $CIBW.replace("\","/")
+          echo "CIBW_ENVIRONMENT_WINDOWS=PKG_CONFIG_PATH=$CIBW" >> $env:GITHUB_ENV
+
       - name: Build the wheels
         uses: pypa/cibuildwheel@v3.3.0
         env:
