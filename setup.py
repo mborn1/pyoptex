@@ -55,5 +55,4 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     ext_modules=cythonize(extensions, compiler_directives={'language_level': "3"}),
-    setup_requires=['cython', 'numpy'],
 )
