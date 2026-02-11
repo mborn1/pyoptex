@@ -36,6 +36,7 @@ class ConstraintsFunc:
             The keyword arguments to pass to the function.
         """
         self.fn = fn
+        self._fn = None
         self.kwargs = kwargs
         self.evaluated = False
 
@@ -56,10 +57,18 @@ class ConstraintsFunc:
             The result of the function call which is a
             boolean array.
         """
+        # Compile the constraints
         if not self.evaluated:
-            self.fn = eval(self.fn, {'np': np})
+            self._fn = eval(self.fn, {'np': np})
             self.evaluated = True
-        return self.fn(*args, **self.kwargs, **kwargs)
+        return self._fn(*args, **self.kwargs, **kwargs)
+    
+    def clear(self):
+        """
+        Removes the pre-compiled (and cached) function.
+        """
+        self._fn = None
+        self.evaluated = False
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """
