@@ -221,6 +221,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Validate prior
         assert not np.any(fn.constraintso(prior)), 'Prior contains constraint violating runs'
+        fn.constraintso.clear() # Clear to permit pickling for multiprocessing
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
             if f.re.level != 0:

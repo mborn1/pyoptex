@@ -193,6 +193,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
         # Validate prior
         assert not np.any(fn.constraints(prior)), 'Prior contains constraint violating runs'
+        fn.constraints.clear() # Clear to permit pickling for multiprocessing
 
     else:
         prior = np.empty((0, colstart[-1]))
