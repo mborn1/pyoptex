@@ -108,6 +108,11 @@ def linkcode_resolve(domain, info):
     else:
         anchor = f'#L{start_line}-L{end_line}'
 
+    # Adjust the release to exclude patch version
+    v = release.split('.')
+    v[-1] = 'x'
+    release_x = '.'.join(v)
+
     # Link to github
-    result = "https://github.com/mborn1/pyoptex/blob/%s/src/%s.py%s" % (release, filename, anchor)
+    result = "https://github.com/mborn1/pyoptex/blob/%s/src/%s.py%s" % (release_x, filename, anchor)
     return result
