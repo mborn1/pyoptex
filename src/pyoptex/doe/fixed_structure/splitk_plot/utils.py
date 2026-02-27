@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ..utils import Parameters as Parameterso, RandomEffect as RandomEffect
+from ....utils.model import encode_model
 
 Parameters = namedtuple('Parameters', ' '.join(Parameterso._fields) + ' plot_sizes c alphas thetas thetas_inv compute_update')
 Update = namedtuple('Update', 'level grp run_start run_end col_start col_end new_coord old_coord Xi_old old_metric')
@@ -185,7 +186,8 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
 
 def terms_per_plot_level(factors, model):
     """
-    Computes the amount of coefficients to be estimated per plot level.
+    Computes the number of coefficients to be estimated per plot level (excluding any degrees of
+    freedom required for the estimation of the variance components).
 
     Parameters
     ----------
@@ -198,7 +200,7 @@ def terms_per_plot_level(factors, model):
     -------
     nb_terms_per_level : np.array(1d)
         The number of terms for each plot level. E.g., element
-        zero is the numbe of terms for the easy-to-change degrees
+        zero is the number of terms for the easy-to-change degrees
         of freedom.
     """
     # Reorder model
@@ -206,8 +208,12 @@ def terms_per_plot_level(factors, model):
     col_names = [str(f.name) for f in factors]
     model = model[col_names].to_numpy()
 
+    # Encode the model (for categorical factors)
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    model = encode_model(model, effect_types)
+
     # Initialize
-    plot_levels = np.array([f.re.level for f in factors])
+    plot_levels = np.array([x for f in factors for x in [f.re.level] * (len(f.levels) - 1 if f.is_categorical else 1)])
     max_split_level = np.max(plot_levels)
     split_levels = np.zeros(max_split_level+1, np.int64)
 
@@ -221,7 +227,8 @@ def terms_per_plot_level(factors, model):
     split_levels[:-1] -= split_levels[1:]
 
     # Add the intercept
-    split_levels[-1] += 1
+    if np.any(np.all(model == 0, axis=1)):
+        split_levels[-1] += 1
 
     return split_levels
 
@@ -265,6 +272,12 @@ def validate_plot_sizes(factors, model):
         The factors of the design.
     model : pd.DataFrame
         The model dataframe
+
+    Returns
+    -------
+    AssertionError :
+        If the plot sizes are not sufficient to estimate all fixed effects
+        and variances of the random effects (with at least one degree of freedom).
     """
     # Compute plot sizes
     nb_plots = max(f.re.level for f in factors) + 1
@@ -282,5 +295,5 @@ def validate_plot_sizes(factors, model):
         req[-i] = np.ceil((tppl[-i] + 1) / np.prod(plot_sizes[-i+1:]) + 1)
 
     # Validate they are above minimum
-    min_levels = min_plot_levels(terms_per_plot_level(factors, model))
+    min_levels = min_plot_levels(tppl)
     assert np.all(plot_sizes >= req), f'The minimum sized split^k-plot design has sizes {min_levels}'
