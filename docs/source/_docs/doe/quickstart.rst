@@ -754,6 +754,10 @@ should be used, the `ncores` argument can be passed to the
 
 which will parallelize the number of iterations over exactly 2 cores.
 
+.. warning::
+    On Windows, make sure to wrap your entire code in ``if __name__ == '__main__':`` to avoid
+    an infinite loop of processes. Windows creates processes differently than Linux or MacOS.
+
 An example for split-plot designs can be found at 
 |link-qc-pre|\ |version|\ |link-qc-mid0|\ example_splitplot_multiprocessing.py\ |link-qc-mid1|\ example_splitplot_multiprocessing.py\ |link-qc-post|
 and an example for cost-optimal designs can be found at
