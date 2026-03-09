@@ -57,6 +57,10 @@ should be used, the `ncores` argument can be passed to the
     the :py:func:`set_nb_cores <pyoptex.utils.runtime.set_nb_cores>` function before
     any import. See :ref:`perf_single_core` for more information.
 
+.. warning::
+    On Windows, make sure to wrap your entire code in ``if __name__ == '__main__':`` to avoid
+    an infinite loop of processes. Windows creates processes differently than Linux or MacOS.
+
 .. _perf_cost:
 
 Costs

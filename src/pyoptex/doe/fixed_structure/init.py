@@ -63,7 +63,7 @@ def initialize_feasible(params, complete=False, max_tries=1000):
         )
         
         # Encode the design
-        Yenc = encode_design(Y, params.effect_types)
+        Yenc = encode_design(Y, params.effect_types, params.coords)
 
         # Make sure it's feasible
         Xenc = params.fn.Y2X(Yenc)
@@ -109,7 +109,8 @@ def init_random(params, n=1, complete=False):
 
     # Adjust for completeness
     if complete:
-        coords = None
+        # Must still use the correct categorical encoding
+        coords = [None if f.is_continuous else params.coords[i] for i, f in enumerate(params.factors)]
     else:
         coords = params.coords
 

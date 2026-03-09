@@ -86,7 +86,8 @@ def init(params, n=1, complete=False):
 
     # Adjust for completeness
     if complete:
-        coords = None
+        # Must still use the correct categorical encoding
+        coords = [None if f.is_continuous else params.coords[i] for i, f in enumerate(params.factors)]
     else:
         nprior = len(params.prior)
         run[:nprior] = params.prior
