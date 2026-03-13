@@ -65,7 +65,7 @@ regr = PValueDropRegressor(
 regr.fit(X, y)
 
 # Print the formula in encoded form
-print('With outlier removal:',regr.model_formula(model=model))
+print('With outlier removal:', regr.model_formula(model=model))
 
 ##############
 # Predict

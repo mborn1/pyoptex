@@ -1,9 +1,10 @@
-import numpy as np
 import pytest
+
+from pyoptex._seed import set_seed
 
 
 @pytest.fixture(autouse=True)
 def set_random_seed():
-    """Fix numpy random seed for reproducible tests."""
-    np.random.seed(42)
+    """Fix all random seeds (numpy + numba + cython) for reproducible tests."""
+    set_seed(42)
     yield

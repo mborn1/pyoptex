@@ -3,7 +3,6 @@
 
 import numpy as np
 import pandas as pd
-import math
 
 from pyoptex._seed import set_seed
 from pyoptex.utils import Factor
@@ -64,4 +63,3 @@ plot_res_diagnostics(
     data, y_true='Y', y_pred='pred', 
     textcols=[str(f.name) for f in factors],
 ).show()
-

@@ -66,4 +66,3 @@ plot_res_diagnostics(
     data, y_true='Y', y_pred='pred', 
     textcols=[str(f.name) for f in factors],
 ).show()
-

@@ -108,4 +108,3 @@ print(f'Execution time: {end_time - start_time:.3f}')
 # plot_fraction_of_design_space(Y, params).show()
 # plot_estimation_variance_matrix(Y, params, model).show()
 # print(estimation_variance(Y, params))
-
