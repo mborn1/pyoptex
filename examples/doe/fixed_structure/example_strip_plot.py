@@ -75,7 +75,7 @@ log_checkpoint("metric", float(state.metric))
 from pyoptex.doe.fixed_structure.evaluate import (
     evaluate_metrics, estimation_variance,
 )
-log_checkpoint("evaluate_metrics", evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]).tolist())
+log_checkpoint("evaluate_metrics", evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 log_checkpoint("estimation_variance", estimation_variance(Y, params).tolist())
 
 #########################################################################

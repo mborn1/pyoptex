@@ -55,7 +55,7 @@ def main():
     #########################################################################
 
     # Parameter initialization
-    n_tries = 1000
+    n_tries = 10
 
     # Create the set of operators
     fn = default_fn(factors, metric, Y2X)
