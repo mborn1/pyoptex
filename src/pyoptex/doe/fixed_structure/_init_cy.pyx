@@ -160,8 +160,12 @@ def __correct_constraints(const long long[::1] effect_types not None,
 
     # Determine in which order to correct the constraints
     cdef int[::1] zidx = np.zeros(Zs.shape[0] + 1, dtype=np.int32)
+    cdef int[::1] order
+    cdef int i
     if Zs.shape[0] > 0:
-        zidx[:Zs.shape[0]] = np.argsort(np.array([len(np.unique(zi)) for zi in Zs], dtype=np.int32)) + 1
+        order = np.argsort(np.array([len(np.unique(Zs[i, :])) for i in range(Zs.shape[0])], dtype=np.int32)).astype(np.int32)
+        for i in range(Zs.shape[0]):
+            zidx[i] = order[i] + 1
 
     # Loop variables
     cdef int[::1] runs = np.zeros(Y_view.shape[0], dtype=np.int32)
@@ -171,7 +175,7 @@ def __correct_constraints(const long long[::1] effect_types not None,
     cdef cnp.ndarray[double, ndim=2] Y_selected = np.zeros((Y_view.shape[0], Y_view.shape[1]), dtype=np.float64)
     cdef double[:, ::1] Y_selected_view = Y_selected
 
-    cdef int i, j, k, l, level, nruns, ngrps
+    cdef int j, k, l, level, nruns, ngrps
     cdef long long[::1] lgrps, unique_vals, grp
     cdef list grps_
     cdef bint c
@@ -185,7 +189,7 @@ def __correct_constraints(const long long[::1] effect_types not None,
             ngrps = Y_view.shape[0]
             permitted_to_optimize[:] = False
         else:
-            ngrps = np.max(Zs[level-1])+1
+            ngrps = np.max(np.asarray(Zs[level-1])) + 1
             permitted_to_optimize[:ngrps] = False
 
         # Check which ones are permitted for this level
