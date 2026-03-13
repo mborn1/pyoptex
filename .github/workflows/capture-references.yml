@@ -5,7 +5,7 @@ name: Capture reference data
 on:
   workflow_dispatch:
   push: # Add this temporarily
-    branches: [ your-feature-branch ]
+    branches: [ cursor/agent-setup ]
 
 jobs:
   capture:
