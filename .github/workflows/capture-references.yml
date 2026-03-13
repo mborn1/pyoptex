@@ -4,6 +4,8 @@ name: Capture reference data
 
 on:
   workflow_dispatch:
+  push: # Add this temporarily
+    branches: [ your-feature-branch ]
 
 jobs:
   capture:
