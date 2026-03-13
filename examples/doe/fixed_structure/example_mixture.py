@@ -6,6 +6,7 @@ import time
 import numpy as np
 
 # PyOptEx imports
+from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.utils.model import mixtureY2X
 from pyoptex.doe.fixed_structure import (
@@ -32,6 +33,8 @@ Y2X = mixtureY2X(
     factors, 
     mixture_effects=(('A', 'B', 'C'), 'tfi'), 
 )
+log_checkpoint("factor_names", [str(f.name) for f in factors])
+log_checkpoint("nruns", nruns)
 
 # Define the metric
 metric = Dopt()
@@ -52,6 +55,11 @@ end_time = time.time()
 
 # Add the final mixture components
 Y['D'] = 1 - Y.sum(axis=1)
+
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
 
 #########################################################################
 

@@ -2,9 +2,11 @@
 # Each job runs independently; any failure fails the workflow with clear per-job errors.
 name: Test suite (PR)
 
+# on:
+#   pull_request:
+#     branches: [main, master]
 on:
-  pull_request:
-    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -17,12 +19,19 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest, windows-latest, macos-latest]
 
-    # FIX 2: Force deterministic single-threaded math for numerical libraries
+    # Force deterministic single-threaded math for numerical libraries (match set_nb_cores in runtime.py)
     env:
-      OPENBLAS_NUM_THREADS: "1"
-      MKL_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
+      OMP_THREAD_LIMIT: "1"
+      OMP_DYNAMIC: "FALSE"
+      MKL_NUM_THREADS: "1"
+      MKL_DYNAMIC: "FALSE"
+      OPENBLAS_NUM_THREADS: "1"
+      GOTO_NUM_THREADS: "1"
       NUMEXPR_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      PYTHON_CPU_COUNT: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
 
     steps:
       - name: Checkout

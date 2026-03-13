@@ -6,6 +6,7 @@ import os
 import numpy as np
 
 # PyOptEx imports
+from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.utils.model import mixtureY2X
 from pyoptex.doe.cost_optimal import Factor, cost_fn
@@ -28,6 +29,7 @@ Y2X = mixtureY2X(
     factors,
     mixture_effects=(('A', 'B'), 'tfi'),
 )
+log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # Define the criterion for optimization
 metric = Iopt()
@@ -64,6 +66,12 @@ end_time = time.time()
 
 # Add the final mixture components
 Y['C'] = 1 - Y.sum(axis=1)
+
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
+log_checkpoint("n_experiments", len(state.Y))
 
 #######################################################################
 

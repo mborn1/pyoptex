@@ -7,6 +7,7 @@ import os
 import time
 
 # Library imports
+from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.utils.model import partial_rsm_names, model2Y2X
@@ -41,6 +42,10 @@ model = partial_rsm_names({
     'C': 'quad',
 })
 Y2X = model2Y2X(model, factors)
+log_checkpoint("factor_names", [str(f.name) for f in factors])
+log_checkpoint("nruns", int(nruns))
+log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the metric
 metric = Aopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
@@ -75,6 +80,11 @@ params = create_parameters(factors, fn, prior=prior)
 start_time = time.time()
 Y, state = create_splitk_plot_design(params, n_tries=n_tries, validate=True)
 end_time = time.time()
+
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
 
 #########################################################################
 

@@ -5,6 +5,7 @@ import os
 import time
 
 # Library imports
+from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor
@@ -33,6 +34,9 @@ model = partial_rsm_names({
     'F': 'quad',
 })
 Y2X = model2Y2X(model, factors)
+log_checkpoint("factor_names", [str(f.name) for f in factors])
+log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the criterion for optimization
 metric = Dopt()
@@ -68,6 +72,12 @@ Y, state = create_cost_optimal_codex_design(
     params, nsims=nsims, nreps=nreps, validate=True
 )
 end_time = time.time()
+
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
+log_checkpoint("n_experiments", len(state.Y))
 
 #######################################################################
 

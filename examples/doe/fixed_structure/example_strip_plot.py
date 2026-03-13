@@ -6,6 +6,7 @@ import time
 import numpy as np
 
 # PyOptEx imports
+from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.utils.model import partial_rsm_names, model2Y2X
@@ -40,6 +41,11 @@ model = partial_rsm_names({
     'C': 'quad',
 })
 Y2X = model2Y2X(model, factors)
+log_checkpoint("factor_names", [str(f.name) for f in factors])
+log_checkpoint("nruns", nruns)
+log_checkpoint("nplots", nplots)
+log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the metric
 metric = Dopt(cov=cov_double_time_trend(nplots, nruns//nplots, nruns))
@@ -61,6 +67,17 @@ start_time = time.time()
 Y, state = create_fixed_structure_design(params, n_tries=n_tries)
 end_time = time.time()
 
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
+
+from pyoptex.doe.fixed_structure.evaluate import (
+    evaluate_metrics, estimation_variance,
+)
+log_checkpoint("evaluate_metrics", evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]).tolist())
+log_checkpoint("estimation_variance", estimation_variance(Y, params).tolist())
+
 #########################################################################
 
 # Write design to storage
@@ -79,8 +96,8 @@ design_heatmap(Y, factors).show()
 plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 from pyoptex.doe.fixed_structure.evaluate import (
-    evaluate_metrics, plot_fraction_of_design_space, 
-    plot_estimation_variance_matrix, estimation_variance
+    plot_fraction_of_design_space,
+    plot_estimation_variance_matrix,
 )
 print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 plot_fraction_of_design_space(Y, params).show()
