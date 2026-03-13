@@ -3,7 +3,11 @@
 import numpy as np
 import pandas as pd
 
-from examples._log_checkpoint import log_checkpoint
+try:
+    from examples._log_checkpoint import log_checkpoint
+except ImportError:
+    log_checkpoint = lambda *args, **kwargs: None
+
 from pyoptex._seed import set_seed
 from pyoptex.utils import Factor
 from pyoptex.utils.model import model2Y2X, order_dependencies, partial_rsm_names, term2strong

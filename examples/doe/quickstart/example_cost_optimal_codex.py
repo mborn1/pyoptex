@@ -4,8 +4,12 @@
 import time
 import os
 
+try:
+    from examples._log_checkpoint import log_checkpoint
+except ImportError:
+    log_checkpoint = lambda *args, **kwargs: None
+
 # PyOptEx imports
-from examples._log_checkpoint import log_checkpoint
 from pyoptex._seed import set_seed
 from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor

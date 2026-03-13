@@ -45,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reference_data
-          path: tests/reference_data
+          path: tests/references/local
           retention-days: 2

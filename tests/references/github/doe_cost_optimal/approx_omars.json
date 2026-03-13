@@ -492,8 +492,5 @@
     ]
   ],
   "metric": -0.6578040904868497,
-  "n_experiments": 30,
-  "cost_Y": [
-    30.0
-  ]
+  "n_experiments": 30
 }

@@ -1,14 +1,20 @@
 """Shared helpers for regression tests."""
 
 import json
+import os
 import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-_REFERENCE_ROOT = Path(__file__).parent / "reference_data"
-
+_REFERENCE_ROOT = Path(__file__).parent / "references"
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    print("Running on a GitHub runner")
+    _REFERENCE_ROOT = _REFERENCE_ROOT / "github"
+else:
+    print("Running locally")
+    _REFERENCE_ROOT = _REFERENCE_ROOT / "local"
 
 def load_reference(name: str) -> dict:
     """Load a reference JSON file by its key (e.g. 'analysis/simple_model')."""
