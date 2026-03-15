@@ -30,6 +30,11 @@ jobs:
       NUMBA_NUM_THREADS: "1"
       PYTHON_CPU_COUNT: "1"
       VECLIB_MAXIMUM_THREADS: "1"
+      
+      # Disables V4 and AVX512 instruction sets in NumPy
+      NPY_DISABLE_CPU_FEATURES: "X86_V4,AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR"
+      # Forces OpenBLAS to use the AVX2 (Haswell) kernels
+      OPENBLAS_CORETYPE: "HASWELL"
 
     steps:
       - name: Checkout

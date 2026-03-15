@@ -4,8 +4,8 @@ name: Capture reference data
 
 on:
   workflow_dispatch:
-  push: # Add this temporarily
-    branches: [ cursor/agent-setup ]
+  push:
+    branches: [cursor/agent-setup]
 
 jobs:
   capture:
