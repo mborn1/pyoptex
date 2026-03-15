@@ -7,6 +7,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from pyoptex._seed import set_seed
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design
+from pyoptex.doe.fixed_structure.splitk_plot import create_splitk_plot_design
+
 _REFERENCE_ROOT = Path(__file__).parent / "references"
 
 
@@ -58,3 +62,11 @@ def assert_frame_equal(actual: pd.DataFrame, ref_data: dict, *, rtol: float = 1e
             )
         else:
             assert actual[col].tolist() == expected[col].tolist(), f"Column '{col}' string mismatch"
+
+def seeded_create_cost_optimal_codex_design(*args, **kwargs):
+    set_seed(42)
+    return create_cost_optimal_codex_design(*args, **kwargs)
+
+def seeded_create_splitk_plot_design(*args, **kwargs):
+    set_seed(42)
+    return create_splitk_plot_design(*args, **kwargs)
