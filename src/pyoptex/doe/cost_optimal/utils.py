@@ -9,7 +9,7 @@ from ...utils.factor import FactorMixin
 from ..constraints import no_constraints
 from ._utils_cy import obs_var_cy
 
-FunctionSet = namedtuple('FunctionSet', 'Y2X init cost metric constraints', defaults=(None,)*4 + (no_constraints,))
+FunctionSet = namedtuple('FunctionSet', 'Y2X init cost metric constraints', defaults=(None,)*4 + (no_constraints,)) # type: ignore[misc]
 Parameters = namedtuple('Parameters', 'fn factors colstart coords ratios effect_types grouped_cols prior stats use_formulas')
 State = namedtuple('State', 'Y X Zs Vinv metric cost_Y costs max_cost')
 __Factor__ = namedtuple('__Factor__', 'name grouped ratio type min max levels coords', 

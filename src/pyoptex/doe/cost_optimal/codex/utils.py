@@ -6,4 +6,4 @@ from collections import namedtuple
 
 from ..utils import FunctionSet as FunctionSeto
 
-FunctionSet = namedtuple('FunctionSet', ' '.join(FunctionSeto._fields) + ' sample temp accept restart insert remove optimizers final_optimizers', defaults=tuple(FunctionSeto._field_defaults.values()) + (None,)*8)
+FunctionSet = namedtuple('FunctionSet', ' '.join(FunctionSeto._fields) + ' sample temp accept restart insert remove optimizers final_optimizers', defaults=tuple(FunctionSeto._field_defaults.values()) + (None,)*8) # type: ignore[misc]
