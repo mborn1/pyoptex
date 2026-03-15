@@ -25,9 +25,9 @@ def default_fn(
     init=init_feasible, sample=sample_random, temperature=None,
     accept=exponential_accept_rel, restart=None, insert=insert_optimal,
     remove=remove_optimal_onebyone, constraints=None,
-    optimizers=[CEOptimizer(1), CEStructOptimizer(1)], # noqa: B006
-    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)] # noqa: B006
-    ): 
+    optimizers=[CEOptimizer(1), CEStructOptimizer(1)], # noqa: B006, B008
+    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)] # noqa: B006, B008
+    ):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
