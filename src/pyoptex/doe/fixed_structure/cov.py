@@ -58,10 +58,7 @@ def cov_time_trend(ntime, nruns):
 
     def _cov(Y, X, random=False, subset=slice(None, None)):
         # Extract time
-        if random:
-            t = np.expand_dims(np.random.rand(Y.shape[0]) * 2 - 1, 1)
-        else:
-            t = time_array[subset]
+        t = np.expand_dims(np.random.rand(Y.shape[0]) * 2 - 1, 1) if random else time_array[subset]
 
         # Augment Y and X
         Y = np.concatenate((Y, t), axis=1)
@@ -105,10 +102,7 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
 
     def _cov(Y, X, random=False, subset=slice(None, None)):
         # Extract time
-        if random:
-            t = np.random.rand(Y.shape[0], 2) * 2 - 1
-        else:
-            t = time_array[subset]
+        t = (np.random.rand(Y.shape[0], 2) * 2 - 1) if random else time_array[subset]
 
         # Augment Y and X
         Y = np.concatenate((Y, t), axis=1)

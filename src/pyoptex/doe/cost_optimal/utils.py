@@ -106,9 +106,6 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
         grouped_cols = np.asarray(grouped_cols, dtype=np.uint8)
 
     # Initializes the variance ratios and ensure correct type
-    if ratios is None:
-        ratios = np.ones(colstart.size - 1, dtype=np.double)
-    else:
-        ratios = np.asarray(ratios, dtype=np.double)
+    ratios = np.ones(colstart.size - 1, dtype=np.double) if ratios is None else np.asarray(ratios, dtype=np.double)
 
     return obs_var_cy(Yenc, colstart, ratios, grouped_cols)

@@ -53,10 +53,7 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
     V : np.array(2d)
         The observation covariance matrix.
     """
-    if include_error:
-        V = np.eye(N)
-    else:
-        V = np.zeros((N, N))
+    V = np.eye(N) if include_error else np.zeros((N, N))
 
     if ratios is None:
         ratios = np.ones(len(Zs))

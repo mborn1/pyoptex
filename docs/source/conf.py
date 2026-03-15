@@ -103,10 +103,7 @@ def linkcode_resolve(domain, info):
     filename = quote(str(info['module']).replace('.', '/'))
 
     # Create the anchor
-    if start_line is None:
-        anchor = ''
-    else:
-        anchor = f'#L{start_line}-L{end_line}'
+    anchor = '' if start_line is None else f'#L{start_line}-L{end_line}'
 
     # Link to github
     result = "https://github.com/mborn1/pyoptex/blob/v%s/src/%s.py%s" % (release, filename, anchor)

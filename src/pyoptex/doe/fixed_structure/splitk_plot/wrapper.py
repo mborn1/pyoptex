@@ -82,10 +82,7 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
         )
 
         # Add the mixture constraints
-        if constraints is None:
-            constraints = mix_constr
-        else:
-            constraints = constraints | mix_constr
+        constraints = mix_constr if constraints is None else (constraints | mix_constr)
 
     # Default to no constraints
     if constraints is None:
