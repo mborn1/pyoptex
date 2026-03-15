@@ -18,23 +18,23 @@ class RandomEffect(__RandomEffect__):
     def __new__(cls, *args, **kwargs):
         self = super(RandomEffect, cls).__new__(cls, *args, **kwargs)
         # Assert Z
-        assert self.Z is not None and len(self.Z) > 0, f'Z must be an array with at least one element, but is {self.Z}' 
-        
+        assert self.Z is not None and len(self.Z) > 0, f'Z must be an array with at least one element, but is {self.Z}'
+
         # Assert type of Z
         Z = np.array(self.Z)
         max_Z = np.max(Z)
         assert len(Z.shape) == 1, f'Z must be a 1-D array'
         assert np.issubdtype(Z.dtype, np.integer), f'Z must be an integer array'
         assert np.all(np.any(np.expand_dims(Z, 0) == np.expand_dims(np.arange(max_Z), 1), axis=1)), f'The Z array must contain all integers in the interval [0, np.max(Z)]'
-        
+
         # Assert ratios
         if isinstance(self.ratio, (tuple, list, np.ndarray)):
             assert all(r >= 0 for r in self.ratio), f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
         else:
             assert self.ratio >= 0, f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
-        
+
         return self
-    
+
     def __eq__(self, other):
         Zeq = np.all(self.Z == other.Z)
         ratioeq = False

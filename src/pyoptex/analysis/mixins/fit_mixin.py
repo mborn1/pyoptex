@@ -58,7 +58,7 @@ class BaseMixin:
         self.n_features_in_ = len(self._factors)
         self.features_names_in_ = [str(f.name) for f in self._factors]
         self.effect_types_ = np.array([
-            1 if f.is_continuous else len(f.levels) 
+            1 if f.is_continuous else len(f.levels)
             for f in self._factors
         ])
         self.coords_ = [f.coords_ for f in self._factors]
@@ -190,7 +190,7 @@ class BaseMixin:
             self.Zs_ = X[re].to_numpy().T
             self.fit_fn_ = lambda X, y, terms: fit_mixedlm(X[:, terms], y, self.Zs_)
             X = X.drop(columns=re)
-        
+
         # Preprocess X
         X = self._preprocess_X(X)
 
@@ -483,7 +483,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         return obs_var_from_Zs(
             self.Zs_, len(self.X_), self.vcomp_ / self.scale_
         ) * self.scale_
-    
+
     @property
     def V_(self):
         """
@@ -501,7 +501,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         for more information.
         """
         return np.linalg.inv(self.obs_cov)
-    
+
     @property
     def Vinv_(self):
         """
@@ -509,7 +509,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         :py:func:`inv_obs_cov <pyoptex.analysis.mixins.fit_mixin.inv_obs_cov>`
         """
         return self.inv_obs_cov
-        
+
     @cached_property
     def information_matrix(self):
         """
@@ -540,7 +540,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         :py:func:`information_matrix <pyoptex.analysis.mixins.fit_mixin.information_matrix>`
         """
         return self.information_matrix
-    
+
     @cached_property
     def inv_information_matrix(self):
         """
@@ -549,7 +549,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         for more information.
         """
         return np.linalg.inv(self.information_matrix)
-    
+
     @property
     def Minv_(self):
         """
@@ -557,7 +557,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         :py:func:`inv_information_matrix <pyoptex.analysis.mixins.fit_mixin.inv_information_matrix>`
         """
         return self.inv_information_matrix
-    
+
     @property
     def total_var(self):
         """
@@ -752,7 +752,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         formula : str
             The prediction formula for encoded and normalized data.
         """
-        
+
         if labels is None:
             # Specify default x features
             labels = [f'x{i}' for i in range(self.n_encoded_features_)]
@@ -761,9 +761,9 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_)) 
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_))
 
-        return formula   
+        return formula
 
     def summary(self):
         """
@@ -911,7 +911,7 @@ class MultiRegressionMixin(RegressionMixin):
             self.model_coef_[i] = fit.params[:fit.k_fe]
             self.model_scale_[i] = fit.scale
             self.model_vcomp_[i] = fit.vcomp
-            
+
         # Add additional parameters required for RegressionMixin
         self.terms_ = self.models_[0]
         self.fit_ = self.fit_fn_(X, y, self.terms_)
@@ -943,7 +943,7 @@ class MultiRegressionMixin(RegressionMixin):
         fig : :py:class:`plotly.graph_objects.Figure`        
         """
         raise NotImplementedError('No selection plot was implemented')
-    
+
     def model_formula(self, model, idx=0):
         """
         Creates the prediction formula of the fit for the encoded and
@@ -1084,7 +1084,7 @@ class MultiRegressionMixin(RegressionMixin):
         formula : str
             The prediction formula for encoded and normalized data.
         """
-        
+
         if labels is None:
             # Specify default x features
             labels = [f'x{i}' for i in range(self.n_encoded_features_)]
@@ -1093,9 +1093,9 @@ class MultiRegressionMixin(RegressionMixin):
         assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx])) 
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx]))
 
-        return formula   
+        return formula
 
 class TransformerMixin(BaseMixin, TransformerMixinSklearn):
     """
@@ -1283,7 +1283,7 @@ class OutlierTransformerMixin(TransformerMixin):
             effect encoding.
         """
         super().__init__(factors, Y2X, random_effects)
-    
+
     def transform(self, X, y):
         """
         Ignore any transformation as the outlier detection only

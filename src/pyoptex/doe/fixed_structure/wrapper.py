@@ -46,7 +46,7 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
         mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture], 
+            [str(f.name) for f in factors if f.is_mixture],
             factors
         )
 
@@ -90,7 +90,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     assert len(factors) > 0, 'At least one factor must be provided'
     for i, f in enumerate(factors):
         assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
-        assert f.re is None or isinstance(f.re, RandomEffect), f'Factor {i} with name {f.name} does not have a RandomEffect as random effect'    
+        assert f.re is None or isinstance(f.re, RandomEffect), f'Factor {i} with name {f.name} does not have a RandomEffect as random effect'
         if f.re is not None:
             assert len(f.re.Z) == nruns, f'Factor {i} with name {f.name} does not have enough runs as random effect'
     assert prior is None, f'Priors have not yet been implemented'
@@ -113,7 +113,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         r = np.sort(r.ratio) \
                 if isinstance(r.ratio, (tuple, list, np.ndarray))\
                 else [r.ratio]
-        
+
         # Append the ratios
         ratios.append(r)
 
@@ -122,7 +122,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         nratios = max([len(r) for r in ratios])
         assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
         ratios = np.array([
-            np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
+            np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
             for ratio in ratios
         ], dtype=np.float64).T
 
@@ -144,7 +144,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
     # Encode the coordinates
     colstart = np.concatenate((
-        [0], 
+        [0],
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
     ), dtype=np.int64)
 
@@ -160,13 +160,13 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     if len(block_effects) > 0:
         beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
         V += np.array([
-            obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) 
+            obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False)
             for r in be_ratios
         ], dtype=np.float64)
-        
+
     # Invert V
     Vinv = np.linalg.inv(V)
-        
+
     # Define which groups to optimize
     lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1, dtype=np.int64) for Z in Zs]
     grps = [lgrps[lvl] for lvl in effect_levels]
@@ -181,16 +181,16 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
                 grp_runs[i].append(np.array([grps[i][j]], dtype=np.int64))
             else:
                 grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
-        
+
     # Convert prior to numpy array
     prior = np.ascontiguousarray(prior) if prior is not None else None
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios,
         coords, prior, colstart, Zs, Vinv
     )
-    
+
     return params
 
 def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=False):

@@ -97,7 +97,7 @@ class ExponentialTemperature(Temperature):
     T : float
         The current temperature.
     """
-    
+
     def __init__(self, T0, rho=0.95, kappa=4):
         """
         Initializes the temperature.

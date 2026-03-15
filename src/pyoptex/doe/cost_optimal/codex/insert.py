@@ -110,14 +110,14 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         else:
             Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
             Vinv = np.array([
-                np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+                np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
                 for ratios in params.ratios
             ])
     else:
         # Shortcut as there are no hard-to-vary factors
         Zs = state.Zs
         Vinv = np.broadcast_to(
-            np.eye(len(Y)), 
+            np.eye(len(Y)),
             (state.Vinv.shape[0], len(Y), len(Y))
         )
 
@@ -201,20 +201,20 @@ def insert_optimal(new_run, state, params):
                     state.Vinv, state.Zs, k, a, b, params.ratios
                 )
                 Zsn = tuple(
-                    force_Zi_asc(Zi) if Zi is not None else None 
+                    force_Zi_asc(Zi) if Zi is not None else None
                     for Zi in Zsn
                 )
             else:
                 Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
                 Vinvn = np.array([
-                    np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) 
+                    np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios))
                     for ratios in params.ratios
                 ])
         else:
             # Shortcut as there are no hard-to-vary factors
             Zsn = state.Zs
             Vinvn = np.broadcast_to(
-                np.eye(len(Yn)), 
+                np.eye(len(Yn)),
                 (state.Vinv.shape[0], len(Yn), len(Yn))
             )
 

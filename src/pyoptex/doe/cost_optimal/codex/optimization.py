@@ -46,7 +46,7 @@ def adapt_group(groups, factor, row_start, row_end):
     if row_end < len(groups):
         same_below = groups[row_end] == groups[row_end-1]
         merge_below = np.all(factor[row_end] == factor[row_start])
-        
+
     # Initialize groups
     b = []
     max_grp = groups[-1]
@@ -228,8 +228,8 @@ def ce_optimizer(state, params):
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(
-                                state.Zs[col], 
-                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
+                                state.Zs[col],
+                                state.Y[:, params.colstart[col]:params.colstart[col+1]],
                                 row, row+1
                             )
                             if len(b) == 0:
@@ -238,21 +238,21 @@ def ce_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
+                                        np.copy(state.Vinv, order='C'),
+                                        np.copy(state.Zs[col], order='C'),
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        Zi if i != col else force_Zi_asc(Zin)
                                         for i, Zi in enumerate(state.Zs)
                                     ])
                                 else:
                                     Zsn = obs_var_Zs(
-                                        state.Y, params.colstart, 
+                                        state.Y, params.colstart,
                                         params.grouped_cols
                                     )
                                     Vinvn = np.array([
-                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios))
                                         for ratios in params.ratios
                                     ])
 
@@ -263,7 +263,7 @@ def ce_optimizer(state, params):
 
                             # Compute accept
                             accept = new_metric > state.metric
-                    
+
                     # Accept the update
                     if accept:
                         # Store metric and design
@@ -272,7 +272,7 @@ def ce_optimizer(state, params):
 
                         # Update the state
                         state = State(
-                            state.Y, state.X, Zsn, Vinvn, new_metric, 
+                            state.Y, state.X, Zsn, Vinvn, new_metric,
                             new_cost, new_costs, max_cost
                         )
 
@@ -341,7 +341,7 @@ def ce_struct_optimizer(state, params):
     for col in range(params.colstart.size - 1):
         # Detect blocks
         blocks = np.concatenate((
-            np.array([0], np.int64), 
+            np.array([0], np.int64),
             np.where(np.any(np.diff(state.Y[:, params.colstart[col]:params.colstart[col+1]], axis=0) != 0, axis=1))[0] + 1,
             np.array([len(state.Y)], np.int64)
         ))
@@ -382,12 +382,12 @@ def ce_struct_optimizer(state, params):
                         new_costs = params.fn.cost(state.Y, params)
                         new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                         max_cost = np.array([m for _, m, _ in new_costs])
-                        
+
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(
-                                state.Zs[col], 
-                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
+                                state.Zs[col],
+                                state.Y[:, params.colstart[col]:params.colstart[col+1]],
                                 rows[0], rows[-1]+1
                             )
                             if len(b) == 0:
@@ -396,21 +396,21 @@ def ce_struct_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
+                                        np.copy(state.Vinv, order='C'),
+                                        np.copy(state.Zs[col], order='C'),
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        Zi if i != col else force_Zi_asc(Zin)
                                         for i, Zi in enumerate(state.Zs)
                                     ])
                                 else:
                                     Zsn = obs_var_Zs(
-                                        state.Y, params.colstart, 
+                                        state.Y, params.colstart,
                                         params.grouped_cols
                                     )
                                     Vinvn = np.array([
-                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios))
                                         for ratios in params.ratios
                                     ])
 
@@ -430,7 +430,7 @@ def ce_struct_optimizer(state, params):
 
                         # Update the state
                         state = State(
-                            state.Y, state.X, Zsn, Vinvn, new_metric, 
+                            state.Y, state.X, Zsn, Vinvn, new_metric,
                             new_cost, new_costs, max_cost
                         )
                     else:
@@ -525,12 +525,12 @@ def pe_optimizer(state, params):
 
                     # Check constraints
                     if np.all(new_cost <= max_cost):
-                        
+
                         # Check if using update formulas
                         if params.use_formulas:
                             # Update Zsn, Vinv
                             bs = adapt_groups(
-                                state.Zs, state.Y, params.colstart, 
+                                state.Zs, state.Y, params.colstart,
                                 row, row+1
                             )
 
@@ -541,19 +541,19 @@ def pe_optimizer(state, params):
                                     Vinvn = state.Vinv
                                 else:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
+                                        np.copy(state.Vinv, order='C'),
+                                        np.copy(state.Zs[col], order='C'),
                                         b, params.ratios[:, col]
                                     )
                                     Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
+                                        Zi if i != col else force_Zi_asc(Zin)
                                         for i, Zi in enumerate(state.Zs)
                                     ])
                         else:
                             # Recompute from scratch
                             Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
                             Vinvn = np.array([
-                                np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
+                                np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios))
                                 for ratios in params.ratios
                             ])
 
@@ -564,7 +564,7 @@ def pe_optimizer(state, params):
 
                         # Compute accept
                         accept = new_metric > state.metric
-                
+
                 # Accept the update
                 if accept:
                     # Store metric and design
@@ -573,7 +573,7 @@ def pe_optimizer(state, params):
 
                     # Update the state
                     state = State(
-                        state.Y, state.X, Zsn, Vinvn, new_metric, 
+                        state.Y, state.X, Zsn, Vinvn, new_metric,
                         new_cost, new_costs, max_cost
                     )
 

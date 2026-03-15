@@ -113,5 +113,5 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
         Y = np.concatenate((Y, t), axis=1)
         X = np.concatenate((X, t), axis=1)
         return Y, X
-    
+
     return _cov

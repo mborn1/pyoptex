@@ -221,10 +221,10 @@ def cov_block(cost=1, ratios=1., cost_index=0):
     # Convert number to array
     if not isinstance(ratios, np.ndarray):
         ratios = np.array([ratios], dtype=np.float64)
-    
+
     # Expand array dimensions
     ratios = ratios[:, np.newaxis]
-    
+
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
         # Define blocking update
@@ -234,7 +234,7 @@ def cov_block(cost=1, ratios=1., cost_index=0):
             # Define blocks and ratios
             cum_cost = np.cumsum(costs[cost_index][0])
             blocks = np.floor_divide(cum_cost, cost).astype(np.int64)
-            
+
             # Update Zs, Vinv
             Zs = list(Zs)
             Zs.append(blocks)

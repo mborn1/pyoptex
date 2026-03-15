@@ -44,7 +44,7 @@ class FactorMixin:
             # Define default coordinates as positive
             levels = self.levels if self.levels is not None \
                      else np.array([0, 0.5, 1])
-            
+
             # Transform to a new factor
             params = self._asdict()
             params['type'] = 'cont_mixture'
@@ -55,7 +55,7 @@ class FactorMixin:
         assert self.type in ['cont', 'continuous', 'cont_mixture', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}'
         if self.is_continuous:
             assert isinstance(self.min, (float, int)), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
-            assert isinstance(self.max, (float, int)), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
+            assert isinstance(self.max, (float, int)), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'
             assert self.min < self.max, f'Factor {self.name} must have a lower minimum than maximum, but is {self.min} vs. {self.max}'
             assert self.coords is None, f'Cannot specify coordinates for continuous factors, but factor {self.name} has {self.coords}. Please specify the levels'
             assert self.levels is None or len(self.levels) >= 2, f'A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}'
@@ -109,7 +109,7 @@ class FactorMixin:
         """
         return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative', 'cont_mixture']
 
-    @property 
+    @property
     def is_categorical(self):
         """
         Check wether the factor is catgorical.
@@ -120,7 +120,7 @@ class FactorMixin:
             If this factor is categorical.
         """
         return not self.is_continuous
-    
+
     @property
     def is_mixture(self):
         """
@@ -244,4 +244,4 @@ class Factor(FactorMixin, __Factor__):
         self = super(Factor, cls).__new__(cls, *args, **kwargs)
         return self.validate()
 
-    
+

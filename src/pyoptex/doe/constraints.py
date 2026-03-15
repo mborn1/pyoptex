@@ -62,7 +62,7 @@ class ConstraintsFunc:
             self._fn = eval(self.fn, {'np': np})
             self.evaluated = True
         return self._fn(*args, **self.kwargs, **kwargs)
-    
+
     def clear(self):
         """
         Removes the pre-compiled (and cached) function.
@@ -115,7 +115,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate((
-        [0], 
+        [0],
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
     ))
 
@@ -136,7 +136,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
         if closing_brace == -1:
             cst = re.sub(r'[\.\d]+', create_cst_col, x)
         else:
-            cst = x[:closing_brace] + re.sub(r'[\.\d]+', create_cst_col, x[closing_brace:]) 
+            cst = x[:closing_brace] + re.sub(r'[\.\d]+', create_cst_col, x[closing_brace:])
         return cst
 
     # Create the script
@@ -147,7 +147,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     if not exclude:
         script = f'~({script})'
     print(script)
-    tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol, 
+    tree = eval(script, {'Col': Col, 'BinaryCol': BinaryCol, 'UnaryCol': UnaryCol,
                          'CompCol': CompCol, 'factors': factors, 'eps': Col(eps, None)})
     return tree
 
@@ -269,7 +269,7 @@ class Col:
             raise ValueError(self.CATEGORICAL_MSG)
 
     def __validate_binary__(self, other):
-        if self.is_categorical or other.is_categorical:   
+        if self.is_categorical or other.is_categorical:
             raise ValueError(self.CATEGORICAL_MSG)
 
     def __validate_comp__(self, other):
@@ -328,7 +328,7 @@ class Col:
 
     def __pow__(self, other):
         self.__validate_binary__(other)
-        return BinaryCol(self, other, '**')        
+        return BinaryCol(self, other, '**')
 
     def __eq__(self, other):
         self.__validate_comp__(other)
@@ -386,7 +386,7 @@ class BinaryCol(Col):
 
     def __str__(self):
         return f'({str(self.col)} {self.sep} {str(self.col2)})'
-    
+
     def _encode(self):
         return f'({self.col._encode()} {self.sep} {self.col2._encode()})'
 
@@ -411,8 +411,8 @@ class CompCol(BinaryCol):
         assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
         if not col1.pre_normalized_encoded_:
             encoded = encode_design(
-                np.array([[col1.factor.normalize(col2.col)]], dtype=np.float64), 
-                np.array([len(col1.factor.levels)], dtype=np.int64), 
+                np.array([[col1.factor.normalize(col2.col)]], dtype=np.float64),
+                np.array([len(col1.factor.levels)], dtype=np.int64),
                 [col1.factor.coords_]
             )[0]
             col2.col_encoded_ = f'np.array({list(encoded)})'

@@ -95,12 +95,12 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     assert ncores is None or (isinstance(ncores, int) and ncores > 0), 'The ncores argument must be an integer larger than zero, or None'
 
     # Extract the function arguments for use in starmap
-    fn_args = [(k, v.default) 
-                if v.default is not inspect.Parameter.empty 
+    fn_args = [(k, v.default)
+                if v.default is not inspect.Parameter.empty
                 else (k, None)
                 for k, v in inspect.signature(fn).parameters.items()]
     fn_arg_names = [name for name, _ in fn_args]
-    
+
     # Get the parallelizable argument
     if parallel_arg_name is None:
         parallel_arg_idx, parallel_arg_default = None, None
@@ -119,7 +119,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
             parallel_arg_idx, parallel_arg_default = idx, fn_args[idx][1]
         except ValueError:
             pass
-    
+
     # Validate the argument
     if parallel_arg_idx is None:
         raise ValueError('No parallelizable argument found, please provide a function with a '

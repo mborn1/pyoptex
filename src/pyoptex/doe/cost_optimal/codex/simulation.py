@@ -43,7 +43,7 @@ def simulate(params, nsims=100, validate=False):
     params.stats['insert_loc'] = -1 * np.ones(nsims, dtype=np.int64)
     params.stats['removed_insert'] = np.zeros(nsims, dtype=np.bool_)
     params.stats['metrics'] = np.zeros(nsims, dtype=np.float64)
-    
+
     # Initialize functions
     params.fn.temp.reset()
     params.fn.restart.reset()
@@ -58,7 +58,7 @@ def simulate(params, nsims=100, validate=False):
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
     Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
         for ratios in params.ratios
     ])
     costs = params.fn.cost(Y, params)
@@ -70,11 +70,11 @@ def simulate(params, nsims=100, validate=False):
 
     # Initialize best solution
     best_state = State(
-        np.copy(Y), np.copy(X), 
-        tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs), 
+        np.copy(Y), np.copy(X),
+        tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs),
         np.copy(Vinv), metric if not np.any(cost_Y > max_cost) else -np.inf,
-        np.copy(cost_Y), 
-        [(np.copy(c), m, np.copy(idx)) for c, m, idx in costs], 
+        np.copy(cost_Y),
+        [(np.copy(c), m, np.copy(idx)) for c, m, idx in costs],
         np.copy(max_cost)
     )
     validate and validate_state(best_state, params)
@@ -110,7 +110,7 @@ def simulate(params, nsims=100, validate=False):
 
             # Accept
             cost_transition = (
-                np.all(new_state.cost_Y <= new_state.max_cost) 
+                np.all(new_state.cost_Y <= new_state.max_cost)
                 and np.any(state.cost_Y > state.max_cost)
             )
             accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() \
@@ -123,20 +123,20 @@ def simulate(params, nsims=100, validate=False):
 
                 # Fix numerical issues with inverse update formulas
                 Vinv = np.array([
-                    np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) 
+                    np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios))
                     for ratios in params.ratios
                 ])
                 metric = params.fn.metric.call(
                     state.Y, state.X, state.Zs, Vinv, state.costs
                 )
                 state = State(
-                    state.Y, state.X, state.Zs, Vinv, metric, 
+                    state.Y, state.X, state.Zs, Vinv, metric,
                     state.cost_Y, state.costs, state.max_cost
                 )
 
                 # Set the best state
                 cost_transition = (
-                    np.all(state.cost_Y <= state.max_cost) 
+                    np.all(state.cost_Y <= state.max_cost)
                     and np.any(best_state.cost_Y > best_state.max_cost)
                 )
                 if state.metric > best_state.metric or cost_transition:
@@ -171,5 +171,5 @@ def simulate(params, nsims=100, validate=False):
 
     # Return the best state
     return best_state, interrupted
-        
+
 

@@ -138,7 +138,7 @@ class SamsRegressor(MultiRegressionMixin):
                     model_size=None, nb_models=10000, skipn='auto', est_ratios=None,
                     allow_duplicate_sample=False, max_cluster=8, ncluster=None,
                     topn_bnb=4, nterms_bnb=None, bnb_timeout=180,
-                    entropy_sampler=sample_model_dep_onebyone, entropy_sampling_N=10000, 
+                    entropy_sampler=sample_model_dep_onebyone, entropy_sampling_N=10000,
                     entropy_model_order=None,
                     tqdm=True):
         """
@@ -265,7 +265,7 @@ class SamsRegressor(MultiRegressionMixin):
         self._nterms_bnb = range(len(self.forced_model) + 1, self._nterms_bnb) \
                                 if isinstance(self._nterms_bnb, int) else self._nterms_bnb
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
-        
+
     def _validate_fit(self, X, y):
         """
         Validate the inputted parameters before fitting the model.
@@ -278,7 +278,7 @@ class SamsRegressor(MultiRegressionMixin):
             The output variable.
         """
         super()._validate_fit(X, y)
-        
+
         # Validate dependencies and mode
         assert self.mode in (None, 'weak', 'strong'), 'The drop-mode must be None, weak or strong'
         if self.mode in ('weak', 'strong'):
@@ -293,7 +293,7 @@ class SamsRegressor(MultiRegressionMixin):
             if self.forced_model is None:
                 assert self.model_size > 0, 'The overfitted model size must be a positive number'
             else:
-                assert self.model_size > len(self.forced_model), 'The overfitted model size must be at least one larger than the forced model' 
+                assert self.model_size > len(self.forced_model), 'The overfitted model size must be at least one larger than the forced model'
         assert self.nb_models == 'all' or self.nb_models > 0, 'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
         assert self.skipn == 'auto' or isinstance(self.skipn, int) or isinstance(self.skipn, float), 'Skipn must be "auto" or an integer or a float'
         if isinstance(self.skipn, int) and self.nb_models != 'all':
@@ -324,7 +324,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Reorder the model types based on the factors
             assert all(str(f.name) in self.entropy_model_order.keys() for f in self._factors), 'All factors must have an entropy model order specified'
             entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in self._factors}
-            
+
             # Assert the ordering
             assert np.all(np.diff([model_types_ord[typ] for typ in entropy_model_order.values()]) <= 0), 'Model types must be ordered quad > tfi > lin for entropy calculations'
 
@@ -370,8 +370,8 @@ class SamsRegressor(MultiRegressionMixin):
         for i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
             # Compute the result with a timeout
             result = timeout(
-                SamsBnB(size, results, nterms, self.mode, self.dependencies, self.forced_model).top, 
-                topn, 
+                SamsBnB(size, results, nterms, self.mode, self.dependencies, self.forced_model).top,
+                topn,
                 timeout=timeout_sec
             )
 
@@ -431,7 +431,7 @@ class SamsRegressor(MultiRegressionMixin):
                 # Add it to the good submodels
                 submodels[j, models[i]] = True
                 j += 1
-                
+
         return keep
 
     def _entropy(self, X, y, submodels, freqs):
@@ -605,7 +605,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Set required parameters
         self.selection_metrics_ = self.entropies_
-        self.metric_name_ = 'Entropy'        
+        self.metric_name_ = 'Entropy'
 
         return self
 
@@ -654,8 +654,8 @@ class SamsRegressor(MultiRegressionMixin):
             # Plot the cluster selection
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(1, self.max_cluster+1), 
-                    y=self.kmeans_.dists / self.kmeans_.dists[0], 
+                    x=np.arange(1, self.max_cluster+1),
+                    y=self.kmeans_.dists / self.kmeans_.dists[0],
                     showlegend=False
                 ),
                 row=1, col=1
@@ -671,7 +671,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Plot the raster
             fig = plot_raster(
                 self.results_, terms,
-                self._skipn, 'r2(adj)', self.forced_model, 
+                self._skipn, 'r2(adj)', self.forced_model,
                 raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
             )
 
@@ -679,7 +679,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Plot simple raster
             fig = plot_raster(
                 self.results_, terms,
-                self._skipn, 'r2(adj)', self.forced_model, 
+                self._skipn, 'r2(adj)', self.forced_model,
                 raster_terms, self.kmeans_
             )
 

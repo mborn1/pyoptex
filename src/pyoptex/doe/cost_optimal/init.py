@@ -46,7 +46,7 @@ def greedy_cost_minimization(Y, params):
 
         # Compute the total cost of each operation
         costs_Y = np.array([
-            np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost]) 
+            np.sum([np.sum(c) / m * c.size / (i+1) for c, m, _ in cost])
             for cost in costs
         ])
         min_cost_idx = non_chosen[np.argmin(costs_Y)]
@@ -135,7 +135,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     # Check if prior is estimeable
     Xprior = params.fn.Y2X(params.prior)
     if Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) >= Xprior.shape[1]:
-        return params.prior 
+        return params.prior
     nprior = len(Xprior)
 
     feasible = False
@@ -245,7 +245,7 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
     # Check if prior is estimeable
     Xprior = params.fn.Y2X(params.prior)
     if minimal and Xprior.shape[0] != 0 and np.linalg.matrix_rank(Xprior) >= Xprior.shape[1]:
-        return params.prior 
+        return params.prior
     nprior = len(Xprior)
 
     feasible = False

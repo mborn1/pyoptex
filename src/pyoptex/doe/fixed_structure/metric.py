@@ -125,7 +125,7 @@ class Dopt(Metric):
             np.prod(np.maximum(np.linalg.det(M), 0)),
             1/(X.shape[1] * len(params.Vinv))
         )
- 
+
 class Aopt(Metric):
     """
     The A-optimality criterion.
@@ -281,13 +281,13 @@ class Iopt(Metric):
         if np.linalg.matrix_rank(X) >= X.shape[1]:
             # Compute average trace (normalized)
             trace = np.mean(np.trace(np.linalg.solve(
-                M, 
+                M,
                 np.broadcast_to(self.moments, (params.Vinv.shape[0], *self.moments.shape))
             ), axis1=-2, axis2=-1))
 
             # Invert for minimization
-            return -trace 
-        return -np.inf 
+            return -trace
+        return -np.inf
 
 class Aliasing(Metric):
     """
@@ -363,7 +363,7 @@ class Aliasing(Metric):
 
         # Compute mean of SS
         return -np.power(
-            np.mean(np.sum(np.square(A), axis=(-1, -2))), 
+            np.mean(np.sum(np.square(A), axis=(-1, -2))),
             1/(X.shape[1] * len(params.Vinv))
         )
 

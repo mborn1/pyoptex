@@ -7,8 +7,8 @@ import warnings
 import numpy as np
 
 from ..metric import (
-    Dopt as Dopto, 
-    Aopt as Aopto, 
+    Dopt as Dopto,
+    Aopt as Aopto,
     Iopt as Iopto,
     Aliasing as Aliasingo,
 )
@@ -237,9 +237,9 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
             The update to the metric.
         """
         # Covariate expansion
-        _, X = self.cov(Y, X) 
+        _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
             subset=slice(update.run_start, update.run_end)
         )
@@ -285,7 +285,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
         except np.linalg.LinAlgError as e:
             warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
             raise e
- 
+
 class Aopt(SplitkPlotMetricMixin, Aopto):
     """
     The A-optimality criterion.
@@ -364,7 +364,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         # Covariate expansion
         _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
             subset=slice(update.run_start, update.run_end)
         )
@@ -381,7 +381,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         except np.linalg.LinAlgError as e:
             # Infeasible design
             return -np.inf
-        
+
         # Extrace variances
         diag = np.array([np.diag(m) for m in self.Mup])
 
@@ -500,7 +500,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         # Covariate expansion
         _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
             subset=slice(update.run_start, update.run_end)
         )

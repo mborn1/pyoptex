@@ -67,8 +67,8 @@ class Model:
             forced = np.array([], dtype=np.int64)
 
         # Store
-        self.X = X 
-        self.y = y 
+        self.X = X
+        self.y = y
         self.forced = forced
         self.mode = mode
         self.dep = dep
@@ -228,7 +228,7 @@ class Model:
 
         # Force uniqueness
         return self._sort(model)
-    
+
     def all(self, model_size):
         """
         Generates an array of all possible models.

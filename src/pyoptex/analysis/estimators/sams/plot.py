@@ -51,7 +51,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     # Order the results ascending
     idx = np.argsort(results['metric'])
     results = results[idx]
-    
+
     # Check if we require kmeans plotting
     if kmeans is not None:
         # Initialize indices with first skipn
@@ -75,7 +75,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
             if kmeans.skips[i] > 0:
                 skips.append(cluster_thresholds[i] + kmeans.skips[i])
             cluster_thresholds.append(cluster_thresholds[i] + idx_.size)
-            
+
             # Add the models to the index sorted by metric
             idx[cluster_thresholds[i]: cluster_thresholds[i+1]] = \
                     idx_[np.argsort(results['metric'][idx_])]
@@ -135,7 +135,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
                    colorscale=[(0, 'red')] + [(0.5-1e-5, 'lightgray'), (0.5, 'white'), (0.5+1e-5, 'lightgray')] + [(1, 'blue')],
                    zmid=0,
                    customdata=np.expand_dims(np.broadcast_to(
-                        np.arange(raster.shape[1]), 
+                        np.arange(raster.shape[1]),
                         raster.shape
                    ), 2),
                    hovertemplate='Term: %{x}'+
@@ -154,7 +154,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
         # Add all raster terms as annotations
         for t in raster_terms:
             fig.add_annotation(
-                x=t, 
+                x=t,
                 y=y * len(raster),
                 text=f'<b>{terms[t]}</b>',
                 font_size=18,
@@ -168,10 +168,10 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     # Add the metric line plot
     fig.add_trace(
         go.Scatter(
-            y=np.arange(raster.shape[0]), 
-            x=results['metric'], 
-            name=metric_name, 
-            marker_color='black', 
+            y=np.arange(raster.shape[0]),
+            x=results['metric'],
+            name=metric_name,
+            marker_color='black',
             showlegend=False
         ), **rc2
     )
@@ -179,7 +179,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
 
     # Add final metric annotation
     fig.add_annotation(
-        x=results['metric'][-1], 
+        x=results['metric'][-1],
         y=results.size - 1,
         text=f'{results["metric"][-1]:.3f}',
         showarrow=True,
@@ -191,11 +191,11 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     # Add the thresholds
     for t in cluster_thresholds:
         fig.add_hline(
-            y=t, line_dash='dot', line_color='black', 
+            y=t, line_dash='dot', line_color='black',
             line_width=0.5, **rc1
         )
         fig.add_hline(
-            y=t, line_dash='dot', line_color='black', 
+            y=t, line_dash='dot', line_color='black',
             line_width=0.5, **rc2
         )
 
@@ -205,7 +205,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
             s, line_dash='dash', **rc1
         )
         fig.add_hline(
-            s, annotation_text='Skipped', annotation_position='bottom left', 
+            s, annotation_text='Skipped', annotation_position='bottom left',
             line_dash='dash', **rc2
         )
 

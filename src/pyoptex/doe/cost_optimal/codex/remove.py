@@ -42,7 +42,7 @@ def groups_remove(Yn, Zs, pos, colstart):
             # Loop initialization
             Zi = Zs[i]
             cols = slice(colstart[i], colstart[i+1])
-            
+
             # Detect double split
             if pos > 0 and pos < len(Zi) - 1 \
                         and np.all(Yn[pos-1, cols] == Yn[pos, cols]) \
@@ -112,20 +112,20 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
                         state.Vinv, state.Zs, k, b, params.ratios
                     )
                     Zsn = tuple(
-                        force_Zi_asc(Zi) if Zi is not None else None 
+                        force_Zi_asc(Zi) if Zi is not None else None
                         for Zi in Zsn
                     )
                 else:
                     Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
                     Vinvn = np.array([
-                        np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) 
+                        np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios))
                         for ratios in params.ratios
                     ])
             else:
                 # Shortcut as there are no hard-to-vary factors
                 Zsn = state.Zs
                 Vinvn = np.broadcast_to(
-                    np.eye(len(Yn)), 
+                    np.eye(len(Yn)),
                     (state.Vinv.shape[0], len(Yn), len(Yn))
                 )
 
@@ -139,7 +139,7 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
             # Create new state
             staten = State(Yn, Xn, Zsn, Vinvn, metricn, cost_Yn, costsn, max_cost)
-                
+
             # Compute metric loss per cost
             # pylint: disable=line-too-long
             mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y) \
@@ -152,7 +152,7 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
                 best_metric = metric_temp
                 best_state = staten
                 best_k = k
-            
+
             # Set keep to true
             keep[k] = True
 

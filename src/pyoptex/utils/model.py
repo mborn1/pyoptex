@@ -167,7 +167,7 @@ def model2Y2X(model, factors):
     """
     # Validation
     assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
-    
+
     col_names = [str(f.name) for f in factors]
     assert all(col in col_names for col in model.columns), 'Not all model parameters are factors'
     assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
@@ -301,8 +301,8 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
         # Cross the linear process and two-factor mixture
         tfi_mixt_lin_process = pd.merge(
-            scheffe_model.iloc[len(mixture_comps):][list(mixture_comps)], 
-            model.loc[lin_process_effects, list(process_comps)], 
+            scheffe_model.iloc[len(mixture_comps):][list(mixture_comps)],
+            model.loc[lin_process_effects, list(process_comps)],
             how='cross'
         )
 
@@ -310,9 +310,9 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
         lin_mixt_tfi_process = pd.merge(
             model.loc[tfi_process_effects, list(process_comps) + [mcomp]],
             pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int64), 
+                np.eye(len(mixture_comps) - 1, dtype=np.int64),
                 columns=mixture_comps.drop(mcomp)
-            ), 
+            ),
             how='cross'
         )[model.columns]
 
@@ -321,7 +321,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
         # Combine all terms
         model = pd.concat(
-            (model, tfi_mixt_lin_process, lin_mixt_tfi_process), 
+            (model, tfi_mixt_lin_process, lin_mixt_tfi_process),
             ignore_index=True
         )
 
@@ -336,9 +336,9 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
         additional_terms = pd.merge(
             model.loc[lin_process_effects, list(process_comps) + [mcomp]],
             pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int64), 
+                np.eye(len(mixture_comps) - 1, dtype=np.int64),
                 columns=mixture_comps.drop(mcomp)
-            ), 
+            ),
             how='cross'
         )[model.columns]
 
@@ -446,7 +446,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
 
     # Retrieve start of columns
     colstart = np.concatenate((
-        [0], 
+        [0],
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
     ))
 
@@ -510,9 +510,9 @@ def encode_names(col_names, effect_types):
         The list of encoded column names.
     """
     lbls = [
-        lbl for i in range(len(col_names)) 
+        lbl for i in range(len(col_names))
             for lbl in (
-                [col_names[i]] if effect_types[i] <= 2 
+                [col_names[i]] if effect_types[i] <= 2
                 else [f'{col_names[i]}_{j}' for j in range(effect_types[i] - 1)]
             )
     ]
@@ -567,8 +567,8 @@ def model2names(model, col_names=None):
         if term_repr == '':
             term_repr = 'cst'
 
-        return term_repr 
-        
+        return term_repr
+
     return list(np.vectorize(__comb)(np.arange(model.shape[0])))
 
 def model2encnames(model, effect_types, col_names=None):
@@ -663,7 +663,7 @@ def order_dependencies(model, factors):
 
     # Extract the dependent terms
     to_terms = np.argmax(np.all(
-        np.expand_dims(modelenc, 0) == np.expand_dims(all_dep[all_dep_valid], 1), 
+        np.expand_dims(modelenc, 0) == np.expand_dims(all_dep[all_dep_valid], 1),
         axis=2
     ), axis=1)
 
@@ -758,7 +758,7 @@ def decode_term(term, model, factors):
             empty_term[model_term] = modelenc[term[i], modelenc_term]
             new_term[i] = np.argmax(np.all(model == empty_term, axis=1))
             empty_term[:] = 0
-   
+
     new_term = np.unique(new_term)
 
     return new_term
@@ -863,7 +863,7 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
         # No single dependent terms left, otherwise violation of weak heredity
         single_deps = np.sum(dep[:, model][model], axis=1) == 1
         drop = ~np.any(dep[:, subset][model[single_deps]], axis=0)
-    
+
     else:
         # No restrictions
         drop = np.ones(len(subset), dtype=np.bool_)
@@ -922,7 +922,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             # Determine which ones are valid
             valids = np.ones((out.shape[0], len(dep)), dtype=np.bool_)
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
-            
+
             # Random sampling
             out[:, i] = choice_bool(valids, axis=0)
 
@@ -1022,7 +1022,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
         affected = forced
         submodelb = np.zeros(len(dep), dtype=np.int64)
         submodelb[affected] = 1
-        
+
         # Update the model
         nb_dep[:, affected] -= 1
         affected = np.any(dep[:, affected], axis=1)
@@ -1030,7 +1030,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
             # Alter the affected positions
             nb_dep[:, affected] = np.min(nb_dep[affected], axis=1) - submodelb[affected] + 1
             affected = np.any(dep[:, affected], axis=1)
-    
+
     # Sample all models
     for model in models:
         # Initialize i
@@ -1077,14 +1077,14 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
                     choices[model[:i+1]] = False
                     choices = np.flatnonzero(choices)
 
-            # Increase the model size        
+            # Increase the model size
             i += 1
 
             # Convert submodel to binary array
             affected = model[j:i]
             submodelb = np.zeros(len(dep), dtype=np.int64)
             submodelb[affected] = 1
-            
+
             # Update the model
             nb_dep_[:, affected] -= 1
             affected = np.any(dep[:, affected], axis=1)

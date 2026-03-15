@@ -41,7 +41,7 @@ def ce_update_vinv(Vinv, Zi, b, ratios):
         # Update Vinv and Zi
         Vinv = group_update_vinv_cy(Vinv, Zi, row_start, row_end, group_from, group_to, ratios)
         Zi[row_start:row_end] = group_to
-    
+
     return Zi, Vinv
 
 def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
@@ -75,7 +75,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
     # Insert run 'a' in grouping matrices
     Vinvn = add_update_vinv(Vinv, Zs, a, pos, ratios)
     Zsn = tuple([
-        np.insert(Zi, pos, ai) if Zi is not None else None 
+        np.insert(Zi, pos, ai) if Zi is not None else None
         for Zi, ai in zip(Zs, a)
     ])
 
@@ -120,7 +120,7 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
     # Remove run from groupings
     Vinvn = del_vinv_update(Vinv, pos, ratios)
     Zsn = tuple([
-        np.delete(Zi, pos) if Zi is not None else None 
+        np.delete(Zi, pos) if Zi is not None else None
         for Zi in Zs
     ])
 
@@ -132,7 +132,7 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
 
             # Apply update
             Vinvn = group_update_vinv_cy(Vinvn, Zsn[i], row_start, row_end, group_from, group_to, ratios[:, i])
-            Zsn[i][row_start:row_end] = group_to  
+            Zsn[i][row_start:row_end] = group_to
 
     return Zsn, Vinvn
 
@@ -171,7 +171,7 @@ def group_update_vinv(Vinv, Zi, b, ratios):
     """
     # Expand change
     row_start, row_end, group_from, group_to = b
-    
+
     # Add another dimension to ratios for broadcasting
     ratios = ratios[:, np.newaxis]
 
@@ -213,7 +213,7 @@ def add_update_vinv(Vinv, Zs, a, pos, ratios):
 
     # Initialize matrix
     Vinvn = np.zeros((Vinv.shape[0], Vinv.shape[1] + 1, Vinv.shape[2] + 1))
-    
+
     # Compute matrix parts
     VinvB = np.squeeze(Vinv @ B[:, :, np.newaxis], axis=-1)
     Pinv = 1 / (1 + np.sum(ratios[:, Zs_valid], axis=1) - np.sum(B * VinvB, axis=1))
@@ -252,6 +252,6 @@ def del_vinv_update(Vinv, pos, ratios):
     b = Vinv[:, pos, keep]
     dinv = 1/Vinv[:, pos, pos]
     Vinvn -= ((b.T * dinv).T)[:, :, np.newaxis] @ b[:, np.newaxis, :]
-    
+
     return Vinvn
 

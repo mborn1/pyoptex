@@ -2,7 +2,7 @@
 Module for analysis plotting utilities.
 """
 
-import numpy as np 
+import numpy as np
 import scipy.stats as spstats
 import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
@@ -74,7 +74,7 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
 
     # Compute figure ranges
     pred_range = np.array([
-        min(np.nanmin(y_true), np.nanmin(y_pred)), 
+        min(np.nanmin(y_true), np.nanmin(y_pred)),
         max(np.nanmax(y_true), np.nanmax(y_pred)),
     ])
     quant_range = np.array([theoretical_quant[0], theoretical_quant[-1]])
@@ -97,28 +97,28 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
 
         # Prediction figure
         fig.add_trace(go.Scatter(
-            x=y_pred[c], y=y_true[c], mode='markers', 
+            x=y_pred[c], y=y_true[c], mode='markers',
             marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), **tt
         ), row=1, col=1)
 
         # Error figure 1
         fig.add_trace(go.Scatter(
-            x=y_pred[c], y=error[c], mode='markers', 
+            x=y_pred[c], y=error[c], mode='markers',
             marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=1, col=2)
 
         # Error figure 2
         fig.add_trace(go.Scatter(
-            x=c, y=error[c], mode='markers', 
+            x=c, y=error[c], mode='markers',
             marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=2, col=2)
 
         # QQ-plot
         fig.add_trace(go.Scatter(
-            x=theoretical_quant[cquant], y=true_quant[cquant], 
+            x=theoretical_quant[cquant], y=true_quant[cquant],
             mode='markers', marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
             name=str(uc), legendgroup=str(uc), showlegend=False, **tt
         ), row=2, col=1)
@@ -149,10 +149,10 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
             yanchor='bottom',
             y=1.02,
             xanchor='left',
-            x=0, 
+            x=0,
             title=color
         )
     )
-    
+
 
     return fig

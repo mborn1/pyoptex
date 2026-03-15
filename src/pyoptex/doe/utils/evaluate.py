@@ -103,7 +103,7 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     """
     assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
     Y = Y.copy()
-    
+
     # Create the design parameters
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     coords = [f.coords_ for f in factors]
@@ -166,7 +166,7 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     """
     # Compute correlation map
     corr = correlation_map(Y, factors, Y2X, model, method)
-    
+
     # Iteratively drop entire rows and columns of nans
     if drop_nans:
         while True:

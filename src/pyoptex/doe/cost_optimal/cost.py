@@ -153,9 +153,9 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     """
     # Expand the costs to categorically encoded
     costs = np.array([
-        c for f in factors 
-            for c in ([costs[str(f.name)]] 
-            if f.is_continuous 
+        c for f in factors
+            for c in ([costs[str(f.name)]]
+            if f.is_continuous
             else [costs[str(f.name)]]*(len(f.levels)-1))
     ])
 
@@ -214,7 +214,7 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The cost function.
     """
     return discount_cost(
-        {k: v + execution_cost for k, v in transition_costs.items()}, 
+        {k: v + execution_cost for k, v in transition_costs.items()},
         factors, max_cost, execution_cost
     )
 
@@ -296,7 +296,7 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The cost function.
     """
     return additive_cost(
-        {k: v + execution_cost for k, v in transition_costs.items()}, 
+        {k: v + execution_cost for k, v in transition_costs.items()},
         factors, max_cost, execution_cost
     )
 
@@ -348,7 +348,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
     # Restructure transition costs
     transition_costs = {
         str(f.name): (
-            transition_costs[str(f.name)] 
+            transition_costs[str(f.name)]
             if f.is_continuous
             else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
         ) for f in factors
@@ -361,7 +361,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
 
     # Expand the costs to arrays
     base_costs = np.array([
-        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] 
+        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]]
         for f in factors
     ])
     scale_costs = np.array([
@@ -398,7 +398,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
                     else:
                         # Categorical base cost
                         cc_[j] = base_costs[j][0]
-                    
+
             # Take the maximum as most-hard-to-change
             cc[i] = np.max(cc_) + execution_cost
 
@@ -455,7 +455,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
     # Restructure transition costs
     transition_costs = {
         str(f.name): (
-            transition_costs[str(f.name)] 
+            transition_costs[str(f.name)]
             if f.is_continuous
             else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
         ) for f in factors
@@ -468,7 +468,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
 
     # Expand the costs to arrays
     base_costs = np.array([
-        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] 
+        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]]
         for f in factors
     ])
     scale_costs = np.array([
@@ -505,7 +505,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
                     else:
                         # Categorical base cost
                         cc_[j] = base_costs[j][0]
-                    
+
             # Take the maximum as most-hard-to-change
             cc[i] = np.sum(cc_) + execution_cost
 

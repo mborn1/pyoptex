@@ -59,7 +59,7 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
 
     if ratios is None:
         ratios = np.ones(len(Zs))
-        
+
     return V + sum(
         r * (Zi_expanded @ Zi_expanded.T)
         for r, Zi_expanded in (

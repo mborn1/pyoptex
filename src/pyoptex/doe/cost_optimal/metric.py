@@ -107,7 +107,7 @@ class Dopt(Metric):
 
         # Compute geometric mean of determinants
         return np.power(
-            np.prod(np.maximum(np.linalg.det(M), 0)), 
+            np.prod(np.maximum(np.linalg.det(M), 0)),
             1/(X.shape[1] * len(Vinv))
         )
 
@@ -254,7 +254,7 @@ class Iopt(Metric):
 
             # Compute moments matrix and normalization factor
             # Correct up to volume factor (Monte Carlo integration), can be ignored
-            self.moments = outer_integral(self.samples)  
+            self.moments = outer_integral(self.samples)
 
             # Sets the initialized_ parameter
             self.initialized_ = True
@@ -290,15 +290,15 @@ class Iopt(Metric):
         if np.linalg.matrix_rank(M[0]) >= M.shape[1]:
             # Compute average trace (normalized)
             trace = np.mean(np.trace(np.linalg.solve(
-                M, 
+                M,
                 np.broadcast_to(
-                    self.moments, 
+                    self.moments,
                     (Vinv.shape[0], *self.moments.shape)
                 )
             ), axis1=-2, axis2=-1))
 
             # Invert for minimization
-            return -trace 
+            return -trace
         return -np.inf
 
 class Aliasing(Metric):
@@ -379,6 +379,6 @@ class Aliasing(Metric):
 
         # Compute mean of SS
         return -np.power(
-            np.mean(np.sum(np.square(A), axis=(-1, -2))), 
+            np.mean(np.sum(np.square(A), axis=(-1, -2))),
             1/(X.shape[1] * len(Vinv))
         )

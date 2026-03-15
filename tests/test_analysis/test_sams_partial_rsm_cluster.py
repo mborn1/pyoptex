@@ -51,7 +51,7 @@ def test_sams_partial_rsm_cluster():
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)
         assert regr.models_[i].tolist() == ref[f"models_{i}"]
-    
+
     data["pred"] = regr.predict(data.drop(columns="Y"))
     np.testing.assert_allclose(data["pred"].mean(), ref["pred_mean"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].std(), ref["pred_std"], rtol=1e-10)

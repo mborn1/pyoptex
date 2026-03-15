@@ -77,7 +77,7 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
         mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture], 
+            [str(f.name) for f in factors if f.is_mixture],
             factors
         )
 
@@ -157,7 +157,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     nratios = max([len(r) for r in ratios])
     assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
     ratios = np.array([
-        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
+        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
         for ratio in ratios
     ]).T
 
@@ -172,7 +172,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
     # Encode the coordinates
     colstart = np.concatenate((
-        [0], 
+        [0],
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
     ))
 
@@ -188,7 +188,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     Zs = obs_var_Zs(plot_sizes)
 
     # Compute Vinv
-    Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])  
+    Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])
 
     # Determine a prior
     if prior is not None:
@@ -202,7 +202,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Convert from pandas to numpy
         prior = prior[col_names].to_numpy()
-        
+
         # Don't encode the design
         # prior = encode_design(prior, effect_types, coords=coords)
 
@@ -236,25 +236,25 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     else:
         # Nothing to start from
         old_plot_sizes = np.zeros_like(plot_sizes)
-        
+
     # Define which groups to optimize
     lgrps = level_grps(old_plot_sizes, plot_sizes)
     if grps is None:
         grps = [lgrps[lvl] for lvl in effect_levels]
     else:
         grps = [np.concatenate(
-            (grps[i].astype(np.int64), lgrps[effect_levels[i]]), 
+            (grps[i].astype(np.int64), lgrps[effect_levels[i]]),
             dtype=np.int64
         ) for i in range(len(effect_levels))]
     grp_runs = None # Not implemented yet for this optimization
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, 
-        coords, prior, colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs), 
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios,
+        coords, prior, colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs),
         alphas, thetas, thetas_inv, use_formulas
     )
-    
+
     return params
 
 def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):

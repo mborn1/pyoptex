@@ -29,7 +29,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         A boolean array marking which rows are considered
         outliers in the training dataset.
     """
-    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), 
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(),
                  threshold=1, stat='norm'):
         """
         Creates the outlier transformer
@@ -85,7 +85,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
 
         # Return self
         return self
-    
+
     def _apply_transform(self, X, y):
         """
         Internal transform function for the quantile outlier transformer.
@@ -108,7 +108,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         X = X.loc[~self.outliers_]
         y = y[~self.outliers_]
         return X, y
-    
+
     def _predict(self, X):
         """
         Internal predict function based on the
@@ -157,7 +157,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         te0 = stat.ppf(ppf)
         d0 = np.abs(se0 - te0)
 
-        # Start the distances 
+        # Start the distances
         distances = np.copy(d0)
 
         # Outlier mask

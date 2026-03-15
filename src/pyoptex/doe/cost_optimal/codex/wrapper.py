@@ -104,7 +104,7 @@ def default_fn(
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
         mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture], 
+            [str(f.name) for f in factors if f.is_mixture],
             factors
         )
 
@@ -117,12 +117,12 @@ def default_fn(
     # Default to no constraints
     if constraints is None:
         constraints = no_constraints
-        
+
     # Return the function set
     return FunctionSet(
-        Y2X, init, cost, metric, constraints.encode(), 
+        Y2X, init, cost, metric, constraints.encode(),
         sample, temperature,
-        accept, restart, insert, remove, 
+        accept, restart, insert, remove,
         optimizers, final_optimizers
     )
 
@@ -161,7 +161,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     grouped_cols = np.array([bool(f.grouped) for f in factors])
     ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list)
-                             or isinstance(f.ratio, np.ndarray) else [f.ratio] 
+                             or isinstance(f.ratio, np.ndarray) else [f.ratio]
               for f in factors]
     coords = [f.coords_ for f in factors]
 
@@ -169,16 +169,16 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     nratios = max([len(r) for r in ratios])
     assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
     ratios = np.array([
-        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio 
+        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
         for ratio in ratios
     ]).T.astype(np.float64)
 
     # Define the starting columns
     colstart = np.concatenate((
-        [0], 
+        [0],
         np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
     ))
-        
+
     # Create the prior
     if prior is not None:
         # Normalize factors
@@ -187,7 +187,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
         # Convert from pandas to numpy
         prior = prior[col_names].to_numpy()
-        
+
         # Encode the design
         prior = encode_design(prior, effect_types, coords=coords)
 
@@ -197,10 +197,10 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     else:
         prior = np.empty((0, colstart[-1]))
-    
+
     # Create the parameters
     params = Parameters(
-        fn, factors, colstart, coords, ratios, effect_types, 
+        fn, factors, colstart, coords, ratios, effect_types,
         grouped_cols, prior, {}, use_formulas
     )
 
@@ -259,7 +259,7 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
                     # Check if the simulation was interrupted
                     if interrupted:
                         break
-                
+
                 except ValueError as e:
                     print(e)
     except KeyboardInterrupt:

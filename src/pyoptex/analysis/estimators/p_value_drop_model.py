@@ -37,8 +37,8 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
         The heredity mode to adhere to.
     """
 
-    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), 
-                 conditional=False, 
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(),
+                 conditional=False,
                  threshold=0.05, dependencies=None, mode=None):
         """
         P-value based model selection regressor.
@@ -126,7 +126,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
                 removed = False
 
         return keep
-    
+
     def _validate_fit(self, X, y):
         """
         Additional validation of the threshold, mode, and

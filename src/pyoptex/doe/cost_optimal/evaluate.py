@@ -50,7 +50,7 @@ def evaluate_metrics(Y, params, metrics):
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
         for ratios in params.ratios
     ])
     costs = params.fn.cost(Y, params)
@@ -100,7 +100,7 @@ def fraction_of_design_space(Y, params, N=10000):
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
         for ratios in params.ratios
     ])
     costs = params.fn.cost(Y, params)
@@ -116,11 +116,11 @@ def fraction_of_design_space(Y, params, N=10000):
 
     # Compute prediction variances
     pred_var = np.sum(
-        iopt.samples.T 
+        iopt.samples.T
         * np.linalg.solve(
             M,
             np.broadcast_to(
-                iopt.samples.T, 
+                iopt.samples.T,
                 (M.shape[0], *iopt.samples.T.shape)
             )
         ), axis=-2
@@ -156,18 +156,18 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     for i, pv in enumerate(pred_var):
         color = DEFAULT_PLOTLY_COLORS[i]
         name = ', '.join([
-            f'{str(f.name)}={r:.3f}' 
-            for f, r in zip(params.factors, params.ratios[i]) 
+            f'{str(f.name)}={r:.3f}'
+            for f, r in zip(params.factors, params.ratios[i])
             if f.grouped
         ])
         fig.add_trace(go.Scatter(
-            x=np.linspace(0, 1, len(pv)), y=pv, 
+            x=np.linspace(0, 1, len(pv)), y=pv,
             marker_color=color, name=name
         ))
         fig.add_hline(
-            y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}', 
-            annotation_font_color=color, 
-            line_dash='dash', line_width=1, 
+            y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}',
+            annotation_font_color=color,
+            line_dash='dash', line_width=1,
             line_color=color, annotation_position='bottom right'
         )
 
@@ -217,7 +217,7 @@ def estimation_variance_matrix(Y, params):
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
+        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
         for ratios in params.ratios
     ])
     costs = params.fn.cost(Y, params)
@@ -272,7 +272,7 @@ def plot_estimation_variance_matrix(Y, params, model=None, abs=False):
             encoded_colnames.extend([f'cov_{i}' for i in range(Minv.shape[-1] - len(encoded_colnames))])
 
     # Create the figure
-    fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
+    fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)),
         vertical_spacing=0.07,
         subplot_titles=[
             'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(params.factors, params.ratios[i]) if f.grouped])

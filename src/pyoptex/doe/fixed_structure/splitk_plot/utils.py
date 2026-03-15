@@ -123,7 +123,7 @@ def level_grps(s0, s1):
         # Concatenate both and save
         g = np.concatenate((g0, g1))
         grps.append(g)
-    
+
     # Return reverse of groups
     return grps[::-1]
 
@@ -164,7 +164,7 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     new_runs = list()
     for i in range(new_plot_sizes.size):
         g = np.repeat(
-            np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]), 
+            np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]),
             np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i]
         )
         new_runs.extend(g)
@@ -174,14 +174,14 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     nthetas = np.cumprod(np.concatenate((np.array([1]), new_plot_sizes)))
     nalphas = np.cumprod(new_plot_sizes[::-1])[::-1]
 
-    # Fix the levels 
+    # Fix the levels
     for col in range(effect_levels.size):
         level = effect_levels[col]
         if level != 0:
             size = nthetas[level]
             for grp in range(nalphas[level]):
                 Y[grp*size:(grp+1)*size, col] = Y[grp*size, col]
-    
+
     return Y
 
 def terms_per_plot_level(factors, model):

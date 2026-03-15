@@ -39,7 +39,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
             Whether to create a conditional model or not.
         """
         super().__init__(
-            factors=factors, Y2X=Y2X, random_effects=random_effects, 
+            factors=factors, Y2X=Y2X, random_effects=random_effects,
             conditional=conditional
         )
 

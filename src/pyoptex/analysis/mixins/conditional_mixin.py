@@ -59,7 +59,7 @@ class ConditionalRegressionMixin:
         if self.conditional and len(self._re) > 0:
             # Validate all present
             assert all(col in X.columns for col in self._re), 'Not all random effects are present in the dataframe'
-            
+
             # Create conditional factors
             self._conditional_factors = [
                 Factor(re, type='categorical', levels=X[re].unique().tolist())
@@ -75,13 +75,13 @@ class ConditionalRegressionMixin:
 
             # Create the conditional model
             self._conditional_model = pd.DataFrame(
-                np.eye(len(self._conditional_factors) ,dtype=np.int64), 
+                np.eye(len(self._conditional_factors) ,dtype=np.int64),
                 columns=[str(f.name) for f in self._conditional_factors]
             )
 
             # Encode the conditional model
             conditional_model_enc = encode_model(
-                self._conditional_model.to_numpy(), 
+                self._conditional_model.to_numpy(),
                 effect_types
             )
 
@@ -247,6 +247,6 @@ class ConditionalRegressionMixin:
             # Add the conditional labels
             effect_types = np.array([len(f.levels) for f in self._conditional_factors])
             labels = [*labels, *model2encnames(self._conditional_model, effect_types)]
-            
+
 
         return super().formula(labels)

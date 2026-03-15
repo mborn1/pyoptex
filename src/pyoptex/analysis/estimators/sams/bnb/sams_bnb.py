@@ -27,7 +27,7 @@ def sparsify(models, nterms):
         The sparse csc matrix.
     """
     return sparse.csc_matrix((
-                np.ones(models.size, dtype=np.bool_), 
+                np.ones(models.size, dtype=np.bool_),
                 (np.repeat(np.arange(len(models)), models.shape[1]), models.flatten())
             ), shape=(len(models), nterms), dtype=np.bool_)
 
@@ -67,7 +67,7 @@ class SamsBnB(BnB):
 
     """
 
-    def __init__(self, model_size, models, nterms, 
+    def __init__(self, model_size, models, nterms,
                  mode=None, dependencies=None, forced_model=None):
         """
         Initializes the branch-and-bound object. 
@@ -119,7 +119,7 @@ class SamsBnB(BnB):
 
         # State
         self.spm = sparsify(models, self.nterms)
-         
+
     def initialize(self, nfit):
         """
         Initializes the results using a greedy search.
@@ -160,14 +160,14 @@ class SamsBnB(BnB):
 
                 # Remove from frequencies
                 freq[~permitted] = 0
-                    
+
                 # Get the most frequent term
                 term = np.argmax(freq)
                 top_models[j, i] = term
 
                 # Only keep the samples with this term
                 keep = models_with_submodel[:, term].toarray().flatten().astype(np.bool_)
-                models_with_submodel = models_with_submodel[keep]    
+                models_with_submodel = models_with_submodel[keep]
 
             # Drop all results with this model sequence
             models_with_sequence = (models[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1])
@@ -175,7 +175,7 @@ class SamsBnB(BnB):
 
             # Compute the frequency of this model
             top_frequencies[j] = np.sum(self.spm[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1])
-            
+
             # Stop if no models are left
             if models.shape[0] == 0:
                 break
@@ -185,9 +185,9 @@ class SamsBnB(BnB):
 
         # Create nodes
         top_models = [(model, self.model_size) for model in top_models]
-        
+
         return top_models, top_frequencies
-    
+
     def init_queue(self, top_results, top_scores):
         """
         Initializes the branches queue, starting from the forced model and
@@ -219,7 +219,7 @@ class SamsBnB(BnB):
             node[self.forced_model.size] = i
             node[self.forced_model.size + 1:] = -1
             yield (node, self.forced_model.size+1)
-    
+
     def upperbound(self, node):
         """
         Compute the upperbound on the amount of times this submodel
@@ -241,7 +241,7 @@ class SamsBnB(BnB):
 
         # Compute frequency of submodel
         freq = np.sum(self.spm[:, sized_model].sum(axis=1).A1 == size)
-        
+
         return freq
 
     def leaf(self, node):
@@ -294,7 +294,7 @@ class SamsBnB(BnB):
             n = node.copy()
             n[size] = i
             yield (n, size+1)
-        
+
     def node_in_results(self, node, results):
         """
         Check whether the model is already in the results.
@@ -312,7 +312,7 @@ class SamsBnB(BnB):
             Whether the node is in the results or not.
         """
         return any(np.all(results[i][0] == node[0]) for i in range(len(results)))
-    
+
     def preloop(self, top_results, top_scores):
         """
         Kills any terms which do not occur frequently enough.
@@ -336,7 +336,7 @@ class SamsBnB(BnB):
         # Set kill sequence, any term which does not occur frequently enough
         self.kill = self.spm.sum(axis=0).A1 < top_scores[0]
         return top_results, top_scores
-    
+
     def postnew(self, old, new, top):
         """
         Kills any terms which do not occur frequently enough.
