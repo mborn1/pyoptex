@@ -75,7 +75,7 @@ class Metric:
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -108,7 +108,7 @@ class Dopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -166,7 +166,7 @@ class Aopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -265,7 +265,7 @@ class Iopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -343,7 +343,7 @@ class Aliasing(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float

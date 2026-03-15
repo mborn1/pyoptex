@@ -18,7 +18,7 @@ def outer_integral(arr):
     ----------
     arr : np.array(2d)
         The array
-    
+
     Returns
     -------
     out : np.array(2d)
@@ -49,7 +49,7 @@ def int2bool(arr, size):
     size : int
         The size of the last dimension in the output array. All
         elements in `arr` must be strictly smaller than this number.
-    
+
     Returns
     -------
     out : np.array(nd)
@@ -87,7 +87,7 @@ def timeout(func, *args, timeout=1, default=None):
     default : obj
         Any object to be returned if the function does not
         complete in time.
-    
+
     Returns
     -------
     result : obj

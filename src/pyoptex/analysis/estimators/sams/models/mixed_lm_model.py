@@ -16,7 +16,7 @@ def Vsqrt_inv(V):
     ----------
     V : np.array(2d)
         The matrix on which the operator applies.
-    
+
     Returns
     -------
     Vsqrt_inv : np.array(2d)

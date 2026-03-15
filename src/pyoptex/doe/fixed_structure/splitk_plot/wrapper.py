@@ -28,7 +28,7 @@ def _compute_cs(plot_sizes, ratios, thetas):
     thetas : np.array(1d)
         The array of thetas.
         thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    
+
     Returns
     -------
     cs : np.array(2d)

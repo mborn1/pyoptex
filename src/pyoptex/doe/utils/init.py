@@ -24,7 +24,7 @@ def init_single_unconstrained(colstart, coords, run, effect_types):
         Output buffer of the function. Also returned at the end.
     effect_types : np.array(1d)
         The type of each effect in case no coordinates are specified.
-    
+
     Returns
     -------
     run : np.array(2d)

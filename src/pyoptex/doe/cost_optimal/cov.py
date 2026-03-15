@@ -10,7 +10,7 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
     """
     Update formula designed to add random effects
     which do not depend on any factor reset (e.g. blocking factors).
-    
+
     Parameters
     ----------
     Vinv : np.array(3d)
@@ -111,7 +111,7 @@ def cov_time_trend(time=1, cost_index=0):
         column progresses one equidistant step.
     cost_index : int
         The index in the multi-cost objective to look at.
-    
+
     Returns
     -------
     cov : func(Y, X, Zs, Vinv, costs)
@@ -161,7 +161,7 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
         whenever `time_outer` is adjusted.
     cost_index : int
         The index in the multi-cost objective to look at.
-    
+
     Returns
     -------
     cov : func(Y, X, Zs, Vinv, costs)

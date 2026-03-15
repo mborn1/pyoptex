@@ -53,7 +53,7 @@ class ExponentialAccept:
     """
     Compute the temperature of the Simulated Annealing system
     according to an exponential.
-    
+
     * Updates the temperature with T = T * rho if the model got accepted.
     * Updates the temperature with T = T / alpha if the model got rejected.
       alpha = rho ** (1/kappa).
@@ -103,7 +103,7 @@ class ExponentialAccept:
         Computes the exponential probability
 
         .. math::
-            
+
             prob = e^{-d / T}
 
         Parameters

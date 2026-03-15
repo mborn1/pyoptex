@@ -354,7 +354,7 @@ class SamsRegressor(MultiRegressionMixin):
             The maximum time to use for a single iteration of the branch-and-bound
             algorithm. If it runs too long, chances are low that any high
             entropy models are returned.
-    
+
         Returns
         -------
         models : list(np.array(1d))
@@ -449,7 +449,7 @@ class SamsRegressor(MultiRegressionMixin):
             The list of top submodels for each size.
         freq : np.array(1d)
             The frequencies of these submodels in the raster plot.
-        
+
         Returns
         -------
         entropies : np.array(1d)

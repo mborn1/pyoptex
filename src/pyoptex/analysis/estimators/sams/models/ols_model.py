@@ -66,7 +66,7 @@ class OlsModel(Model):
             selected terms.
         y : np.array(1d)
             The output variable.
-        
+
         Returns
         -------
         params : np.array(1d)

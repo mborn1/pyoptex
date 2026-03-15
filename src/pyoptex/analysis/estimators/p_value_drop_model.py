@@ -42,7 +42,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
                  threshold=0.05, dependencies=None, mode=None):
         """
         P-value based model selection regressor.
-        
+
         Parameters
         ----------
         factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)

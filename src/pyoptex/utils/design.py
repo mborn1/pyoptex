@@ -17,7 +17,7 @@ def create_default_coords(effect_type):
     effect_type : int
         The type of the effect. 1 indicates continuous,
         higher indicates categorical with that number of levels.
-    
+
     Returns
     -------
     coords : np.array(1d, 1)
@@ -47,7 +47,7 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
         the random errors.
     include_error : bool
         Whether to include the random errors or not.
-    
+
     Returns
     -------
     V : np.array(2d)
@@ -98,7 +98,7 @@ def force_Zi_asc(Zi):
     ----------
     Zi : np.array(1d)
         The current grouping matrix
-    
+
     Returns
     -------
     Zi : np.array(1d)

@@ -449,7 +449,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         ----------
         X : pd.DataFrame
             The data.
-        
+
         Returns
         -------
         pred : np.array(1d)
@@ -663,7 +663,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you did not create Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
@@ -736,7 +736,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you created Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
@@ -991,7 +991,7 @@ class MultiRegressionMixin(RegressionMixin):
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you did not create Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
@@ -1066,7 +1066,7 @@ class MultiRegressionMixin(RegressionMixin):
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you created Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,

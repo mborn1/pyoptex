@@ -115,7 +115,7 @@ def combine_costs(costs):
     ----------
     costs : iterable(func)
         An iterable of cost functions to concatenate
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -133,7 +133,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     """
     Create a transition cost function according to the formula C = max(c1, c2, ..., base).
     This means the total transition cost is determined by the most-hard-to-change factor.
-    
+
     Parameters
     ----------
     costs : dict(str, float)
@@ -145,7 +145,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     base_cost : float
         The base cost when no factors are changed, i.e., when a run
         is repeated.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -196,7 +196,7 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     multiple workers can work on the transition between
     two consecutive runs in parallel. The total transition
     cost is determined by the most-hard-to-change factor.
-    
+
     Parameters
     ----------
     transition_costs : dict(str, float)
@@ -207,7 +207,7 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The budget available for this cost function.
     execution_cost : float
         the execution cost of a run.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -222,7 +222,7 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
     """
     Create a transition cost function according to the formula C = c1 + c2 + ... + base.
     This means that every factor is independently, and sequentially changed.
-    
+
     Parameters
     ----------
     costs : dict(str, float)
@@ -234,7 +234,7 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
     base_cost : float
         The base cost when no factors are changed, i.e., when a run
         is repeated.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -278,7 +278,7 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     only a single worker can work on the transition between
     two consecutive runs. The total transition
     cost is determined by the sum of all transition costs.
-    
+
     Parameters
     ----------
     transition_costs : dict(str, float)
@@ -289,7 +289,7 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The budget available for this cost function.
     execution_cost : float
         the execution cost of a run.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -309,7 +309,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
     The transition cost is determined by scaling the
     transition cost between start and stop with a base cost.
     See the parameters for more information.
-    
+
     Parameters
     ----------
     transition_costs : dict(str, tuple(float, float, float, float) or float)
@@ -328,7 +328,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
         The budget available for this cost function.
     execution_cost : float
         the execution cost of a run.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -416,7 +416,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
     The transition cost is determined by scaling the
     transition cost between start and stop with a base cost.
     See the parameters for more information.
-    
+
     Parameters
     ----------
     transition_costs : dict(str, tuple(float, float, float, float) or float)
@@ -435,7 +435,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
         The budget available for this cost function.
     execution_cost : float
         the execution cost of a run.
-    
+
     Returns
     -------
     cost_fn : func(Y, params)
@@ -540,7 +540,7 @@ def max_changes_cost(factor, factors, max_changes):
     Cost function to deal with a fixed maximum number of changes in a specific factor.
     The maximum cost is supposed to be the number of changes, and this cost function
     simply returns 1 for each change.
-    
+
     .. note::
         It does not account for the initial setup and final result
 

@@ -17,10 +17,10 @@ from typing import Dict, List, Tuple
 def find_python_scripts(directory: Path) -> List[Path]:
     """
     Recursively find all Python scripts in the given directory.
-    
+
     Args:
         directory: Root directory to search in
-        
+
     Returns:
         List of Path objects for all .py files found
     """
@@ -40,11 +40,11 @@ def find_python_scripts(directory: Path) -> List[Path]:
 def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]:
     """
     Run a single Python script and capture its output.
-    
+
     Args:
         script_path: Path to the script to run
         timeout: Maximum execution time in seconds
-        
+
     Returns:
         Tuple of (success, output, execution_time)
     """

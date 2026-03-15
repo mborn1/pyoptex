@@ -233,7 +233,7 @@ class Model:
     def all(self, model_size):
         """
         Generates an array of all possible models.
-        
+
         Parameters
         ----------
         model_size : int

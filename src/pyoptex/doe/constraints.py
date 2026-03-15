@@ -438,7 +438,7 @@ def mixture_constraints(names, factors):
     """
     Create the mixture constraints based on the names of the
     mixture factors.
-    
+
     .. note::
         The number of names is
         the number of mixture components minus 1. The final mixture
@@ -453,7 +453,7 @@ def mixture_constraints(names, factors):
         The names of the mixture components.
     factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The factors of the experiment.
-    
+
     Returns
     -------
     mixture_constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`

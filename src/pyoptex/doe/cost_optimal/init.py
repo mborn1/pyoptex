@@ -74,7 +74,7 @@ def init(params, n=1, complete=False):
         False means use the coordinates and prior specified in params,
         otherwise, no coords or prior are used.
         Can be used to perform a complete sample of the design space.
-    
+
     Returns
     -------
     run : np.array(2d)

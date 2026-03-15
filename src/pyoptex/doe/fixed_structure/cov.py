@@ -45,7 +45,7 @@ def cov_time_trend(ntime, nruns):
         The total number of distinct time points.
     nruns : int
         The total number of runs in the design.
-    
+
     Returns
     -------
     cov : func(Y, X)
@@ -86,7 +86,7 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
         the number of nested sections.
     nruns : int
         The total number of runs in the design.
-    
+
     Returns
     -------
     cov : func(Y, X)

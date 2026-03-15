@@ -180,7 +180,7 @@ class FactorMixin:
             requires a float, array of floats or a series of
             floats. A categorical factor requires a string
             or series of strings.
-        
+
         Returns
         -------
         norm_data : float or int or np.array(1d) or pd.Series
@@ -218,7 +218,7 @@ class FactorMixin:
             requires a float, array of floats or a series of
             floats. A categorical factor requires an int
             or series of ints.
-        
+
         Returns
         -------
         denorm_data : float or str or np.array(1d) or pd.Series

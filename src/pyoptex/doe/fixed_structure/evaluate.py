@@ -25,7 +25,7 @@ def evaluate_metrics(Y, params, metrics):
         The simulation parameters.
     metrics : list(:py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`)
         The list of metrics to evaluate.
-    
+
     Returns
     -------
     metrics : list(float)

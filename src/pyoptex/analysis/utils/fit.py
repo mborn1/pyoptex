@@ -93,7 +93,7 @@ def fit_ols(X, y):
         The normalized, encoded model matrix of the data.
     y : np.array(1d)
         The output variable
-    
+
     Returns
     -------
     fit : :py:class:`statsmodels.regression.linear_model.RegressionResults`
@@ -129,7 +129,7 @@ def fit_mixedlm(X, y, groups):
         array with values from 0 until the total number of groups
         for that random effect. For example [0, 0, 1, 1] indicates
         that the first two runs are correlated, and the last two.
-    
+
     Returns
     -------
     fit : :py:class:`statsmodels.regression.mixed_linear_model.MixedLMResults`

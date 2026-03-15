@@ -16,7 +16,7 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
     and observing the frequency of each submodel.
 
     The entropy is computed as
-     
+
     .. math:
 
         f_{o} * log_2(f_{o} / f_{t}) + (1 - f_{o}) * log_2((1 - f_{o}) / (1 - f_{t}))

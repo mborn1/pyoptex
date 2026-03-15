@@ -111,7 +111,7 @@ class BnB:
             The node to check.
         results : list(node)
             The list of current optimal nodes.
-        
+
         Returns
         -------
         in_results : bool

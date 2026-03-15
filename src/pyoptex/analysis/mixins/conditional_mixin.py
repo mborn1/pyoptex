@@ -146,7 +146,7 @@ class ConditionalRegressionMixin:
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you did not create Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,
@@ -224,7 +224,7 @@ class ConditionalRegressionMixin:
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
-            
+
         .. note::
             If you created Y2X using
             :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`,

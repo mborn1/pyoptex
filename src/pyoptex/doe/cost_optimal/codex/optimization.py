@@ -27,7 +27,7 @@ def adapt_group(groups, factor, row_start, row_end):
         The starting row (included) where the coordinate was changed.
     row_end : int
         The final row (excluded) where the coordinate was changed.
-    
+
     Returns
     -------
     b : list(tuple(row_start, row_end, group_from, group_to))
@@ -91,7 +91,7 @@ def adapt_groups(groups, Y, colstart, row_start, row_end):
         The starting row (included) where the coordinate was changed.
     row_end : int
         The final row (excluded) where the coordinate was changed.
-    
+
     Returns
     -------
     b : list(tuple(row_start, row_end, group_from, group_to))

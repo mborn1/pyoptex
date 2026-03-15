@@ -43,7 +43,7 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
         The column to group by with colors in the plot. Can be used to identify
         missing effects for the easy-to-change variables. Note that you
         any continuous variable should be binned.
-    
+
     Returns
     -------
     fig : :py:class:`plotly.graph_objects.Figure`

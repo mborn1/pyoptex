@@ -26,7 +26,7 @@ def groups_insert(Yn, Zs, pos, colstart):
         The position of the inserted run
     colstart : np.array(1d)
         The starting column of each factor
-    
+
     Returns
     -------
     a : np.array(1d)
@@ -86,7 +86,7 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         The simulation parameters.
     new_X : np.array(1, 1d)
         The model matrix part of that run = x2fx(new_run)
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -146,7 +146,7 @@ def insert_last(new_run, state, params):
         The state from which to start.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -169,7 +169,7 @@ def insert_optimal(new_run, state, params):
         The state from which to start.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
