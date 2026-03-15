@@ -1,13 +1,15 @@
+from functools import cached_property
+
 import numpy as np
 import pandas as pd
-from functools import cached_property
-from sklearn.utils.validation import check_X_y
 from sklearn.base import RegressorMixin as RegressorMixinSklearn
 from sklearn.base import TransformerMixin as TransformerMixinSklearn
+from sklearn.utils.validation import check_X_y
 
-from ..utils.fit import fit_ols, fit_mixedlm
 from ...utils.design import encode_design, obs_var_from_Zs
-from ...utils.model import model2encnames, identityY2X
+from ...utils.model import identityY2X, model2encnames
+from ..utils.fit import fit_mixedlm, fit_ols
+
 
 class BaseMixin:
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):

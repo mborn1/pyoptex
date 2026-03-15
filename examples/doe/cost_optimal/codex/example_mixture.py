@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 # Python imports
-import time
 import os
+import time
+
 import numpy as np
 
 try:
@@ -12,12 +13,10 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import mixtureY2X
 from pyoptex.doe.cost_optimal import Factor, cost_fn
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.metric import Iopt
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.utils.model import mixtureY2X
 
 # Set the seed
 set_seed(42)

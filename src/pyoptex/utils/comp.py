@@ -2,9 +2,11 @@
 Module for utility functions related to computational formulas.
 """
 import multiprocessing
+
 import numpy as np
 
-from pyoptex.utils._comp_cy import outer_integral_cython_impl, int2bool_cython_impl, choice_bool
+from pyoptex.utils._comp_cy import choice_bool, int2bool_cython_impl, outer_integral_cython_impl
+
 
 def outer_integral(arr):
     """

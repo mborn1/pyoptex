@@ -7,9 +7,9 @@ import numpy as np
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
 from ...utils.init import full_factorial
+from ..utils import obs_var_Zs
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
-from ..utils import obs_var_Zs
 
 
 def adapt_group(groups, factor, row_start, row_end):

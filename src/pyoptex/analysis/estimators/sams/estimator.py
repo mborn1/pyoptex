@@ -2,25 +2,26 @@
 Module for the SAMS regressor.
 """
 
-import numpy as np
-import ruptures as rpt
-import plotly.graph_objects as go
 from functools import reduce
+
+import numpy as np
+import plotly.graph_objects as go
+import ruptures as rpt
+from plotly.subplots import make_subplots
 from sklearn.cluster import KMeans
 from tqdm import tqdm
-from plotly.subplots import make_subplots
 
-from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X, sample_model_dep_onebyone, model2encnames
 from ....utils.comp import timeout
+from ....utils.design import obs_var_from_Zs
+from ....utils.model import identityY2X, model2encnames, sample_model_dep_onebyone
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
 from .bnb.sams_bnb import SamsBnB
 from .entropy import entropies, entropies_approx
-from .models.ols_model import OlsModel
 from .models.mixed_lm_model import MixedLMModel
+from .models.ols_model import OlsModel
 from .plot import plot_raster
-from .simulation import simulate_sams, simulate_all
+from .simulation import simulate_all, simulate_sams
 
 
 class SamsRegressor(MultiRegressionMixin):

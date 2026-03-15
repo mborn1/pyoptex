@@ -3,6 +3,7 @@ Module containing all the generic initialization functions
 """
 
 import numpy as np
+
 from ._init_cy import *
 
 

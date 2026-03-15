@@ -2,12 +2,17 @@ import numpy as np
 
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.doe.fixed_structure import Factor, RandomEffect, create_fixed_structure_design, create_parameters, default_fn
+from pyoptex.doe.fixed_structure import (
+    Factor,
+    RandomEffect,
+    create_fixed_structure_design,
+    create_parameters,
+    default_fn,
+)
 from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
 from pyoptex.doe.fixed_structure.evaluate import estimation_variance, evaluate_metrics
 from pyoptex.doe.fixed_structure.metric import Aopt, Dopt, Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

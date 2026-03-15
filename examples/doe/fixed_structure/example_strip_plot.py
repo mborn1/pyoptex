@@ -3,6 +3,7 @@
 # Python imports
 import os
 import time
+
 import numpy as np
 
 try:
@@ -13,14 +14,16 @@ except ImportError:
 # PyOptEx imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
-from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
 from pyoptex.doe.fixed_structure import (
-    Factor, RandomEffect, create_fixed_structure_design, 
-    create_parameters, default_fn
+    Factor,
+    RandomEffect,
+    create_fixed_structure_design,
+    create_parameters,
+    default_fn,
 )
 from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
-from pyoptex.doe.fixed_structure.metric import Dopt, Iopt, Aopt
+from pyoptex.doe.fixed_structure.metric import Aopt, Dopt, Iopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -77,8 +80,10 @@ log_checkpoint("Y_values", Y.values.tolist())
 log_checkpoint("metric", float(state.metric))
 
 from pyoptex.doe.fixed_structure.evaluate import (
-    evaluate_metrics, estimation_variance,
+    estimation_variance,
+    evaluate_metrics,
 )
+
 log_checkpoint("evaluate_metrics", evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 log_checkpoint("estimation_variance", estimation_variance(Y, params).tolist())
 
@@ -96,13 +101,15 @@ print(Y)
 #########################################################################
 
 from pyoptex.doe.utils.evaluate import design_heatmap, plot_correlation_map
+
 design_heatmap(Y, factors).show()
 plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 from pyoptex.doe.fixed_structure.evaluate import (
-    plot_fraction_of_design_space,
     plot_estimation_variance_matrix,
+    plot_fraction_of_design_space,
 )
+
 print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 plot_fraction_of_design_space(Y, params).show()
 plot_estimation_variance_matrix(Y, params, model).show()

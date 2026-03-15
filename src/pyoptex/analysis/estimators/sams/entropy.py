@@ -5,8 +5,9 @@ Module for the SAMS entropy calculations.
 import numpy as np
 from scipy.special import comb
 
-from ....utils.model import sample_model_dep_onebyone
 from ....utils.comp import int2bool
+from ....utils.model import sample_model_dep_onebyone
+
 
 def entropies_approx(submodels, freqs, model_size, dep, mode,
                      forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6):

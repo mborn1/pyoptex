@@ -8,6 +8,7 @@ from statsmodels.regression.mixed_linear_model import VCSpec
 
 from ...utils.design import obs_var_from_Zs
 
+
 def r2adj(fit):
     """
     Computes the adjust r-square from a model fit.

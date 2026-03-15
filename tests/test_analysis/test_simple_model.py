@@ -2,10 +2,9 @@ import numpy as np
 import pandas as pd
 
 from pyoptex._seed import set_seed
+from pyoptex.analysis import SimpleRegressor
 from pyoptex.utils import Factor
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-from pyoptex.analysis import SimpleRegressor
-
 from tests._helpers import load_reference
 
 

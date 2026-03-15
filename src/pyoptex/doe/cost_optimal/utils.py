@@ -3,6 +3,7 @@ Module for all utility functions of the cost optimal designs
 """
 
 from collections import namedtuple
+
 import numpy as np
 
 from ...utils.factor import FactorMixin

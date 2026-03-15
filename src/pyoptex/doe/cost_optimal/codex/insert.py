@@ -6,10 +6,9 @@ import numpy as np
 
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
-from .formulas import (NO_UPDATE, detect_block_end_from_start,
-                       insert_update_vinv)
-from .simulation import State
 from ..utils import obs_var_Zs
+from .formulas import NO_UPDATE, detect_block_end_from_start, insert_update_vinv
+from .simulation import State
 
 
 def groups_insert(Yn, Zs, pos, colstart):

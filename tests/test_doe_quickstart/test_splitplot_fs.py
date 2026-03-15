@@ -1,10 +1,15 @@
 import numpy as np
 
 from pyoptex._seed import set_seed
-from pyoptex.doe.fixed_structure import Factor, RandomEffect, create_fixed_structure_design, create_parameters, default_fn
+from pyoptex.doe.fixed_structure import (
+    Factor,
+    RandomEffect,
+    create_fixed_structure_design,
+    create_parameters,
+    default_fn,
+)
 from pyoptex.doe.fixed_structure.metric import Dopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

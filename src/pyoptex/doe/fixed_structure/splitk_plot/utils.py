@@ -7,8 +7,9 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 
-from ..utils import Parameters as Parameterso, RandomEffect as RandomEffect
 from ....utils.model import encode_model
+from ..utils import Parameters as Parameterso
+from ..utils import RandomEffect as RandomEffect
 
 Parameters = namedtuple('Parameters', ' '.join(Parameterso._fields) + ' plot_sizes c alphas thetas thetas_inv compute_update') # type: ignore[misc]
 Update = namedtuple('Update', 'level grp run_start run_end col_start col_end new_coord old_coord Xi_old old_metric')

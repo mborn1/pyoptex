@@ -2,10 +2,9 @@ import numpy as np
 import pandas as pd
 
 from pyoptex._seed import set_seed
+from pyoptex.analysis import PValueDropRegressor, SimpleRegressor
 from pyoptex.utils import Factor
 from pyoptex.utils.model import decode_term, model2Y2X, order_dependencies, partial_rsm_names, term2strong
-from pyoptex.analysis import PValueDropRegressor, SimpleRegressor
-
 from tests._helpers import load_reference
 
 

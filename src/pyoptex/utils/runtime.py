@@ -1,8 +1,10 @@
-import os
-import signal
 import inspect
 import multiprocessing
+import os
+import signal
+
 import numpy as np
+
 
 def set_nb_cores(n=1):
     """

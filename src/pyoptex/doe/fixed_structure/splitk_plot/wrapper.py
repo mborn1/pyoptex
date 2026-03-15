@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from ...constraints import no_constraints, mixture_constraints
 from ....utils.design import decode_design
+from ...constraints import mixture_constraints, no_constraints
 from ..utils import Factor, FunctionSet, State
 from .init import initialize_feasible
 from .optimize import optimize
-from .utils import (Parameters, Plot, extend_design, level_grps, obs_var, obs_var_Zs)
+from .utils import Parameters, Plot, extend_design, level_grps, obs_var, obs_var_Zs
 
 
 def _compute_cs(plot_sizes, ratios, thetas):

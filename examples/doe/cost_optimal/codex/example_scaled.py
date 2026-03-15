@@ -11,13 +11,11 @@ except ImportError:
 
 # Library imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor
-from pyoptex.doe.cost_optimal.metric import Dopt
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import scaled_parallel_worker_cost
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.doe.cost_optimal.metric import Dopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -58,7 +56,7 @@ transition_costs = {
 execution_cost = 5
 
 cost_fn = scaled_parallel_worker_cost(
-    transition_costs, factors, 
+    transition_costs, factors,
     max_transition_cost, execution_cost
 )
 
@@ -100,4 +98,5 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 # Generic evaluation
 from pyoptex.doe.utils.evaluate import design_heatmap
+
 design_heatmap(Y, factors).show()

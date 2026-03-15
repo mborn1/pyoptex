@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 # Python imports
-import time
 import os
+import time
+
 import numpy as np
 import pandas as pd
 
@@ -14,12 +15,10 @@ except ImportError:
 # PyOptEx imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor, cost_fn
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.metric import Dopt
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -47,7 +46,7 @@ metric = Dopt()
 
 # Define the constraints
 constraints = parse_constraints_script(
-    f'(`X2` <= `X3`)', 
+    f'(`X2` <= `X3`)',
     factors, exclude=False
 )
 

@@ -6,12 +6,12 @@ making it easy to add new scripts without modifying this file.
 """
 
 import os
-import sys
 import subprocess
+import sys
 import time
-from pathlib import Path
-from typing import List, Tuple, Dict
 import traceback
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 
 def find_python_scripts(directory: Path) -> List[Path]:
@@ -28,12 +28,12 @@ def find_python_scripts(directory: Path) -> List[Path]:
     for root, dirs, files in os.walk(directory):
         # Skip __pycache__ and other common directories to avoid
         dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
-        
+
         for file in files:
             if file.endswith('.py') and file != 'run_all.py':
                 script_path = Path(root) / file
                 scripts.append(script_path)
-    
+
     return sorted(scripts)
 
 
@@ -49,7 +49,7 @@ def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]
         Tuple of (success, output, execution_time)
     """
     start_time = time.time()
-    
+
     try:
         # Run the script with subprocess
         result = subprocess.run(
@@ -59,9 +59,9 @@ def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]
             timeout=timeout,
             cwd=script_path.parent  # Run from script's directory
         )
-        
+
         execution_time = time.time() - start_time
-        
+
         if result.returncode == 0:
             return True, result.stdout, execution_time
         else:
@@ -71,7 +71,7 @@ def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]
             if result.stdout:
                 error_msg += f"STDOUT: {result.stdout}"
             return False, error_msg, execution_time
-            
+
     except subprocess.TimeoutExpired:
         execution_time = time.time() - start_time
         return False, f"Script timed out after {timeout} seconds", execution_time
@@ -84,32 +84,32 @@ def main():
     """Main function to run all discovered scripts."""
     # Get the directory where this script is located
     examples_dir = Path(__file__).parent
-    
+
     print(f"🔍 Discovering Python scripts in: {examples_dir}")
     print("=" * 60)
-    
+
     # Find all Python scripts
     scripts = find_python_scripts(examples_dir)
-    
+
     if not scripts:
         print("❌ No Python scripts found!")
         return
-    
+
     print(f"📁 Found {len(scripts)} Python script(s):")
     for script in scripts:
         print(f"   - {script.relative_to(examples_dir)}")
     print()
-    
+
     # Run each script
     results: Dict[Path, Tuple[bool, str, float]] = {}
-    
+
     for i, script in enumerate(scripts, 1):
         relative_path = script.relative_to(examples_dir)
         print(f"🚀 [{i}/{len(scripts)}] Running: {relative_path}")
-        
+
         success, output, execution_time = run_script(script)
         results[script] = (success, output, execution_time)
-        
+
         if success:
             print(f"   ✅ Success ({execution_time:.2f}s)")
             if output.strip():
@@ -126,27 +126,27 @@ def main():
         else:
             print(f"   ❌ Failed ({execution_time:.2f}s)")
             print(f"   📄 Error: {output}")
-        
+
         print()
-    
+
     # Summary
     print("=" * 60)
     print("📊 SUMMARY:")
-    
+
     successful = sum(1 for success, _, _ in results.values() if success)
     failed = len(results) - successful
-    
+
     print(f"   ✅ Successful: {successful}")
     print(f"   ❌ Failed: {failed}")
     print(f"   📁 Total: {len(results)}")
-    
+
     if failed > 0:
         print("\n❌ Failed scripts:")
         for script, (success, output, execution_time) in results.items():
             if not success:
                 relative_path = script.relative_to(examples_dir)
                 print(f"   - {relative_path} ({execution_time:.2f}s)")
-    
+
     # Exit with error code if any script failed
     if failed > 0:
         sys.exit(1)

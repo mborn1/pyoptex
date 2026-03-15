@@ -3,6 +3,7 @@ Module for the base branch-and-bound code.
 """
 
 import queue
+
 import numpy as np
 
 

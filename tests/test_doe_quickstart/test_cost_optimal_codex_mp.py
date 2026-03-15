@@ -1,6 +1,5 @@
-import pytest
-
 import numpy as np
+import pytest
 
 from pyoptex.utils.runtime import set_nb_cores
 
@@ -15,7 +14,6 @@ from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.cost_optimal.metric import Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 from pyoptex.utils.runtime import parallel_generation
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

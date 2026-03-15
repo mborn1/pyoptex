@@ -4,6 +4,7 @@ Module containing all the covariate functions of the cost optimal designs
 
 import numpy as np
 
+
 # Update function when adding new blocking factors
 def _update_woodbury(Vinv, new_Zs, new_ratios):
     """

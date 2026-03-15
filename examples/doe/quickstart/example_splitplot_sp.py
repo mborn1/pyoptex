@@ -3,6 +3,7 @@
 # Python imports
 import os
 import time
+
 import numpy as np
 
 try:
@@ -12,12 +13,10 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import Factor
-from pyoptex.doe.fixed_structure.splitk_plot import (
-    create_splitk_plot_design, default_fn, create_parameters, Plot
-)
+from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, create_splitk_plot_design, default_fn
 from pyoptex.doe.fixed_structure.splitk_plot.metric import Dopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)

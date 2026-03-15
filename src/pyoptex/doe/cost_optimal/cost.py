@@ -2,7 +2,7 @@
 Module containing all the cost functions of the cost optimal designs
 """
 
-from functools import wraps, partial
+from functools import partial, wraps
 
 import numba
 import numpy as np

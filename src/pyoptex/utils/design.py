@@ -5,6 +5,7 @@ import numpy as np
 
 from ._design_cy import *
 
+
 def create_default_coords(effect_type):
     """
     Defines the default possible coordinates per effect type. 

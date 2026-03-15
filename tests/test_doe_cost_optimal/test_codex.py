@@ -1,7 +1,6 @@
-import pytest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 from pyoptex._seed import set_seed
 
@@ -13,7 +12,6 @@ from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.cost_optimal.cov import cov_time_trend
 from pyoptex.doe.cost_optimal.metric import Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

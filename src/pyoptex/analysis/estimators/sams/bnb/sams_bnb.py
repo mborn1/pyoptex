@@ -5,8 +5,9 @@ Module for the SAMS branch-and-bound code.
 import numpy as np
 from scipy import sparse
 
-from .bnb import BnB
 from .....utils.model import permitted_dep_add
+from .bnb import BnB
+
 
 def sparsify(models, nterms):
     """

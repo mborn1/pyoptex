@@ -2,9 +2,10 @@
 Module for the SAMS base model.
 """
 
-import numpy as np
 from collections import namedtuple
 from itertools import combinations
+
+import numpy as np
 
 from .....utils.model import permitted_dep_add
 

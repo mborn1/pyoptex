@@ -4,9 +4,10 @@ Module for all init functions of the split^k-plot algorithm
 
 import numpy as np
 
-from ._init_cy import __init_unconstrained, __correct_constraints
 from ...._profile import profile
 from ....utils.design import encode_design
+from ._init_cy import __correct_constraints, __init_unconstrained
+
 
 @profile
 def initialize_feasible(params, complete=False, max_tries=1000):

@@ -1,11 +1,12 @@
-import re
-import sys
 import os
 import pathlib
-import setuptools
-from setuptools import Extension
-from Cython.Build import cythonize
+import re
+import sys
+
 import numpy as np
+import setuptools
+from Cython.Build import cythonize
+from setuptools import Extension
 
 with open("src/pyoptex/__init__.py", "r", encoding="utf-8") as f:
     version = re.search(r'__version__ = [\'"](.*)[\'"]', f.read()).group(1)
@@ -46,7 +47,7 @@ extensions = [
         include_dirs=[np.get_include()],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
         language="c",
-        extra_compile_args=extra_compile_args, 
+        extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args
     ) for path in search_pyx(pathlib.Path('src'))]
 

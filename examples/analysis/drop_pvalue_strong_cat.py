@@ -9,17 +9,17 @@ except ImportError:
     log_checkpoint = lambda *args, **kwargs: None
 
 from pyoptex._seed import set_seed
-from pyoptex.utils import Factor
-from pyoptex.utils.model import model2Y2X, order_dependencies, partial_rsm_names, term2strong, decode_term
-from pyoptex.analysis import SimpleRegressor, PValueDropRegressor
+from pyoptex.analysis import PValueDropRegressor, SimpleRegressor
 from pyoptex.analysis.utils.plot import plot_res_diagnostics
+from pyoptex.utils import Factor
+from pyoptex.utils.model import decode_term, model2Y2X, order_dependencies, partial_rsm_names, term2strong
 
 # Seed randomization
 set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('A', type='categorical', levels=['A_0', 'A_1', 'A_2'], coords=[[1, 0], [0, 1], [0, 0]]), 
+    Factor('A', type='categorical', levels=['A_0', 'A_1', 'A_2'], coords=[[1, 0], [0, 1], [0, 0]]),
     Factor('B'), Factor('C')
 ]
 log_checkpoint("factor_names", [str(f.name) for f in factors])
@@ -85,6 +85,6 @@ log_checkpoint("predictions", data["pred"].values.tolist())
 
 # Plot the residual diagnostics
 plot_res_diagnostics(
-    data, y_true='Y', y_pred='pred', 
+    data, y_true='Y', y_pred='pred',
     textcols=[str(f.name) for f in factors],
 ).show()

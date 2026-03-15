@@ -3,6 +3,7 @@ Module for all utility functions of the generic coordinate-exchange algorithm
 """
 
 from collections import namedtuple
+
 import numpy as np
 
 from ...utils.factor import FactorMixin

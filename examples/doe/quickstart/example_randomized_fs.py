@@ -11,11 +11,9 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
-from pyoptex.doe.fixed_structure import (
-    Factor, create_fixed_structure_design, create_parameters, default_fn
-)
+from pyoptex.doe.fixed_structure import Factor, create_fixed_structure_design, create_parameters, default_fn
 from pyoptex.doe.fixed_structure.metric import Dopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)

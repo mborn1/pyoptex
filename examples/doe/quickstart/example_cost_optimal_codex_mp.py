@@ -2,11 +2,12 @@
 
 # Must be the first line of the script
 from pyoptex.utils.runtime import set_nb_cores
+
 set_nb_cores(1)
 
 # Python imports
-import time
 import os
+import time
 
 try:
     from examples._log_checkpoint import log_checkpoint
@@ -15,14 +16,13 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
-from pyoptex.utils.runtime import parallel_generation
 from pyoptex.doe.cost_optimal import Factor
-from pyoptex.doe.cost_optimal.metric import Iopt
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.doe.cost_optimal.metric import Iopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
+from pyoptex.utils.runtime import parallel_generation
+
 
 def main():
     # Set the seed
@@ -61,7 +61,7 @@ def main():
     }
     execution_cost = 5
     cost_fn = parallel_worker_cost(
-        transition_costs, factors, 
+        transition_costs, factors,
         max_transition_cost, execution_cost
     )
 

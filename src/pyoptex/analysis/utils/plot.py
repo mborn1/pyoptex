@@ -3,8 +3,8 @@ Module for analysis plotting utilities.
 """
 
 import numpy as np
-import scipy.stats as spstats
 import plotly.graph_objects as go
+import scipy.stats as spstats
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 

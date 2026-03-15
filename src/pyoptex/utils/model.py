@@ -8,8 +8,9 @@ from functools import partial
 import numpy as np
 import pandas as pd
 
-from .design import x2fx
 from .comp import choice_bool
+from .design import x2fx
+
 
 def partial_rsm(nquad, ntfi, nlin):
     """

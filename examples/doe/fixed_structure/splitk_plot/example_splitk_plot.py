@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 # Normal imports
-import numpy as np
-import pandas as pd
 import os
 import time
+
+import numpy as np
+import pandas as pd
 
 try:
     from examples._log_checkpoint import log_checkpoint
@@ -14,14 +15,12 @@ except ImportError:
 # Library imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import Factor
 from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
-from pyoptex.doe.fixed_structure.splitk_plot import (
-    create_splitk_plot_design, default_fn, create_parameters, Plot
-)
-from pyoptex.doe.fixed_structure.splitk_plot.metric import Dopt, Iopt, Aopt
+from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, create_splitk_plot_design, default_fn
+from pyoptex.doe.fixed_structure.splitk_plot.metric import Aopt, Dopt, Iopt
 from pyoptex.doe.fixed_structure.splitk_plot.utils import validate_plot_sizes
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -108,7 +107,7 @@ print(Y)
 # plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 # from pyoptex.doe.fixed_structure.evaluate import (
-#     evaluate_metrics, plot_fraction_of_design_space, 
+#     evaluate_metrics, plot_fraction_of_design_space,
 #     plot_estimation_variance_matrix, estimation_variance
 # )
 # print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))

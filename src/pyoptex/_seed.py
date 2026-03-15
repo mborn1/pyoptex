@@ -1,6 +1,8 @@
 import numba
 import numpy as np
+
 from ._seed_cy import set_seed_cy
+
 
 def set_seed(n):
     """

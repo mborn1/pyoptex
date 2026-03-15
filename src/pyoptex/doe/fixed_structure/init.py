@@ -3,10 +3,12 @@ Module for all init functions of fixed structure.
 """
 
 import numpy as np
+
 from ..._profile import profile
 from ...utils.design import encode_design
 from ..utils.init import init_single_unconstrained
-from ._init_cy import __init_unconstrained, __correct_constraints
+from ._init_cy import __correct_constraints, __init_unconstrained
+
 
 @profile
 def initialize_feasible(params, complete=False, max_tries=1000):

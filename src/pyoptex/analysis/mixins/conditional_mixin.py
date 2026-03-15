@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 from ...doe.fixed_structure import Factor
-from ...utils.model import encode_model, x2fx, model2encnames
+from ...utils.model import encode_model, model2encnames, x2fx
+
 
 class ConditionalRegressionMixin:
     """

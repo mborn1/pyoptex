@@ -1,8 +1,9 @@
-import scipy.stats as spstats
 import numpy as np
+import scipy.stats as spstats
 
-from ..mixins.fit_mixin import OutlierTransformerMixin
 from ...utils.model import identityY2X
+from ..mixins.fit_mixin import OutlierTransformerMixin
+
 
 class QuantileOutliersTransformer(OutlierTransformerMixin):
     """

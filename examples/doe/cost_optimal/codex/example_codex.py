@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 # Normal imports
-import numpy as np
-import pandas as pd
 import os
 import time
+
+import numpy as np
+import pandas as pd
 
 try:
     from examples._log_checkpoint import log_checkpoint
@@ -14,25 +15,23 @@ except ImportError:
 # Library imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor
-from pyoptex.doe.cost_optimal.metric import Dopt, Aopt, Iopt
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.cost_optimal.cov import cov_time_trend
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.doe.cost_optimal.metric import Aopt, Dopt, Iopt
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('A1', type='categorical', levels=['L1', 'L2', 'L3', 'L4'], 
+    Factor('A1', type='categorical', levels=['L1', 'L2', 'L3', 'L4'],
             coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
             ratio=[0.1, 1, 10]),
     Factor('E', type='continuous', grouped=False),
-    Factor('F', type='continuous', grouped=False, 
+    Factor('F', type='continuous', grouped=False,
            levels=[2, 3, 4, 5], min=2, max=5),
     Factor('G', type='continuous', grouped=False),
 ]
@@ -68,7 +67,7 @@ cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, e
 
 # Define constraints
 constraints = parse_constraints_script(
-    f'(`A1` == "L1") & (`E` < -0.5-0.25)', 
+    f'(`A1` == "L1") & (`E` < -0.5-0.25)',
     factors, exclude=True
 )
 
@@ -115,7 +114,7 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 # # Specific evaluation
 # from pyoptex.doe.cost_optimal.evaluate import (
-#     evaluate_metrics, plot_fraction_of_design_space, 
+#     evaluate_metrics, plot_fraction_of_design_space,
 #     plot_estimation_variance_matrix, estimation_variance
 # )
 # print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))

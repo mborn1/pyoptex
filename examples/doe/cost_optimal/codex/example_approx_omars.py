@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 # Python imports
-import time
 import os
+import time
+
 import numpy as np
 
 try:
@@ -12,13 +13,11 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.cost_optimal import Factor
-from pyoptex.doe.cost_optimal.metric import Aliasing
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import fixed_runs_cost
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.doe.cost_optimal.metric import Aliasing
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -104,4 +103,5 @@ print(f'Execution time: {end_time - start_time:.3f}')
 
 # Specific evaluation
 from pyoptex.doe.cost_optimal.evaluate import plot_estimation_variance_matrix
+
 plot_estimation_variance_matrix(Y, params, model).show()

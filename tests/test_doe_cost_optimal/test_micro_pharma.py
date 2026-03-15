@@ -6,7 +6,6 @@ from pyoptex.doe.cost_optimal import Factor, cost_fn
 from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.metric import Dopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

@@ -6,7 +6,6 @@ from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, cre
 from pyoptex.doe.cost_optimal.cost import fixed_runs_cost
 from pyoptex.doe.cost_optimal.metric import Aliasing
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
-
 from tests._helpers import assert_frame_equal, load_reference
 
 

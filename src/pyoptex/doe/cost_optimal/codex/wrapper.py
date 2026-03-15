@@ -5,19 +5,19 @@ Module for the interface to run the CODEX algorithm
 import numpy as np
 import pandas as pd
 
-from ...constraints import no_constraints, mixture_constraints
 from ....utils.design import decode_design, encode_design
+from ...constraints import mixture_constraints, no_constraints
 from ..init import init_feasible
 from ..utils import Factor, Parameters
-from .utils import FunctionSet
 from .accept import exponential_accept_rel
 from .insert import insert_optimal
+from .optimization import CEOptimizer, CEStructOptimizer
 from .remove import remove_optimal_onebyone
 from .restart import RestartEveryNFailed
 from .sample import sample_random
 from .simulation import simulate
 from .temperature import LinearTemperature
-from .optimization import CEOptimizer, CEStructOptimizer
+from .utils import FunctionSet
 
 
 def default_fn(

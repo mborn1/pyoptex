@@ -1,9 +1,9 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 
-from ..mixins.fit_mixin import RegressionMixin
+from ...utils.model import identityY2X, permitted_dep_drop
 from ..mixins.conditional_mixin import ConditionalRegressionMixin
-from ...utils.model import permitted_dep_drop, identityY2X
+from ..mixins.fit_mixin import RegressionMixin
 
 
 class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator):

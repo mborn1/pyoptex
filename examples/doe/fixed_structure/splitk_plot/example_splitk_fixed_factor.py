@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 # Normal imports
-import numpy as np
-import pandas as pd
 import os
 import time
+
+import numpy as np
+import pandas as pd
 
 try:
     from examples._log_checkpoint import log_checkpoint
@@ -13,13 +14,11 @@ except ImportError:
 
 # Library imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import Factor
-from pyoptex.doe.fixed_structure.splitk_plot import (
-    create_splitk_plot_design, default_fn, create_parameters, Plot
-)
+from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, create_splitk_plot_design, default_fn
 from pyoptex.doe.fixed_structure.splitk_plot.metric import Aopt
 from pyoptex.doe.fixed_structure.splitk_plot.utils import validate_plot_sizes
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # TODO: fix notebook
 

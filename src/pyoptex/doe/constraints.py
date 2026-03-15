@@ -3,8 +3,11 @@ Module containing the constraints functions.
 """
 
 import re
+
 import numpy as np
+
 from ..utils.design import encode_design
+
 
 class ConstraintsFunc:
     """

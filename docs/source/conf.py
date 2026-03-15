@@ -1,10 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 
 import datetime
+import importlib
+import inspect
 import pathlib
 import sys
-import inspect
-import importlib
 from urllib.parse import quote
 
 sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
@@ -76,7 +76,7 @@ def linkcode_resolve(domain, info):
     # Only consider Python files
     if domain != 'py':
         return None
-    
+
     # Retrieve start and end line
     start_line, end_line = None, None
     mod = importlib.import_module(info["module"])

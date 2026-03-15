@@ -6,11 +6,11 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from ..constraints import no_constraints, mixture_constraints
 from ...utils.design import decode_design, obs_var_from_Zs
-from .utils import (Factor, RandomEffect, FunctionSet, State, Parameters)
+from ..constraints import mixture_constraints, no_constraints
 from .init import initialize_feasible
 from .optimize import optimize
+from .utils import Factor, FunctionSet, Parameters, RandomEffect, State
 
 
 def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible):

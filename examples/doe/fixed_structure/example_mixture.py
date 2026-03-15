@@ -3,6 +3,7 @@
 # Python imports
 import os
 import time
+
 import numpy as np
 
 try:
@@ -12,12 +13,9 @@ except ImportError:
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import mixtureY2X
-from pyoptex.doe.fixed_structure import (
-    Factor, create_fixed_structure_design, 
-    create_parameters, default_fn
-)
+from pyoptex.doe.fixed_structure import Factor, create_fixed_structure_design, create_parameters, default_fn
 from pyoptex.doe.fixed_structure.metric import Dopt
+from pyoptex.utils.model import mixtureY2X
 
 # Set the seed
 set_seed(42)
@@ -34,8 +32,8 @@ factors = [
 
 # Create a Scheffe model
 Y2X = mixtureY2X(
-    factors, 
-    mixture_effects=(('A', 'B', 'C'), 'tfi'), 
+    factors,
+    mixture_effects=(('A', 'B', 'C'), 'tfi'),
 )
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("nruns", nruns)

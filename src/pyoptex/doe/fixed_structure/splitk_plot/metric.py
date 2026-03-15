@@ -7,14 +7,18 @@ import warnings
 import numpy as np
 
 from ..metric import (
-    Dopt as Dopto,
-    Aopt as Aopto,
-    Iopt as Iopto,
     Aliasing as Aliasingo,
 )
-from ._formulas_cy import (
-    compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
+from ..metric import (
+    Aopt as Aopto,
 )
+from ..metric import (
+    Dopt as Dopto,
+)
+from ..metric import (
+    Iopt as Iopto,
+)
+from ._formulas_cy import compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
 
 
 class SplitkPlotMetricMixin:
