@@ -68,7 +68,7 @@ def main():
 
     # Create design
     start_time = time.time()
-    Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries)
+    Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries, ncores=2)
     # Y, state = create_splitk_plot_design(params, n_tries=n_tries)
     end_time = time.time()
 

@@ -45,7 +45,7 @@ def test_cost_optimal_codex_mp():
     fn = default_fn(nsims, factors, cost_fn, metric, Y2X)
     params = create_parameters(factors, fn)
 
-    Y, state = parallel_generation(create_cost_optimal_codex_design, params, nsims=nsims, nreps=nreps)
+    Y, state = parallel_generation(create_cost_optimal_codex_design, params, nsims=nsims, nreps=nreps, ncores=2)
 
     assert list(Y.shape) == ref["Y_shape"]
     assert Y.columns.tolist() == ref["Y_columns"]

@@ -75,7 +75,7 @@ def main():
 
     # Create design
     start_time = time.time()
-    Y, state = parallel_generation(create_cost_optimal_codex_design, params, nsims=nsims, nreps=nreps)
+    Y, state = parallel_generation(create_cost_optimal_codex_design, params, nsims=nsims, nreps=nreps, ncores=2)
     # Y, state = create_cost_optimal_codex_design(
     #     params, nsims=nsims, nreps=nreps
     # )

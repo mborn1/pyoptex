@@ -43,7 +43,7 @@ def test_splitplot_multiprocessing():
     fn = default_fn(factors, metric, Y2X)
     params = create_parameters(factors, fn)
 
-    Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries)
+    Y, state = parallel_generation(create_splitk_plot_design, params, n_tries=n_tries, ncores=2)
 
     assert list(Y.shape) == ref["Y_shape"]
     assert Y.columns.tolist() == ref["Y_columns"]
