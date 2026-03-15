@@ -30,19 +30,14 @@ def main():
 
     # Define the factors
     factors = [
-        Factor('A', type='categorical', levels=['L1', 'L2', 'L3', 'L4']),
-        Factor('E', type='continuous', grouped=False),
-        Factor('F', type='continuous', grouped=False, min=2, max=5),
-        Factor('G', type='continuous', grouped=False),
+        Factor("A", type="categorical", levels=["L1", "L2", "L3", "L4"]),
+        Factor("E", type="continuous", grouped=False),
+        Factor("F", type="continuous", grouped=False, min=2, max=5),
+        Factor("G", type="continuous", grouped=False),
     ]
 
     # Create a partial response surface model
-    model = partial_rsm_names({
-        'A': 'tfi',
-        'E': 'quad',
-        'F': 'quad',
-        'G': 'quad'
-    })
+    model = partial_rsm_names({"A": "tfi", "E": "quad", "F": "quad", "G": "quad"})
     Y2X = model2Y2X(model, factors)
     log_checkpoint("factor_names", [str(f.name) for f in factors])
     log_checkpoint("model_shape", list(model.shape))
@@ -52,18 +47,10 @@ def main():
     metric = Iopt()
 
     # Cost function
-    max_transition_cost = 3*4*60
-    transition_costs = {
-        'A': 2*60,
-        'E': 1,
-        'F': 1,
-        'G': 1
-    }
+    max_transition_cost = 3 * 4 * 60
+    transition_costs = {"A": 2 * 60, "E": 1, "F": 1, "G": 1}
     execution_cost = 5
-    cost_fn = parallel_worker_cost(
-        transition_costs, factors,
-        max_transition_cost, execution_cost
-    )
+    cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, execution_cost)
 
     #######################################################################
 
@@ -91,13 +78,14 @@ def main():
 
     # Write design to storage
     root = os.path.split(__file__)[0]
-    Y.to_csv(os.path.join(root, 'example_cost_optimal_codex_mp.csv'), index=False)
+    Y.to_csv(os.path.join(root, "example_cost_optimal_codex_mp.csv"), index=False)
 
-    print('Completed optimization')
-    print(f'Metric: {state.metric:.3f}')
-    print(f'Cost: {state.cost_Y}')
-    print(f'Number of experiments: {len(state.Y)}')
-    print(f'Execution time: {end_time - start_time:.3f}')
+    print("Completed optimization")
+    print(f"Metric: {state.metric:.3f}")
+    print(f"Cost: {state.cost_Y}")
+    print(f"Number of experiments: {len(state.Y)}")
+    print(f"Execution time: {end_time - start_time:.3f}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

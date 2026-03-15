@@ -31,17 +31,19 @@ nruns = np.prod([p.size for p in plots])
 
 # Define the factors
 factors = [
-    Factor('A', htc, type='categorical', levels=['L1', 'L2', 'L3']),
-    Factor('B', etc, type='continuous'),
-    Factor('C', etc, type='continuous'),
+    Factor("A", htc, type="categorical", levels=["L1", "L2", "L3"]),
+    Factor("B", etc, type="continuous"),
+    Factor("C", etc, type="continuous"),
 ]
 
 # Create a partial response surface model
-model = partial_rsm_names({
-    'A': 'tfi',
-    'B': 'quad',
-    'C': 'quad',
-})
+model = partial_rsm_names(
+    {
+        "A": "tfi",
+        "B": "quad",
+        "C": "quad",
+    }
+)
 Y2X = model2Y2X(model, factors)
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("nruns", int(nruns))
@@ -53,17 +55,20 @@ metric = Aopt()
 
 # Define prior
 prior = (
-    pd.DataFrame([
-        ['L1', 0, -1],
-        ['L1', 1, 1],
-        ['L2', -1, 0],
-        ['L2', 0, 0],
-        ['L3', -1, 0],
-        ['L3', 1, 1],
-        ['L2', 1, -1],
-        ['L2', 0, 1],
-    ], columns=['A', 'B', 'C']),
-    [Plot(level=0, size=2), Plot(level=1, size=4)]
+    pd.DataFrame(
+        [
+            ["L1", 0, -1],
+            ["L1", 1, 1],
+            ["L2", -1, 0],
+            ["L2", 0, 0],
+            ["L3", -1, 0],
+            ["L3", 1, 1],
+            ["L2", 1, -1],
+            ["L2", 0, 1],
+        ],
+        columns=["A", "B", "C"],
+    ),
+    [Plot(level=0, size=2), Plot(level=1, size=4)],
 )
 
 #########################################################################
@@ -92,9 +97,9 @@ log_checkpoint("metric", float(state.metric))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'example_splitk_augment_split.csv'), index=False)
+Y.to_csv(os.path.join(root, "example_splitk_augment_split.csv"), index=False)
 
-print('Completed optimization')
-print(f'Metric: {state.metric:.3f}')
-print(f'Execution time: {end_time - start_time:.3f}')
+print("Completed optimization")
+print(f"Metric: {state.metric:.3f}")
+print(f"Execution time: {end_time - start_time:.3f}")
 print(Y)

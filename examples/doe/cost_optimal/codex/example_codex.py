@@ -27,22 +27,20 @@ set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('A1', type='categorical', levels=['L1', 'L2', 'L3', 'L4'],
-            coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
-            ratio=[0.1, 1, 10]),
-    Factor('E', type='continuous', grouped=False),
-    Factor('F', type='continuous', grouped=False,
-           levels=[2, 3, 4, 5], min=2, max=5),
-    Factor('G', type='continuous', grouped=False),
+    Factor(
+        "A1",
+        type="categorical",
+        levels=["L1", "L2", "L3", "L4"],
+        coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
+        ratio=[0.1, 1, 10],
+    ),
+    Factor("E", type="continuous", grouped=False),
+    Factor("F", type="continuous", grouped=False, levels=[2, 3, 4, 5], min=2, max=5),
+    Factor("G", type="continuous", grouped=False),
 ]
 
 # Create a partial response surface model
-model = partial_rsm_names({
-    'A1': 'tfi',
-    'E': 'tfi',
-    'F': 'quad',
-    'G': 'tfi'
-})
+model = partial_rsm_names({"A1": "tfi", "E": "tfi", "F": "quad", "G": "tfi"})
 Y2X = model2Y2X(model, factors)
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("model_shape", list(model.shape))
@@ -52,24 +50,16 @@ log_checkpoint("model_values", model.values.tolist())
 metric = Iopt(cov=cov_time_trend(time=60))
 
 # Define the prior design for augmentation
-prior = pd.DataFrame([['L1', 0, 2, 0]], columns=['A1', 'E', 'F', 'G'])
+prior = pd.DataFrame([["L1", 0, 2, 0]], columns=["A1", "E", "F", "G"])
 
 # Cost function
-max_transition_cost = 3*4*60
-transition_costs = {
-    'A1': 2*60,
-    'E': 1,
-    'F': 1,
-    'G': 1
-}
+max_transition_cost = 3 * 4 * 60
+transition_costs = {"A1": 2 * 60, "E": 1, "F": 1, "G": 1}
 execution_cost = 5
 cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, execution_cost)
 
 # Define constraints
-constraints = parse_constraints_script(
-    '(`A1` == "L1") & (`E` < -0.5-0.25)',
-    factors, exclude=True
-)
+constraints = parse_constraints_script('(`A1` == "L1") & (`E` < -0.5-0.25)', factors, exclude=True)
 
 #######################################################################
 
@@ -81,9 +71,7 @@ params = create_parameters(factors, fn, prior=prior)
 
 # Create design
 start_time = time.time()
-Y, state = create_cost_optimal_codex_design(
-    params, nsims=nsims, nreps=nreps, validate=True
-)
+Y, state = create_cost_optimal_codex_design(params, nsims=nsims, nreps=nreps, validate=True)
 end_time = time.time()
 
 log_checkpoint("Y_shape", list(Y.shape))
@@ -96,14 +84,14 @@ log_checkpoint("n_experiments", len(state.Y))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'example_codex.csv'), index=False)
+Y.to_csv(os.path.join(root, "example_codex.csv"), index=False)
 print(Y)
 
-print('Completed optimization')
-print(f'Metric: {state.metric:.3f}')
-print(f'Cost: {state.cost_Y}')
-print(f'Number of experiments: {len(state.Y)}')
-print(f'Execution time: {end_time - start_time:.3f}')
+print("Completed optimization")
+print(f"Metric: {state.metric:.3f}")
+print(f"Cost: {state.cost_Y}")
+print(f"Number of experiments: {len(state.Y)}")
+print(f"Execution time: {end_time - start_time:.3f}")
 
 #######################################################################
 

@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 from pyoptex.utils.runtime import set_nb_cores
@@ -6,14 +5,6 @@ from pyoptex.utils.runtime import set_nb_cores
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning:multiprocessing.popen_fork")
 
 set_nb_cores(1)
-
-from pyoptex._seed import set_seed
-from pyoptex.doe.fixed_structure import Factor
-from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, default_fn
-from pyoptex.doe.fixed_structure.splitk_plot.metric import Dopt
-from pyoptex.utils.model import model2Y2X, partial_rsm_names
-from pyoptex.utils.runtime import parallel_generation
-from tests._helpers import assert_frame_equal, load_reference, seeded_create_splitk_plot_design
 
 
 def test_splitplot_multiprocessing():

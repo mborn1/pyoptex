@@ -14,7 +14,7 @@ from pyoptex.doe.fixed_structure.splitk_plot import create_splitk_plot_design
 _REFERENCE_ROOT = Path(__file__).parent / "references"
 
 
-def load_reference(name: str) -> dict:
+def load_reference(name: str):
     """Load a reference JSON file by its key (e.g. 'analysis/simple_model')."""
     path = _REFERENCE_ROOT / f"{name}.json"
     with open(path) as f:
@@ -63,9 +63,11 @@ def assert_frame_equal(actual: pd.DataFrame, ref_data: dict, *, rtol: float = 1e
         else:
             assert actual[col].tolist() == expected[col].tolist(), f"Column '{col}' string mismatch"
 
+
 def seeded_create_cost_optimal_codex_design(*args, **kwargs):
     set_seed(42)
     return create_cost_optimal_codex_design(*args, **kwargs)
+
 
 def seeded_create_splitk_plot_design(*args, **kwargs):
     set_seed(42)

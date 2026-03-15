@@ -7,16 +7,16 @@ import pathlib
 import sys
 from urllib.parse import quote
 
-sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / 'src'))
+sys.path.append(str(pathlib.Path(__file__).parents[2].resolve() / "src"))
 from pyoptex import __version__ as lib_version
 
 now = datetime.datetime.now()
 
 # -- Project information
 
-project = 'PyOptEx'
-copyright = f'{now.year}, Mathias Born'
-author = 'Mathias Born'
+project = "PyOptEx"
+copyright = f"{now.year}, Mathias Born"
+author = "Mathias Born"
 
 release = lib_version
 version = lib_version
@@ -26,7 +26,7 @@ rst_epilog = f"""
 
 .. |release| replace:: {release}
 
-.. |date| replace:: {format(datetime.datetime.now(), '%B %d, %Y')}
+.. |date| replace:: {format(datetime.datetime.now(), "%B %d, %Y")}
 
 .. |br| raw:: html
 
@@ -36,37 +36,37 @@ rst_epilog = f"""
 # -- General configuration
 
 extensions = [
-    'sphinx.ext.duration',
-    'sphinx.ext.doctest',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.linkcode',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.intersphinx',
-    'sphinx_copybutton'
+    "sphinx.ext.duration",
+    "sphinx.ext.doctest",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.linkcode",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
+    "python": ("https://docs.python.org/3/", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
-intersphinx_disabled_domains = ['std']
+intersphinx_disabled_domains = ["std"]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # -- Options for HTML output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # These folders are copied to the documentation's HTML output
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 html_css_files = [
-    'css/custom.css',
+    "css/custom.css",
 ]
 
 # -- Options for EPUB output
-epub_show_urls = 'footnote'
+epub_show_urls = "footnote"
 
 
 def linkcode_resolve(domain, info):
@@ -74,7 +74,7 @@ def linkcode_resolve(domain, info):
     Resolves the url for the source code.
     """
     # Only consider Python files
-    if domain != 'py':
+    if domain != "py":
         return None
 
     # Retrieve start and end line
@@ -97,13 +97,13 @@ def linkcode_resolve(domain, info):
             pass
 
     except (AttributeError, OSError):
-        print(f'Unable to load: {info}')
+        print(f"Unable to load: {info}")
 
     # Create URL-encoded filename
-    filename = quote(str(info['module']).replace('.', '/'))
+    filename = quote(str(info["module"]).replace(".", "/"))
 
     # Create the anchor
-    anchor = '' if start_line is None else f'#L{start_line}-L{end_line}'
+    anchor = "" if start_line is None else f"#L{start_line}-L{end_line}"
 
     # Link to github
     result = f"https://github.com/mborn1/pyoptex/blob/v{release}/src/{filename}.py{anchor}"

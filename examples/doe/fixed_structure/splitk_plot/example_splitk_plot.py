@@ -33,17 +33,19 @@ nruns = np.prod([p.size for p in plots])
 
 # Define the factors
 factors = [
-    Factor('A', htc, type='categorical', levels=['L1', 'L2', 'L3']),
-    Factor('B', etc, type='continuous'),
-    Factor('C', etc, type='continuous', min=2, max=5),
+    Factor("A", htc, type="categorical", levels=["L1", "L2", "L3"]),
+    Factor("B", etc, type="continuous"),
+    Factor("C", etc, type="continuous", min=2, max=5),
 ]
 
 # Create a partial response surface model
-model = partial_rsm_names({
-    'A': 'tfi',
-    'B': 'quad',
-    'C': 'quad',
-})
+model = partial_rsm_names(
+    {
+        "A": "tfi",
+        "B": "quad",
+        "C": "quad",
+    }
+)
 Y2X = model2Y2X(model, factors)
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("nruns", int(nruns))
@@ -55,13 +57,8 @@ metric = Aopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 
 # Define prior
 prior = (
-    pd.DataFrame([
-        ['L1', 0, 2],
-        ['L1', 1, 5],
-        ['L2', -1, 3.5],
-        ['L2', 0, 2]
-    ], columns=['A', 'B', 'C']),
-    [Plot(level=0, size=2), Plot(level=1, size=2)]
+    pd.DataFrame([["L1", 0, 2], ["L1", 1, 5], ["L2", -1, 3.5], ["L2", 0, 2]], columns=["A", "B", "C"]),
+    [Plot(level=0, size=2), Plot(level=1, size=2)],
 )
 
 # Constraints
@@ -93,11 +90,11 @@ log_checkpoint("metric", float(state.metric))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'example_splitk_plot.csv'), index=False)
+Y.to_csv(os.path.join(root, "example_splitk_plot.csv"), index=False)
 
-print('Completed optimization')
-print(f'Metric: {state.metric:.3f}')
-print(f'Execution time: {end_time - start_time:.3f}')
+print("Completed optimization")
+print(f"Metric: {state.metric:.3f}")
+print(f"Execution time: {end_time - start_time:.3f}")
 print(Y)
 
 #########################################################################

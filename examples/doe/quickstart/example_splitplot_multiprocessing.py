@@ -37,17 +37,19 @@ def main():
 
     # Define the factors
     factors = [
-        Factor('A', htc, type='categorical', levels=['L1', 'L2', 'L3'], coords=[[1, 0], [0, 1], [0, 0]]),
-        Factor('B', etc, type='continuous'),
-        Factor('C', etc, type='continuous', min=2, max=5),
+        Factor("A", htc, type="categorical", levels=["L1", "L2", "L3"], coords=[[1, 0], [0, 1], [0, 0]]),
+        Factor("B", etc, type="continuous"),
+        Factor("C", etc, type="continuous", min=2, max=5),
     ]
 
     # Create a partial response surface model
-    model = partial_rsm_names({
-        'A': 'tfi',
-        'B': 'quad',
-        'C': 'quad',
-    })
+    model = partial_rsm_names(
+        {
+            "A": "tfi",
+            "B": "quad",
+            "C": "quad",
+        }
+    )
     Y2X = model2Y2X(model, factors)
     log_checkpoint("factor_names", [str(f.name) for f in factors])
     log_checkpoint("nruns", int(nruns))
@@ -81,12 +83,13 @@ def main():
 
     # Write design to storage
     root = os.path.split(__file__)[0]
-    Y.to_csv(os.path.join(root, 'example_splitplot_multiprocessing.csv'), index=False)
+    Y.to_csv(os.path.join(root, "example_splitplot_multiprocessing.csv"), index=False)
 
-    print('Completed optimization')
-    print(f'Metric: {state.metric:.3f}')
-    print(f'Execution time: {end_time - start_time:.3f}')
+    print("Completed optimization")
+    print(f"Metric: {state.metric:.3f}")
+    print(f"Execution time: {end_time - start_time:.3f}")
     print(Y)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

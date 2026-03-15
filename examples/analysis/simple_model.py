@@ -18,9 +18,7 @@ from pyoptex.utils.model import model2Y2X, partial_rsm_names
 set_seed(42)
 
 # Define the factors
-factors = [
-    Factor('A'), Factor('B'), Factor('C')
-]
+factors = [Factor("A"), Factor("B"), Factor("C")]
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # The number of random observations
@@ -28,20 +26,19 @@ N = 200
 
 # Define the data
 data = pd.DataFrame(np.random.rand(N, 3) * 2 - 1, columns=[str(f.name) for f in factors])
-data['Y'] = 2*data['A'] + 3*data['C'] - 4*data['A']*data['B'] + 5\
-                + np.random.normal(0, 1, N)
+data["Y"] = 2 * data["A"] + 3 * data["C"] - 4 * data["A"] * data["B"] + 5 + np.random.normal(0, 1, N)
 log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 
 # Create the model
-model = partial_rsm_names({str(f.name): 'quad' for f in factors})
+model = partial_rsm_names({str(f.name): "quad" for f in factors})
 Y2X = model2Y2X(model, factors)
 log_checkpoint("model_shape", list(model.shape))
 log_checkpoint("model_values", model.values.tolist())
 
 # Create the regressor
 regr = SimpleRegressor(factors, Y2X)
-regr.fit(data.drop(columns='Y'), data['Y'])
+regr.fit(data.drop(columns="Y"), data["Y"])
 log_checkpoint("model_formula", regr.model_formula(model=model))
 
 # Print the summary
@@ -51,13 +48,15 @@ print(regr.summary())
 print(regr.model_formula(model=model))
 
 # Predict
-data['pred'] = regr.predict(data.drop(columns='Y'))
+data["pred"] = regr.predict(data.drop(columns="Y"))
 log_checkpoint("pred_mean", float(data["pred"].mean()))
 log_checkpoint("pred_std", float(data["pred"].std()))
 log_checkpoint("predictions", data["pred"].values.tolist())
 
 # Plot the residual diagnostics
 plot_res_diagnostics(
-    data, y_true='Y', y_pred='pred',
+    data,
+    y_true="Y",
+    y_pred="pred",
     textcols=[str(f.name) for f in factors],
 ).show()

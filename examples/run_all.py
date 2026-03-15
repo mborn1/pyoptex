@@ -26,10 +26,10 @@ def find_python_scripts(directory: Path) -> list[Path]:
     scripts = []
     for root, dirs, files in os.walk(directory):
         # Skip __pycache__ and other common directories to avoid
-        dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
 
         for file in files:
-            if file.endswith('.py') and file != 'run_all.py':
+            if file.endswith(".py") and file != "run_all.py":
                 script_path = Path(root) / file
                 scripts.append(script_path)
 
@@ -56,7 +56,7 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=script_path.parent  # Run from script's directory
+            cwd=script_path.parent,  # Run from script's directory
         )
 
         execution_time = time.time() - start_time
@@ -113,7 +113,7 @@ def main():
             print(f"   ✅ Success ({execution_time:.2f}s)")
             if output.strip():
                 # Show first few lines of output if any
-                lines = output.strip().split('\n')
+                lines = output.strip().split("\n")
                 if len(lines) > 3:
                     print("   📄 Output (first 3 lines):")
                     for line in lines[:3]:
