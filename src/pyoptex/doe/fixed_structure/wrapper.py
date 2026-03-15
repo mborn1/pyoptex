@@ -45,10 +45,7 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
-        mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture],
-            factors
-        )
+        mix_constr = mixture_constraints([str(f.name) for f in factors if f.is_mixture], factors)
 
         # Add the mixture constraints
         constraints = mix_constr if constraints is None else (constraints | mix_constr)
@@ -58,6 +55,7 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
         constraints = no_constraints
 
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
+
 
 def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=None):
     """
@@ -84,16 +82,20 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         The simulation parameters.
     """
     # Assertions
-    assert len(factors) > 0, 'At least one factor must be provided'
+    assert len(factors) > 0, "At least one factor must be provided"
     for i, f in enumerate(factors):
-        assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
-        assert f.re is None or isinstance(f.re, RandomEffect), f'Factor {i} with name {f.name} does not have a RandomEffect as random effect'
+        assert isinstance(f, Factor), f"Factor {i} is not of type Factor"
+        assert f.re is None or isinstance(f.re, RandomEffect), (
+            f"Factor {i} with name {f.name} does not have a RandomEffect as random effect"
+        )
         if f.re is not None:
-            assert len(f.re.Z) == nruns, f'Factor {i} with name {f.name} does not have enough runs as random effect'
-    assert prior is None, 'Priors have not yet been implemented'
-    assert grps is None, 'Grouped optimization has not yet been implemented'
+            assert len(f.re.Z) == nruns, f"Factor {i} with name {f.name} does not have enough runs as random effect"
+    assert prior is None, "Priors have not yet been implemented"
+    assert grps is None, "Grouped optimization has not yet been implemented"
     for i, be in enumerate(block_effects):
-        assert len(be.Z) == nruns, f'Blocking effect {i} does not have the correct length: {len(be.Z)}. Should be the number of runs {nruns}'
+        assert len(be.Z) == nruns, (
+            f"Blocking effect {i} does not have the correct length: {len(be.Z)}. Should be the number of runs {nruns}"
+        )
 
     nblocks = len(block_effects)
 
@@ -107,9 +109,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     ratios = []
     for r in re + list(block_effects):
         # Extract ratios
-        r = np.sort(r.ratio) \
-                if isinstance(r.ratio, (tuple, list, np.ndarray))\
-                else [r.ratio]
+        r = np.sort(r.ratio) if isinstance(r.ratio, (tuple, list, np.ndarray)) else [r.ratio]
 
         # Append the ratios
         ratios.append(r)
@@ -117,20 +117,20 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     # Align ratios
     if len(ratios) > 0:
         nratios = max([len(r) for r in ratios])
-        assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
-        ratios = np.array([
-            np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
-            for ratio in ratios
-        ], dtype=np.float64).T
+        assert all(len(r) == 1 or len(r) == nratios for r in ratios), (
+            "All ratios must be either a single number or and array of the same size"
+        )
+        ratios = np.array(
+            [np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios], dtype=np.float64
+        ).T
 
         # Split regular and blocking ratios
         if nblocks == 0:
             be_ratios = np.empty_like(ratios, shape=(0, ratios.shape[1]))
         else:
-            be_ratios = ratios[:, -len(block_effects):]
-            ratios = ratios[:, :len(block_effects)]
+            be_ratios = ratios[:, -len(block_effects) :]
+            ratios = ratios[:, : len(block_effects)]
     else:
-
         # No blocking ratios
         be_ratios = []
 
@@ -140,10 +140,9 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
-    colstart = np.concatenate((
-        [0],
-        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ), dtype=np.int64)
+    colstart = np.concatenate(
+        ([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))), dtype=np.int64
+    )
 
     # Compute Zs and Vinv
     if len(re) > 0:
@@ -156,16 +155,15 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     # Augment V with the random blocking effects
     if len(block_effects) > 0:
         beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
-        V += np.array([
-            obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False)
-            for r in be_ratios
-        ], dtype=np.float64)
+        V += np.array(
+            [obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) for r in be_ratios], dtype=np.float64
+        )
 
     # Invert V
     Vinv = np.linalg.inv(V)
 
     # Define which groups to optimize
-    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z)+1, dtype=np.int64) for Z in Zs]
+    lgrps = [np.arange(nruns, dtype=np.int64)] + [np.arange(np.max(Z) + 1, dtype=np.int64) for Z in Zs]
     grps = [lgrps[lvl] for lvl in effect_levels]
 
     # Precompute run indices for each (factor, group) pair
@@ -177,18 +175,18 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             if level == 0:
                 grp_runs[i].append(np.array([grps[i][j]], dtype=np.int64))
             else:
-                grp_runs[i].append(np.flatnonzero(Zs[level-1] == grps[i][j]))
+                grp_runs[i].append(np.flatnonzero(Zs[level - 1] == grps[i][j]))
 
     # Convert prior to numpy array
     prior = np.ascontiguousarray(prior) if prior is not None else None
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios,
-        coords, prior, colstart, Zs, Vinv
+        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, coords, prior, colstart, Zs, Vinv
     )
 
     return params
+
 
 def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=False):
     """
@@ -215,8 +213,8 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
         The state corresponding to the returned design.
         Contains the encoded design, model matrix, metric, etc.
     """
-    assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
-    assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
+    assert n_tries > 0, "Must specify at least one random initialization (n_tries > 0)"
+    assert max_it > 0, "Must specify at least one iteration of the coordinate-exchange per random initialization"
 
     # Pre initialize metric
     params.fn.metric.preinit(params)
@@ -226,7 +224,6 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     best_state = None
     try:
         for _ in tqdm(range(n_tries)):
-
             # Optimize the design
             Y, state = optimize(params, max_it, validate=validate)
 
@@ -235,7 +232,7 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
                 best_metric = state.metric
                 best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
     except KeyboardInterrupt:
-        print('Interrupted: returning current results...')
+        print("Interrupted: returning current results...")
 
     # Decode the design
     if best_state is not None:

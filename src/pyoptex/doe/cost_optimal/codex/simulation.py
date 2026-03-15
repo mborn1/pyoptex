@@ -38,11 +38,11 @@ def simulate(params, nsims=100, validate=False):
     interrupted = False
 
     # Initialize stats
-    params.stats['it'] = 0
-    params.stats['rejections'] = 0
-    params.stats['insert_loc'] = -1 * np.ones(nsims, dtype=np.int64)
-    params.stats['removed_insert'] = np.zeros(nsims, dtype=np.bool_)
-    params.stats['metrics'] = np.zeros(nsims, dtype=np.float64)
+    params.stats["it"] = 0
+    params.stats["rejections"] = 0
+    params.stats["insert_loc"] = -1 * np.ones(nsims, dtype=np.int64)
+    params.stats["removed_insert"] = np.zeros(nsims, dtype=np.bool_)
+    params.stats["metrics"] = np.zeros(nsims, dtype=np.float64)
 
     # Initialize functions
     params.fn.temp.reset()
@@ -57,10 +57,7 @@ def simulate(params, nsims=100, validate=False):
     Y = params.fn.init(params)
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
-    Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios))
-        for ratios in params.ratios
-    ])
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
     cost_Y = np.array([np.sum(c) for c, _, _ in costs])
     max_cost = np.array([m for _, m, _ in costs])
@@ -70,12 +67,14 @@ def simulate(params, nsims=100, validate=False):
 
     # Initialize best solution
     best_state = State(
-        np.copy(Y), np.copy(X),
+        np.copy(Y),
+        np.copy(X),
         tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs),
-        np.copy(Vinv), metric if not np.any(cost_Y > max_cost) else -np.inf,
+        np.copy(Vinv),
+        metric if not np.any(cost_Y > max_cost) else -np.inf,
         np.copy(cost_Y),
         [(np.copy(c), m, np.copy(idx)) for c, m, idx in costs],
-        np.copy(max_cost)
+        np.copy(max_cost),
     )
     validate and validate_state(best_state, params)
 
@@ -84,7 +83,7 @@ def simulate(params, nsims=100, validate=False):
     try:
         for i in tqdm(range(nsims)):
             # Set iteration
-            params.stats['it'] = i
+            params.stats["it"] = i
 
             # Create a new random run
             accepted_sample = False
@@ -106,15 +105,16 @@ def simulate(params, nsims=100, validate=False):
                 validate and validate_state(new_state, params)
 
             # Collect stats
-            params.stats['metrics'][i] = new_state.metric
+            params.stats["metrics"][i] = new_state.metric
 
             # Accept
-            cost_transition = (
-                np.all(new_state.cost_Y <= new_state.max_cost)
-                and np.any(state.cost_Y > state.max_cost)
+            cost_transition = np.all(new_state.cost_Y <= new_state.max_cost) and np.any(state.cost_Y > state.max_cost)
+            accept = (
+                params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand()
+                or cost_transition
+                or np.isinf(state.metric)
+                or np.isnan(state.metric)
             )
-            accept = params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand() \
-                or cost_transition or np.isinf(state.metric) or np.isnan(state.metric)
             if accept:
                 # Update the state and temperature
                 state = new_state
@@ -122,36 +122,29 @@ def simulate(params, nsims=100, validate=False):
                 params.fn.restart.accepted()
 
                 # Fix numerical issues with inverse update formulas
-                Vinv = np.array([
-                    np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios))
-                    for ratios in params.ratios
-                ])
-                metric = params.fn.metric.call(
-                    state.Y, state.X, state.Zs, Vinv, state.costs
+                Vinv = np.array(
+                    [np.linalg.inv(obs_var_from_Zs(state.Zs, len(state.Y), ratios)) for ratios in params.ratios]
                 )
-                state = State(
-                    state.Y, state.X, state.Zs, Vinv, metric,
-                    state.cost_Y, state.costs, state.max_cost
-                )
+                metric = params.fn.metric.call(state.Y, state.X, state.Zs, Vinv, state.costs)
+                state = State(state.Y, state.X, state.Zs, Vinv, metric, state.cost_Y, state.costs, state.max_cost)
 
                 # Set the best state
-                cost_transition = (
-                    np.all(state.cost_Y <= state.max_cost)
-                    and np.any(best_state.cost_Y > best_state.max_cost)
+                cost_transition = np.all(state.cost_Y <= state.max_cost) and np.any(
+                    best_state.cost_Y > best_state.max_cost
                 )
                 if state.metric > best_state.metric or cost_transition:
                     best_state = state
             else:
                 params.fn.temp.rejected()
                 params.fn.restart.rejected()
-                params.stats['rejections'] += 1
+                params.stats["rejections"] += 1
 
             # Restart policy
             state = params.fn.restart.call(state, best_state)
             validate and validate_state(state, params)
     except KeyboardInterrupt:
         interrupted = True
-        print('Interrupted: optimizing and returning current results...')
+        print("Interrupted: optimizing and returning current results...")
 
     # Final optimization
     optimized = True
@@ -166,10 +159,8 @@ def simulate(params, nsims=100, validate=False):
     try:
         validate_state(best_state, params)
     except AssertionError as e:
-        print('Possible issue detected in final state')
+        print("Possible issue detected in final state")
         print(e)
 
     # Return the best state
     return best_state, interrupted
-
-

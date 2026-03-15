@@ -9,8 +9,9 @@ from ....utils.comp import int2bool
 from ....utils.model import sample_model_dep_onebyone
 
 
-def entropies_approx(submodels, freqs, model_size, dep, mode,
-                     forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6):
+def entropies_approx(
+    submodels, freqs, model_size, dep, mode, forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6
+):
     """
     Compute the approximate entropy by sampling N random models
     and observing the frequency of each submodel.
@@ -77,10 +78,12 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
         obs_freq = freqs[i]
 
         # Compute entropy
-        entropies[i] = obs_freq * np.log2(obs_freq / theoretical_freq) \
-                        + (1 - obs_freq + eps) * np.log2((1 - obs_freq + eps) / (1 - theoretical_freq))
+        entropies[i] = obs_freq * np.log2(obs_freq / theoretical_freq) + (1 - obs_freq + eps) * np.log2(
+            (1 - obs_freq + eps) / (1 - theoretical_freq)
+        )
 
     return entropies
+
 
 def count_models(max_model, model_size, model=None):
     """
@@ -142,6 +145,7 @@ def count_models(max_model, model_size, model=None):
                     count += p1 * p2 * p3 * p4 * p5
 
     return count
+
 
 def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
     """
@@ -205,12 +209,8 @@ def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
         obs_freq = freqs[i]
 
         # Compute entropy
-        entropies[i] = obs_freq * np.log2(obs_freq / theoretical_freq) \
-                        + (1 - obs_freq + eps) * np.log2((1 - obs_freq + eps) / (1 - theoretical_freq))
+        entropies[i] = obs_freq * np.log2(obs_freq / theoretical_freq) + (1 - obs_freq + eps) * np.log2(
+            (1 - obs_freq + eps) / (1 - theoretical_freq)
+        )
 
     return entropies
-
-
-
-
-

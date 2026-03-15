@@ -30,8 +30,8 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         A boolean array marking which rows are considered
         outliers in the training dataset.
     """
-    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(),
-                 threshold=1, stat='norm'):
+
+    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(), threshold=1, stat="norm"):
         """
         Creates the outlier transformer
 
@@ -73,7 +73,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         fit_ = self.fit_fn_(X, y, self.terms_)
 
         # Store the final results
-        self.coef_ = fit_.params[:fit_.k_fe]
+        self.coef_ = fit_.params[: fit_.k_fe]
 
         # Fit and compute errors
         pred = self._predict(X)

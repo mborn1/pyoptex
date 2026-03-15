@@ -19,6 +19,7 @@ class Metric:
         A function computing the covariate parameters
         and potential extra random effects.
     """
+
     def __init__(self, cov=None):
         """
         Creates the metric
@@ -64,7 +65,8 @@ class Metric:
         metric : float
             The value of the criterion.
         """
-        raise NotImplementedError('Must implement a call function')
+        raise NotImplementedError("Must implement a call function")
+
 
 class Dopt(Metric):
     """
@@ -77,6 +79,7 @@ class Dopt(Metric):
         A function computing the covariate parameters
         and potential extra random effects.
     """
+
     def call(self, Y, X, Zs, Vinv, costs):
         """
         Computes the D-optimality criterion for a given design.
@@ -106,10 +109,8 @@ class Dopt(Metric):
         M = X.T @ Vinv @ X
 
         # Compute geometric mean of determinants
-        return np.power(
-            np.prod(np.maximum(np.linalg.det(M), 0)),
-            1/(X.shape[1] * len(Vinv))
-        )
+        return np.power(np.prod(np.maximum(np.linalg.det(M), 0)), 1 / (X.shape[1] * len(Vinv)))
+
 
 class Aopt(Metric):
     """
@@ -124,6 +125,7 @@ class Aopt(Metric):
     W : np.array(1d)
         A weights matrix for the trace of the inverse of the information matrix.
     """
+
     def __init__(self, cov=None, W=None):
         """
         Creates the metric
@@ -184,6 +186,7 @@ class Aopt(Metric):
             return -trace
         return -np.inf
 
+
 class Iopt(Metric):
     """
     The I-optimality criterion.
@@ -210,6 +213,7 @@ class Iopt(Metric):
         Whether to initialize the samples between -1 and 1,
         or from the given coordinates.
     """
+
     def __init__(self, n=10000, cov=None, complete=True):
         """
         Creates the metric
@@ -248,9 +252,7 @@ class Iopt(Metric):
             self.samples = params.fn.Y2X(samples)
 
             # Add random covariates
-            _, self.samples, _, _ = self.cov(
-                samples, self.samples, None, None, None, random=True
-            )
+            _, self.samples, _, _ = self.cov(samples, self.samples, None, None, None, random=True)
 
             # Compute moments matrix and normalization factor
             # Correct up to volume factor (Monte Carlo integration), can be ignored
@@ -289,17 +291,18 @@ class Iopt(Metric):
         # Check if invertible (more stable than relying on inverse)
         if np.linalg.matrix_rank(M[0]) >= M.shape[1]:
             # Compute average trace (normalized)
-            trace = np.mean(np.trace(np.linalg.solve(
-                M,
-                np.broadcast_to(
-                    self.moments,
-                    (Vinv.shape[0], *self.moments.shape)
+            trace = np.mean(
+                np.trace(
+                    np.linalg.solve(M, np.broadcast_to(self.moments, (Vinv.shape[0], *self.moments.shape))),
+                    axis1=-2,
+                    axis2=-1,
                 )
-            ), axis1=-2, axis2=-1))
+            )
 
             # Invert for minimization
             return -trace
         return -np.inf
+
 
 class Aliasing(Metric):
     """
@@ -321,6 +324,7 @@ class Aliasing(Metric):
     alias : np.array(1d)
         The indices of the effects in the model matrix to alias to.
     """
+
     def __init__(self, effects, alias, cov=None, W=None):
         """
         Creates the metric
@@ -378,7 +382,4 @@ class Aliasing(Metric):
             A *= self.W
 
         # Compute mean of SS
-        return -np.power(
-            np.mean(np.sum(np.square(A), axis=(-1, -2))),
-            1/(X.shape[1] * len(Vinv))
-        )
+        return -np.power(np.mean(np.sum(np.square(A), axis=(-1, -2))), 1 / (X.shape[1] * len(Vinv)))

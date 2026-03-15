@@ -12,6 +12,7 @@ class BnB:
     Base branch-and-bround class to retain ntop models (instead of only the best).
     It is a maximization algorithm.
     """
+
     def __init__(self):
         pass
 
@@ -31,7 +32,7 @@ class BnB:
         top_scores : np.ndarray(1d)
             The corresponding scores.
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def init_queue(self, top_results, top_scores):
         """
@@ -50,7 +51,7 @@ class BnB:
         branches : iterable or generator
             The potential branches from all the provided nodes.
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def upperbound(self, node):
         """
@@ -67,7 +68,7 @@ class BnB:
         score : int or float
             The upperbound score.
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def leaf(self, node):
         """
@@ -83,7 +84,7 @@ class BnB:
         is_leaf : bool
             Whether the node is a leaf.
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def branches(self, node):
         """
@@ -99,7 +100,7 @@ class BnB:
         branches : iterable or generator
             The new branches appearing from this node
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def node_in_results(self, node, results):
         """
@@ -117,7 +118,7 @@ class BnB:
         in_results : bool
             Whether the node is in the results or not.
         """
-        raise NotImplementedError('Class BnB should be extended')
+        raise NotImplementedError("Class BnB should be extended")
 
     def preloop(self, top_results, top_scores):
         """
@@ -233,7 +234,6 @@ class BnB:
 
         # Loop until the queue is empty
         while not q.empty():
-
             # Get the next node
             node = q.get()
 
@@ -242,13 +242,10 @@ class BnB:
 
             # If the upperbound is higher than the lowest score
             if upperbound > top_scores[0]:
-
                 # If the node is a leaf
                 if self.leaf(node):
-
                     # if not yet in the top results
                     if not self.node_in_results(node, top_results):
-
                         # Create the updates
                         old = top_results[0], top_scores[0]
                         new = node, upperbound

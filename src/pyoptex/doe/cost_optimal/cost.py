@@ -14,11 +14,13 @@ from ...utils.design import decode_design
 def _fn_no_params(f, Y, params):
     return f(Y)
 
+
 def _fn_decoded(f, Y, params):
     # Decode the design to a dataframe
     Y = decode_design(Y, params.effect_types, coords=params.coords)
     Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
     return f(Y, params)
+
 
 def _fn_denormalized(f, Y, params):
     # Decode the design to a dataframe
@@ -27,6 +29,7 @@ def _fn_denormalized(f, Y, params):
     for f in params.factors:
         Y[str(f.name)] = f.denormalize(Y[str(f.name)])
     return f(Y, params)
+
 
 def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
     """
@@ -59,22 +62,23 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
     if denormalize:
         # Wrap the function
         f = wraps(f)(partial(_fn_denormalized, f))
-        NOTE = 'This cost function works on denormalized inputs'
+        NOTE = "This cost function works on denormalized inputs"
 
     elif decoded:
         # Wrap the function
         f = wraps(f)(partial(_fn_decoded, f))
-        NOTE = 'This cost function works on decoded categorical inputs'
+        NOTE = "This cost function works on decoded categorical inputs"
 
     else:
-        NOTE = 'This cost function works on normalized (encoded) inputs'
+        NOTE = "This cost function works on normalized (encoded) inputs"
 
     # Extend the documentation with a note on normalization
     if f.__doc__ is not None:
-        params_pos = f.__doc__.find('    Parameters\n    ---------')
-        f.__doc__ = f.__doc__[:params_pos] + f'\n    .. note::\n        {NOTE}\n\n' + f.__doc__[params_pos:]
+        params_pos = f.__doc__.find("    Parameters\n    ---------")
+        f.__doc__ = f.__doc__[:params_pos] + f"\n    .. note::\n        {NOTE}\n\n" + f.__doc__[params_pos:]
 
     return f
+
 
 def cost_fn(*args, **kwargs):
     """
@@ -101,11 +105,15 @@ def cost_fn(*args, **kwargs):
     if len(args) > 0 and callable(args[0]):
         return __cost_fn(args[0], *args[1:], **kwargs)
     else:
+
         def wrapper(f):
             return __cost_fn(f, *args, **kwargs)
+
         return wrapper
 
+
 ############################################################
+
 
 def combine_costs(costs):
     """
@@ -121,13 +129,15 @@ def combine_costs(costs):
     cost_fn : func(Y, params)
         The combined cost function for the simulation algorithm.
     """
+
     def _cost(Y, params):
         return [c for cf in costs for c in cf(Y, params)]
 
     # pylint: disable=line-too-long
-    _cost.__doc__ = 'This is a combined cost function of:\n* ' + '\n* '.join(cf.__name__ for cf in costs)
+    _cost.__doc__ = "This is a combined cost function of:\n* " + "\n* ".join(cf.__name__ for cf in costs)
 
     return _cost
+
 
 def discount_cost(costs, factors, max_cost, base_cost=1):
     """
@@ -152,12 +162,13 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
         The cost function.
     """
     # Expand the costs to categorically encoded
-    costs = np.array([
-        c for f in factors
-            for c in ([costs[str(f.name)]]
-            if f.is_continuous
-            else [costs[str(f.name)]]*(len(f.levels)-1))
-    ])
+    costs = np.array(
+        [
+            c
+            for f in factors
+            for c in ([costs[str(f.name)]] if f.is_continuous else [costs[str(f.name)]] * (len(f.levels) - 1))
+        ]
+    )
 
     # Define the transition costs
     @numba.njit
@@ -171,7 +182,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
         # Loop for each cost
         for i in range(1, len(Y)):
             # Extract runs
-            old_run = Y[i-1]
+            old_run = Y[i - 1]
             new_run = Y[i]
 
             # Detect change in runs
@@ -189,6 +200,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
 
 def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     """
@@ -214,9 +226,9 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The cost function.
     """
     return discount_cost(
-        {k: v + execution_cost for k, v in transition_costs.items()},
-        factors, max_cost, execution_cost
+        {k: v + execution_cost for k, v in transition_costs.items()}, factors, max_cost, execution_cost
     )
+
 
 def additive_cost(costs, factors, max_cost, base_cost=1):
     """
@@ -257,12 +269,12 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
             tc = base_cost
 
             # Define the old / new run for transition
-            old_run = Y[i-1]
+            old_run = Y[i - 1]
             new_run = Y[i]
 
             # Additive costs
-            for j in range(colstart.size-1):
-                if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
+            for j in range(colstart.size - 1):
+                if np.any(old_run[colstart[j] : colstart[j + 1]] != new_run[colstart[j] : colstart[j + 1]]):
                     tc += costs[j]
 
             cc[i] = tc
@@ -271,6 +283,7 @@ def additive_cost(costs, factors, max_cost, base_cost=1):
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
 
 def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     """
@@ -296,9 +309,9 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
         The cost function.
     """
     return additive_cost(
-        {k: v + execution_cost for k, v in transition_costs.items()},
-        factors, max_cost, execution_cost
+        {k: v + execution_cost for k, v in transition_costs.items()}, factors, max_cost, execution_cost
     )
+
 
 def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     """
@@ -335,15 +348,13 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
         The cost function.
     """
     # Validate the categorical factors
-    assert all(
-        isinstance(transition_costs[str(f.name)], (int, float))
-        for f in factors if f.is_categorical
-    ), 'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    assert all(isinstance(transition_costs[str(f.name)], (int, float)) for f in factors if f.is_categorical), (
+        "Categorical factors must only have a single float or integer representing the base transition cost of any transition"
+    )
     # Validate continuous factors
-    assert all(
-        len(transition_costs[str(f.name)]) == 4
-        for f in factors if f.is_continuous
-    ), 'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+    assert all(len(transition_costs[str(f.name)]) == 4 for f in factors if f.is_continuous), (
+        "Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)"
+    )
 
     # Restructure transition costs
     transition_costs = {
@@ -351,7 +362,8 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
             transition_costs[str(f.name)]
             if f.is_continuous
             else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
-        ) for f in factors
+        )
+        for f in factors
     }
 
     # Compute the column starts
@@ -360,14 +372,10 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
     is_continuous = np.array([f.is_continuous for f in factors])
 
     # Expand the costs to arrays
-    base_costs = np.array([
-        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]]
-        for f in factors
-    ])
-    scale_costs = np.array([
-        [transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2]
-        for f in factors
-    ])
+    base_costs = np.array([[transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] for f in factors])
+    scale_costs = np.array(
+        [[transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2] for f in factors]
+    )
 
     # Define the transition costs
     @numba.njit
@@ -378,14 +386,14 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
 
         for i in range(1, len(Y)):
             # Define the old / new run for transition
-            old_run = Y[i-1]
+            old_run = Y[i - 1]
             new_run = Y[i]
 
             # Additive costs
-            cc_ = np.zeros(colstart.size-1)
-            for j in range(colstart.size-1):
+            cc_ = np.zeros(colstart.size - 1)
+            for j in range(colstart.size - 1):
                 # Check for a transition
-                if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
+                if np.any(old_run[colstart[j] : colstart[j + 1]] != new_run[colstart[j] : colstart[j + 1]]):
                     # Check if continuous or categorical factor
                     if is_continuous[j]:
                         diff = new_run[colstart[j]] - old_run[colstart[j]]
@@ -406,6 +414,7 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
 
 def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     """
@@ -442,15 +451,13 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
         The cost function.
     """
     # Validate the categorical factors
-    assert all(
-        isinstance(transition_costs[str(f.name)], (int, float))
-        for f in factors if f.is_categorical
-    ), 'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    assert all(isinstance(transition_costs[str(f.name)], (int, float)) for f in factors if f.is_categorical), (
+        "Categorical factors must only have a single float or integer representing the base transition cost of any transition"
+    )
     # Validate continuous factors
-    assert all(
-        len(transition_costs[str(f.name)]) == 4
-        for f in factors if f.is_continuous
-    ), 'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+    assert all(len(transition_costs[str(f.name)]) == 4 for f in factors if f.is_continuous), (
+        "Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)"
+    )
 
     # Restructure transition costs
     transition_costs = {
@@ -458,7 +465,8 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
             transition_costs[str(f.name)]
             if f.is_continuous
             else (transition_costs[str(f.name)], transition_costs[str(f.name)], 0, 0)
-        ) for f in factors
+        )
+        for f in factors
     }
 
     # Compute the column starts
@@ -467,14 +475,10 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
     is_continuous = np.array([f.is_continuous for f in factors])
 
     # Expand the costs to arrays
-    base_costs = np.array([
-        [transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]]
-        for f in factors
-    ])
-    scale_costs = np.array([
-        [transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2]
-        for f in factors
-    ])
+    base_costs = np.array([[transition_costs[str(f.name)][0], transition_costs[str(f.name)][1]] for f in factors])
+    scale_costs = np.array(
+        [[transition_costs[str(f.name)][2] / 2, transition_costs[str(f.name)][3] / 2] for f in factors]
+    )
 
     # Define the transition costs
     @numba.njit
@@ -485,14 +489,14 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
 
         for i in range(1, len(Y)):
             # Define the old / new run for transition
-            old_run = Y[i-1]
+            old_run = Y[i - 1]
             new_run = Y[i]
 
             # Additive costs
-            cc_ = np.zeros(colstart.size-1)
-            for j in range(colstart.size-1):
+            cc_ = np.zeros(colstart.size - 1)
+            for j in range(colstart.size - 1):
                 # Check for a transition
-                if np.any(old_run[colstart[j]:colstart[j+1]] != new_run[colstart[j]:colstart[j+1]]):
+                if np.any(old_run[colstart[j] : colstart[j + 1]] != new_run[colstart[j] : colstart[j + 1]]):
                     # Check if continuous or categorical factor
                     if is_continuous[j]:
                         diff = new_run[colstart[j]] - old_run[colstart[j]]
@@ -514,6 +518,7 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
 
+
 def fixed_runs_cost(max_runs):
     """
     Cost function to deal with a fixed maximum number of experiments.
@@ -530,10 +535,12 @@ def fixed_runs_cost(max_runs):
     cost_fn : func(Y, params)
         The cost function.
     """
+
     def _cost_fn(Y):
         return [(np.ones(len(Y)), max_runs, np.arange(len(Y)))]
 
     return cost_fn(_cost_fn, denormalize=False, decoded=False, contains_params=False)
+
 
 def max_changes_cost(factor, factors, max_changes):
     """
@@ -565,7 +572,7 @@ def max_changes_cost(factor, factors, max_changes):
     # Determine the columns of the factor
     if isinstance(factor, str):
         factor = [str(f.name) for f in factors].index(factor)
-    factor = slice(colstart[factor], colstart[factor+1])
+    factor = slice(colstart[factor], colstart[factor + 1])
 
     # Create cost function
     def _cost_fn(Y):

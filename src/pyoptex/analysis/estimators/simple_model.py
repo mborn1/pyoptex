@@ -39,10 +39,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
         conditional : bool
             Whether to create a conditional model or not.
         """
-        super().__init__(
-            factors=factors, Y2X=Y2X, random_effects=random_effects,
-            conditional=conditional
-        )
+        super().__init__(factors=factors, Y2X=Y2X, random_effects=random_effects, conditional=conditional)
 
     def _fit(self, X, y):
         """
@@ -62,6 +59,6 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
         self.fit_ = self.fit_fn_(X, y, self.terms_)
 
         # Store the final results
-        self.coef_ = self.fit_.params[:self.fit_.k_fe]
+        self.coef_ = self.fit_.params[: self.fit_.k_fe]
         self.scale_ = self.fit_.scale
         self.vcomp_ = self.fit_.vcomp

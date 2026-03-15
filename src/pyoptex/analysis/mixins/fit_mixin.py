@@ -59,10 +59,7 @@ class BaseMixin:
         # Compute derived parameters from the inputs
         self.n_features_in_ = len(self._factors)
         self.features_names_in_ = [str(f.name) for f in self._factors]
-        self.effect_types_ = np.array([
-            1 if f.is_continuous else len(f.levels)
-            for f in self._factors
-        ])
+        self.effect_types_ = np.array([1 if f.is_continuous else len(f.levels) for f in self._factors])
         self.coords_ = [f.coords_ for f in self._factors]
 
     @property
@@ -75,7 +72,7 @@ class BaseMixin:
         is_fitted : bool
             True when the regressor has been fitted.
         """
-        return getattr(self, 'is_fitted_', False)
+        return getattr(self, "is_fitted_", False)
 
     def _validate_X(self, X):
         """
@@ -86,11 +83,13 @@ class BaseMixin:
         X : pd.DataFrame
             The data.
         """
-        assert isinstance(X, pd.DataFrame), 'X must be a dataframe'
-        assert all(c in X.columns for c in self.features_names_in_), 'X does not have the correct features'
+        assert isinstance(X, pd.DataFrame), "X must be a dataframe"
+        assert all(c in X.columns for c in self.features_names_in_), "X does not have the correct features"
         for f in self._factors:
             if f.is_categorical:
-                assert all(lvl in f.levels for lvl in X[str(f.name)].unique()), 'X contains a categorical level not specified in the factor, unable to encode'
+                assert all(lvl in f.levels for lvl in X[str(f.name)].unique()), (
+                    "X contains a categorical level not specified in the factor, unable to encode"
+                )
 
     def _preprocess_X(self, X):
         """
@@ -135,13 +134,15 @@ class BaseMixin:
             The output variable.
         """
         # Validate init parameters
-        assert len(self._factors) > 0, 'Must have at least one factor'
+        assert len(self._factors) > 0, "Must have at least one factor"
 
         # Validate inputs
         self._validate_X(X)
-        q = 'Did you forget the random effects?' if X.shape[1] == self.n_features_in_ else ''
-        assert X.shape[1] == self.n_features_in_ + len(self._re), f'X does not have the correct number of features: {self.n_features_in_ + len(self.re)} vs. {X.shape[1]}. {q}'
-        assert all(c in X.columns for c in self._re), 'X does not have the correct random effects'
+        q = "Did you forget the random effects?" if X.shape[1] == self.n_features_in_ else ""
+        assert X.shape[1] == self.n_features_in_ + len(self._re), (
+            f"X does not have the correct number of features: {self.n_features_in_ + len(self.re)} vs. {X.shape[1]}. {q}"
+        )
+        assert all(c in X.columns for c in self._re), "X does not have the correct random effects"
 
     def preprocess_fit(self, X, y):
         """
@@ -168,7 +169,7 @@ class BaseMixin:
         # Normalize y
         self.y_mean_ = np.mean(y)
         self.y_std_ = np.std(y)
-        assert self.y_std_ > 0, 'y is a constant vector, cannot do regression'
+        assert self.y_std_ > 0, "y is a constant vector, cannot do regression"
         y = (y - self.y_mean_) / (self.y_std_)
         y = np.asarray(y)
 
@@ -184,9 +185,7 @@ class BaseMixin:
 
             # Convert them to indices
             for r in re:
-                X[r] = X[r].map(
-                    {lname: i for i, lname in enumerate(X[r].unique())}
-                )
+                X[r] = X[r].map({lname: i for i, lname in enumerate(X[r].unique())})
 
             # Extract and create mixedlm fit function
             self.Zs_ = X[re].to_numpy().T
@@ -216,7 +215,7 @@ class BaseMixin:
         y : np.array(1d)
             The normalized output variable.
         """
-        raise NotImplementedError('The fit function has not been implemented')
+        raise NotImplementedError("The fit function has not been implemented")
 
     def fit(self, X, y):
         """
@@ -254,6 +253,7 @@ class BaseMixin:
         self.is_fitted_ = True
 
         return self
+
 
 class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     """
@@ -396,7 +396,9 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         """
         # Validate X
         self._validate_X(X)
-        assert X.shape[1] == self.n_features_in_, f'X does not have the correct number of features: {self.n_features_in_} vs. {X.shape[1]}'
+        assert X.shape[1] == self.n_features_in_, (
+            f"X does not have the correct number of features: {self.n_features_in_} vs. {X.shape[1]}"
+        )
 
     def preprocess_predict(self, X):
         """
@@ -436,8 +438,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             The predictions.
         """
         # Predict based on linear regression
-        return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) \
-                    * self.y_std_ + self.y_mean_
+        return np.sum(X[:, self.terms_] * np.expand_dims(self.coef_, 0), axis=1) * self.y_std_ + self.y_mean_
 
     def predict(self, X):
         """
@@ -456,10 +457,10 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             The predictions.
         """
         # Drop potential remaining random effects
-        X = X.drop(columns=list(self._re), errors='ignore')
+        X = X.drop(columns=list(self._re), errors="ignore")
 
         # Validate this model has been fitted
-        assert self.is_fitted, 'You must fit the regressor before predicting'
+        assert self.is_fitted, "You must fit the regressor before predicting"
         self._validate_predict(X)
 
         # Preprocess the input
@@ -482,9 +483,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         When no random effects are specified, this reduces to a scaled
         identity matrix.
         """
-        return obs_var_from_Zs(
-            self.Zs_, len(self.X_), self.vcomp_ / self.scale_
-        ) * self.scale_
+        return obs_var_from_Zs(self.Zs_, len(self.X_), self.vcomp_ / self.scale_) * self.scale_
 
     @property
     def V_(self):
@@ -588,7 +587,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             The prediction variance for each sample.
         """
         # Compute base prediction variance
-        pv = np.sum((X @ self.inv_information_matrix) * X, axis=1) # X @ Minv @ X.T
+        pv = np.sum((X @ self.inv_information_matrix) * X, axis=1)  # X @ Minv @ X.T
 
         # Additional variance from random error and random effects
         # during a new prediction
@@ -683,7 +682,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             The prediction formula for encoded and normalized data.
         """
         # Make sure model is a dataframe
-        assert isinstance(model, pd.DataFrame), 'The specified model must be a dataframe'
+        assert isinstance(model, pd.DataFrame), "The specified model must be a dataframe"
 
         # Encode the labels
         model = model[self.features_names_in_]
@@ -757,13 +756,16 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
 
         if labels is None:
             # Specify default x features
-            labels = [f'x{i}' for i in range(self.n_encoded_features_)]
+            labels = [f"x{i}" for i in range(self.n_encoded_features_)]
 
         # Validate the labels
-        assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
+        assert len(labels) == self.n_encoded_features_, "Must specify one label per encoded feature (= Y2X(Y).shape[1])"
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_, strict=True))
+        formula = " + ".join(
+            f"{c:.3f}{' * ' + labels[t] if labels[t] != 'cst' else ''}"
+            for c, t in zip(self.coef_, self.terms_, strict=True)
+        )
 
         return formula
 
@@ -774,10 +776,11 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
 
         >>> print(regr.summary())
         """
-        if hasattr(self, 'fit_'):
+        if hasattr(self, "fit_"):
             return self.fit_.summary()
         else:
-            raise AttributeError('Must have a fit_ object to print a fit summary')
+            raise AttributeError("Must have a fit_ object to print a fit summary")
+
 
 class MultiRegressionMixin(RegressionMixin):
     """
@@ -910,14 +913,14 @@ class MultiRegressionMixin(RegressionMixin):
         self.model_vcomp_ = np.zeros((len(self.models_), len(self.re)), dtype=np.float64)
         for i in range(len(self.models_)):
             fit = self.fit_fn_(X, y, self.models_[i])
-            self.model_coef_[i] = fit.params[:fit.k_fe]
+            self.model_coef_[i] = fit.params[: fit.k_fe]
             self.model_scale_[i] = fit.scale
             self.model_vcomp_[i] = fit.vcomp
 
         # Add additional parameters required for RegressionMixin
         self.terms_ = self.models_[0]
         self.fit_ = self.fit_fn_(X, y, self.terms_)
-        self.coef_ = self.fit_.params[:self.fit_.k_fe]
+        self.coef_ = self.fit_.params[: self.fit_.k_fe]
         self.scale_ = self.fit_.scale
         self.vcomp_ = self.fit_.vcomp
 
@@ -944,7 +947,7 @@ class MultiRegressionMixin(RegressionMixin):
         -------
         fig : :py:class:`plotly.graph_objects.Figure`
         """
-        raise NotImplementedError('No selection plot was implemented')
+        raise NotImplementedError("No selection plot was implemented")
 
     def model_formula(self, model, idx=0):
         """
@@ -1013,7 +1016,7 @@ class MultiRegressionMixin(RegressionMixin):
             The prediction formula for encoded and normalized data.
         """
         # Make sure model is a dataframe
-        assert isinstance(model, pd.DataFrame), 'The specified model must be a dataframe'
+        assert isinstance(model, pd.DataFrame), "The specified model must be a dataframe"
 
         # Encode the labels
         model = model[self.features_names_in_]
@@ -1089,15 +1092,19 @@ class MultiRegressionMixin(RegressionMixin):
 
         if labels is None:
             # Specify default x features
-            labels = [f'x{i}' for i in range(self.n_encoded_features_)]
+            labels = [f"x{i}" for i in range(self.n_encoded_features_)]
 
         # Validate the labels
-        assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
+        assert len(labels) == self.n_encoded_features_, "Must specify one label per encoded feature (= Y2X(Y).shape[1])"
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx], strict=True))
+        formula = " + ".join(
+            f"{c:.3f}{' * ' + labels[t] if labels[t] != 'cst' else ''}"
+            for c, t in zip(self.model_coef_[idx], self.models_[idx], strict=True)
+        )
 
         return formula
+
 
 class TransformerMixin(BaseMixin, TransformerMixinSklearn):
     """
@@ -1177,6 +1184,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
     is_fitted\\_ : bool
         Whether the transformer has been fitted.
     """
+
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):
         """
         Creates the regressor
@@ -1215,7 +1223,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
         y : pd.Series or np.array(1d)
             The transformed output variable
         """
-        raise NotImplementedError('The fit_transform function has not been implemented')
+        raise NotImplementedError("The fit_transform function has not been implemented")
 
     def fit_transform(self, X, y):
         """
@@ -1262,12 +1270,14 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
         # Apply the transformation
         return self._apply_transform(X, y)
 
+
 class OutlierTransformerMixin(TransformerMixin):
     """
     Very similar to :py:class:`TransformerMixin <pyoptex.analysis.mixins.fit_mixin.TransformerMixin>`,
     but focused on outlier detection and removal during training.
     The fit_transform function should remove the outliers from the data.
     """
+
     def __init__(self, factors=(), Y2X=identityY2X, random_effects=()):
         """
         Creates the regressor

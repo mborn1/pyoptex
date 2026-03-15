@@ -1,6 +1,7 @@
 """
 Module for the SAMS accept functions.
 """
+
 import numpy as np
 
 
@@ -18,7 +19,7 @@ class Accept:
         """
         Should reset the acceptance function to its original temperature.
         """
-        raise NotImplementedError('This function has not been implemented')
+        raise NotImplementedError("This function has not been implemented")
 
     def __call__(self, d):
         """
@@ -35,19 +36,20 @@ class Accept:
         prob : float
             The acceptance probability between 0 and 1.
         """
-        raise NotImplementedError('This function has not been implemented')
+        raise NotImplementedError("This function has not been implemented")
 
     def accepted(self):
         """
         Called when the state got accepted. Reduces the temperature.
         """
-        raise NotImplementedError('This function has not been implemented')
+        raise NotImplementedError("This function has not been implemented")
 
     def rejected(self):
         """
         Called when the state got rejected. Increases the temperature.
         """
-        raise NotImplementedError('This function has not been implemented')
+        raise NotImplementedError("This function has not been implemented")
+
 
 class ExponentialAccept:
     """
@@ -86,7 +88,7 @@ class ExponentialAccept:
             and rejecting kappa states, the temperature will remain
             constant.
         """
-        assert 0 < rho <= 1, 'The reduction factor rho should be between 0 and 1'
+        assert 0 < rho <= 1, "The reduction factor rho should be between 0 and 1"
         self.rho = rho
         self.alpha = rho ** (1 / kappa)
         self._T = T0

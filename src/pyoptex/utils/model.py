@@ -52,12 +52,13 @@ def partial_rsm(nquad, ntfi, nlin):
     for i in range(nint - 1):
         max_model[stop + np.arange(nint - 1 - i), i] = 1
         max_model[stop + np.arange(nint - 1 - i), i + 1 + np.arange(nint - 1 - i)] = 1
-        stop += (nint - 1 - i)
+        stop += nint - 1 - i
 
     # Quadratic effects
     max_model[stop + np.arange(nquad), np.arange(nquad)] = 2
 
     return max_model
+
 
 def partial_rsm_names(effects):
     """
@@ -77,17 +78,19 @@ def partial_rsm_names(effects):
         A dataframe with the regression model, in the same order as effects.
     """
     # Sort the effects
-    sorted_effects = sorted(effects.items(), key=lambda x: {'lin': 3, 'tfi': 2, 'quad': 1}[x[1]])
+    sorted_effects = sorted(effects.items(), key=lambda x: {"lin": 3, "tfi": 2, "quad": 1}[x[1]])
 
     # Count the number
     c = Counter(map(lambda x: x[1], sorted_effects))
 
     # Create the model
-    model = partial_rsm(c['quad'], c['tfi'], c['lin'])
+    model = partial_rsm(c["quad"], c["tfi"], c["lin"])
 
     return pd.DataFrame(model, columns=[e[0] for e in sorted_effects])[list(effects.keys())]
 
+
 ################################################
+
 
 def encode_model(model, effect_types):
     """
@@ -119,7 +122,7 @@ def encode_model(model, effect_types):
     a = np.zeros(np.sum(extra_columns), dtype=np.int64)
     start = 0
     for i in range(extra_columns.size):
-        a[start:start+extra_columns[i]] = np.full(extra_columns[i], i+1)
+        a[start : start + extra_columns[i]] = np.full(extra_columns[i], i + 1)
         start += extra_columns[i]
     model = np.insert(model, a, 0, axis=1)
 
@@ -139,7 +142,7 @@ def encode_model(model, effect_types):
                     # Replace ones by identity matrices
                     ncols = cols[i]
                     model = np.insert(model, [j] * (ncols - 1), model[j], axis=0)
-                    model[j:j+ncols, current_col:current_col+ncols] = np.eye(ncols)
+                    model[j : j + ncols, current_col : current_col + ncols] = np.eye(ncols)
                     j += ncols
                 else:
                     j += 1
@@ -148,6 +151,7 @@ def encode_model(model, effect_types):
             current_col += 1
 
     return model
+
 
 def model2Y2X(model, factors):
     """
@@ -167,11 +171,11 @@ def model2Y2X(model, factors):
         the model matrix (X).
     """
     # Validation
-    assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
+    assert isinstance(model, pd.DataFrame), "Model must be a dataframe"
 
     col_names = [str(f.name) for f in factors]
-    assert all(col in col_names for col in model.columns), 'Not all model parameters are factors'
-    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
+    assert all(col in col_names for col in model.columns), "Not all model parameters are factors"
+    assert all(col in model.columns for col in col_names), "Not all factors are in the model"
 
     # Extract factor parameters
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
@@ -187,7 +191,8 @@ def model2Y2X(model, factors):
 
     return Y2X
 
-def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp='_mixture_comp_'): # noqa: B006
+
+def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp="_mixture_comp_"):  # noqa: B006
     """
     Creates a Scheffe model with potential process effects and
     potential cross-terms between the mixture effects and process effects.
@@ -269,8 +274,10 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
     me = [*me, mcomp]
 
     # Validate all mixture effects are continuous
-    assert mo in ('lin', 'tfi'), 'The order of a mixture experiment cannot be higher than two-factor interactions'
-    assert cross_order in (None, 'lin', 'tfi'), 'Can only consider no cross, linear crossing, or two-factor interaction (tfi) crossing'
+    assert mo in ("lin", "tfi"), "The order of a mixture experiment cannot be higher than two-factor interactions"
+    assert cross_order in (None, "lin", "tfi"), (
+        "Can only consider no cross, linear crossing, or two-factor interaction (tfi) crossing"
+    )
 
     # Create the scheffe model and process model
     scheffe_model = partial_rsm_names({e: mo for e in me}).iloc[1:]
@@ -286,61 +293,46 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
     model = pd.concat((scheffe_model, process_model), ignore_index=True)
 
     # Cross the model
-    if cross_order == 'tfi':
+    if cross_order == "tfi":
         # Extract tfi process effects
         tfi_process_effects = (
-            (model[process_comps].sum(axis=1) == 2) # Sum is 2
-            & (model[process_comps].astype(np.bool_).sum(axis=1) == 2) # Count is 2
-            & (model[mixture_comps].sum(axis=1) == 0) # No other components
+            (model[process_comps].sum(axis=1) == 2)  # Sum is 2
+            & (model[process_comps].astype(np.bool_).sum(axis=1) == 2)  # Count is 2
+            & (model[mixture_comps].sum(axis=1) == 0)  # No other components
         )
 
         # Extract linear process effects
-        lin_process_effects = (
-            (model[process_comps].sum(axis=1) == 1)
-            & (model[mixture_comps].sum(axis=1) == 0)
-        )
+        lin_process_effects = (model[process_comps].sum(axis=1) == 1) & (model[mixture_comps].sum(axis=1) == 0)
 
         # Cross the linear process and two-factor mixture
         tfi_mixt_lin_process = pd.merge(
-            scheffe_model.iloc[len(mixture_comps):][list(mixture_comps)],
+            scheffe_model.iloc[len(mixture_comps) :][list(mixture_comps)],
             model.loc[lin_process_effects, list(process_comps)],
-            how='cross'
+            how="cross",
         )
 
         # Combine them with linear mixture effects (apart from M_COMP)
         lin_mixt_tfi_process = pd.merge(
-            model.loc[tfi_process_effects, list(process_comps) + [mcomp]], #noqa: RUF005
-            pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int64),
-                columns=mixture_comps.drop(mcomp)
-            ),
-            how='cross'
+            model.loc[tfi_process_effects, list(process_comps) + [mcomp]],  # noqa: RUF005
+            pd.DataFrame(np.eye(len(mixture_comps) - 1, dtype=np.int64), columns=mixture_comps.drop(mcomp)),
+            how="cross",
         )[model.columns]
 
         # Change tfi process effect to interaction with M_COMP
         model.loc[tfi_process_effects, mcomp] = 1
 
         # Combine all terms
-        model = pd.concat(
-            (model, tfi_mixt_lin_process, lin_mixt_tfi_process),
-            ignore_index=True
-        )
+        model = pd.concat((model, tfi_mixt_lin_process, lin_mixt_tfi_process), ignore_index=True)
 
-    if cross_order in ('lin', 'tfi'):
+    if cross_order in ("lin", "tfi"):
         # Extract linear process effects
-        lin_process_effects = (
-            (model[process_comps].sum(axis=1) == 1)
-            & (model[mixture_comps].sum(axis=1) == 0)
-        )
+        lin_process_effects = (model[process_comps].sum(axis=1) == 1) & (model[mixture_comps].sum(axis=1) == 0)
 
         # Combine them with linear mixture effects (apart from M_COMP)
         additional_terms = pd.merge(
-            model.loc[lin_process_effects, list(process_comps) + [mcomp]], #noqa: RUF005
-            pd.DataFrame(
-                np.eye(len(mixture_comps) - 1, dtype=np.int64),
-                columns=mixture_comps.drop(mcomp)
-            ),
-            how='cross'
+            model.loc[lin_process_effects, list(process_comps) + [mcomp]],  # noqa: RUF005
+            pd.DataFrame(np.eye(len(mixture_comps) - 1, dtype=np.int64), columns=mixture_comps.drop(mcomp)),
+            how="cross",
         )[model.columns]
 
         # Change linear process effect to interaction with M_COMP
@@ -351,7 +343,8 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
     return model
 
-def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None): # noqa: B006
+
+def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None):  # noqa: B006
     """
     Creates a Scheffe model Y2X with potential process effects and
     potential cross-terms between the mixture effects and process effects.
@@ -425,31 +418,32 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
         the model matrix (X).
     """
     # Validation
-    assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), 'Mixture factors must be of type mixture'
+    assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), (
+        "Mixture factors must be of type mixture"
+    )
 
     # Create the mixture model
     me, _ = mixture_effects
-    mcomp = '_mixture_comp_'
+    mcomp = "_mixture_comp_"
     model = mixture_scheffe_model(mixture_effects, process_effects, cross_order, mcomp=mcomp)
 
     # Validate all factors are in model and vice-versa
     col_names = [str(f.name) for f in factors]
-    assert all(col in col_names for col in model if col != mcomp), 'Not all model parameters are factors'
-    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
+    assert all(col in col_names for col in model if col != mcomp), "Not all model parameters are factors"
+    assert all(col in model.columns for col in col_names), "Not all factors are in the model"
 
     ################################################
 
     # Extract factor parameters
-    effect_types = np.concatenate((
-        np.array([1 if f.is_continuous else len(f.levels) for f in factors]),
-        np.array([1]) # Add continuous final mixture component
-    ))
+    effect_types = np.concatenate(
+        (
+            np.array([1 if f.is_continuous else len(f.levels) for f in factors]),
+            np.array([1]),  # Add continuous final mixture component
+        )
+    )
 
     # Retrieve start of columns
-    colstart = np.concatenate((
-        [0],
-        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ))
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
 
     # Retrieve indices of mixture components (encoded)
     me_idx_enc = np.array([colstart[col_names.index(e)] for e in me])
@@ -462,13 +456,11 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
 
     # Define Y2X
     def Y2X(Y):
-        Y = np.concatenate((
-            Y,
-            np.expand_dims(1 - np.sum(Y[:, me_idx_enc], axis=1), 1)
-        ), axis=1)
+        Y = np.concatenate((Y, np.expand_dims(1 - np.sum(Y[:, me_idx_enc], axis=1), 1)), axis=1)
         return x2fx(Y, modelenc)
 
     return Y2X
+
 
 def identityY2X(Y):
     """
@@ -486,7 +478,9 @@ def identityY2X(Y):
     """
     return Y
 
+
 ################################################
+
 
 def encode_names(col_names, effect_types):
     """
@@ -511,13 +505,14 @@ def encode_names(col_names, effect_types):
         The list of encoded column names.
     """
     lbls = [
-        lbl for i in range(len(col_names))
-            for lbl in (
-                [col_names[i]] if effect_types[i] <= 2
-                else [f'{col_names[i]}_{j}' for j in range(effect_types[i] - 1)]
-            )
+        lbl
+        for i in range(len(col_names))
+        for lbl in (
+            [col_names[i]] if effect_types[i] <= 2 else [f"{col_names[i]}_{j}" for j in range(effect_types[i] - 1)]
+        )
     ]
     return lbls
+
 
 def model2names(model, col_names=None):
     """
@@ -558,19 +553,20 @@ def model2names(model, col_names=None):
 
         # Create higher order representations
         higher_order_effects = (term != 1) & (term != 0)
-        high = np.char.add(np.char.add(col_names[higher_order_effects], '^'), term[higher_order_effects].astype(str))
+        high = np.char.add(np.char.add(col_names[higher_order_effects], "^"), term[higher_order_effects].astype(str))
 
         # Concatenate with main effects and join
         term_repr = np.concatenate((col_names[term == 1], high))
-        term_repr = ' * '.join(term_repr)
+        term_repr = " * ".join(term_repr)
 
         # Constant term
-        if term_repr == '':
-            term_repr = 'cst'
+        if term_repr == "":
+            term_repr = "cst"
 
         return term_repr
 
     return list(np.vectorize(__comb)(np.arange(model.shape[0])))
+
 
 def model2encnames(model, effect_types, col_names=None):
     """
@@ -608,7 +604,9 @@ def model2encnames(model, effect_types, col_names=None):
 
     return col_names_model
 
+
 ################################################
+
 
 def order_dependencies(model, factors):
     """
@@ -637,12 +635,12 @@ def order_dependencies(model, factors):
         if dep(i, j) = true.
     """
     # Validation
-    assert isinstance(model, pd.DataFrame), 'Model must be a dataframe'
-    assert np.all(model >= 0), 'All powers must be larger than zero'
+    assert isinstance(model, pd.DataFrame), "Model must be a dataframe"
+    assert np.all(model >= 0), "All powers must be larger than zero"
 
     col_names = [str(f.name) for f in factors]
-    assert all(col in col_names for col in model.columns), 'Not all model parameters are factors'
-    assert all(col in model.columns for col in col_names), 'Not all factors are in the model'
+    assert all(col in col_names for col in model.columns), "Not all model parameters are factors"
+    assert all(col in model.columns for col in col_names), "Not all factors are in the model"
 
     # Extract factor parameters
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
@@ -656,23 +654,23 @@ def order_dependencies(model, factors):
     # Compute the possible dependencies
     eye = np.expand_dims(np.eye(modelenc.shape[1]), 1)
     model = np.expand_dims(modelenc, 0)
-    all_dep = model - eye # all_dep[:, i] are all possible dependencies for term i
+    all_dep = model - eye  # all_dep[:, i] are all possible dependencies for term i
 
     # Valid dependencies
     all_dep_valid = np.where(np.all(all_dep >= 0, axis=2))
     from_terms = all_dep_valid[1]
 
     # Extract the dependent terms
-    to_terms = np.argmax(np.all(
-        np.expand_dims(modelenc, 0) == np.expand_dims(all_dep[all_dep_valid], 1),
-        axis=2
-    ), axis=1)
+    to_terms = np.argmax(
+        np.all(np.expand_dims(modelenc, 0) == np.expand_dims(all_dep[all_dep_valid], 1), axis=2), axis=1
+    )
 
     # Compute dependencies
     dep = np.zeros((modelenc.shape[0], modelenc.shape[0]), dtype=np.bool_)
     dep[from_terms, to_terms] = True
 
     return dep
+
 
 def term2strong(term, dep):
     """
@@ -713,6 +711,7 @@ def term2strong(term, dep):
         nterms = np.sum(strong)
 
     return np.flatnonzero(strong)
+
 
 def decode_term(term, model, factors):
     """
@@ -755,7 +754,7 @@ def decode_term(term, model, factors):
         if len(modelenc_term) == 0:
             new_term[i] = term[i]
         else:
-            model_term = np.searchsorted(colstart, modelenc_term, side='right') - 1
+            model_term = np.searchsorted(colstart, modelenc_term, side="right") - 1
             empty_term[model_term] = modelenc[term[i], modelenc_term]
             new_term[i] = np.argmax(np.all(model == empty_term, axis=1))
             empty_term[:] = 0
@@ -763,6 +762,7 @@ def decode_term(term, model, factors):
     new_term = np.unique(new_term)
 
     return new_term
+
 
 def permitted_dep_add(model, mode=None, dep=None, subset=None):
     """
@@ -796,7 +796,7 @@ def permitted_dep_add(model, mode=None, dep=None, subset=None):
     # Subset the relations
     dep = dep if subset is None else dep[subset]
 
-    if mode == 'weak':
+    if mode == "weak":
         # Take all terms without dependencies
         valid = ~np.any(dep, axis=1)
 
@@ -804,7 +804,7 @@ def permitted_dep_add(model, mode=None, dep=None, subset=None):
         if len(model) > 0:
             valid = valid | np.any(dep[:, model], axis=1)
 
-    elif mode == 'strong':
+    elif mode == "strong":
         # Take all terms without dependencies
         valid = ~np.any(dep, axis=1)
 
@@ -818,6 +818,7 @@ def permitted_dep_add(model, mode=None, dep=None, subset=None):
         valid = np.ones(len(dep), dtype=np.bool_)
 
     return valid
+
 
 def permitted_dep_drop(model, mode=None, dep=None, subset=None):
     """
@@ -856,11 +857,11 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
     subset = model[subset]
 
     # Check for the mode
-    if mode == 'strong':
+    if mode == "strong":
         # No dependent terms, otherwise violation of strong heredity
         drop = ~np.any(dep[:, subset][model], axis=0)
 
-    elif mode == 'weak':
+    elif mode == "weak":
         # No single dependent terms left, otherwise violation of weak heredity
         single_deps = np.sum(dep[:, model][model], axis=1) == 1
         drop = ~np.any(dep[:, subset][model[single_deps]], axis=0)
@@ -870,6 +871,7 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
         drop = np.ones(len(subset), dtype=np.bool_)
 
     return drop
+
 
 def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
     """
@@ -905,7 +907,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
     # Check for a forced model
     if forced is not None:
         # Set forced model as the beginning of each sample
-        out[:, :forced.size] = forced
+        out[:, : forced.size] = forced
         start = forced.size
     else:
         # Sample the initial value
@@ -927,7 +929,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             # Random sampling
             out[:, i] = choice_bool(valids, axis=0)
 
-    elif mode == 'weak':
+    elif mode == "weak":
         # Loop to generate a sample
         for i in range(start, out.shape[1]):
             # Compute which terms are valid
@@ -938,14 +940,14 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             # Random sampling
             out[:, i] = choice_bool(valids, axis=0)
 
-    elif mode == 'strong':
+    elif mode == "strong":
         # Compute total number of dependencies
         nb_dep = np.sum(dep, axis=1)
 
         # Loop to generate a sample
         for i in range(start, out.shape[1]):
             # Compute which terms are valid
-            valids = (np.sum(dep[:, out[:, :i]], axis=-1).T == nb_dep)
+            valids = np.sum(dep[:, out[:, :i]], axis=-1).T == nb_dep
             valids[:, no_dep] = True
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
@@ -956,6 +958,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
         raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
 
     return out
+
 
 def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
     """
@@ -991,7 +994,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
         The sampled model which is an array of integers of size (n_samples, size).
     """
     # Validate the mode
-    assert mode != 'strong', 'Mode must be None or weak'
+    assert mode != "strong", "Mode must be None or weak"
 
     # Return a one-by-one sampler if the mode is None
     if mode is None:
@@ -1015,7 +1018,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
 
     # Initialize the models
     models = np.zeros((n_samples, size), dtype=np.int64)
-    models[:, :forced.size] = forced
+    models[:, : forced.size] = forced
 
     # Fix the forced model
     if forced is not None and forced.size > 0:
@@ -1041,14 +1044,13 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
 
         # Loop until a full model
         while i < size:
-
             # Compute the minimal path for each term
             min_path = np.min(nb_dep_, axis=1).filled(0)
 
             # Sample the first
             choices = np.ones(len(dep), dtype=np.bool_)
-            choices[min_path >= size - i] = False # Remove those with too many dependencies
-            choices[model[:i]] = False # Remove already in the model
+            choices[min_path >= size - i] = False  # Remove those with too many dependencies
+            choices[model[:i]] = False  # Remove already in the model
             choices = np.flatnonzero(choices)
             model[i] = np.random.choice(choices)
 
@@ -1059,7 +1061,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
                 # Update with dependencies
                 choices = np.copy(dep[model[i]])
                 choices[min_path >= size - i - 1] = False
-                choices[model[:i+1]] = False
+                choices[model[: i + 1]] = False
                 choices = np.flatnonzero(choices)
 
                 # Check if there are any choices
@@ -1075,7 +1077,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
                     # Determine new choices
                     choices = np.copy(dep[model[i]])
                     choices[min_path >= size - i - 1] = False
-                    choices[model[:i+1]] = False
+                    choices[model[: i + 1]] = False
                     choices = np.flatnonzero(choices)
 
             # Increase the model size

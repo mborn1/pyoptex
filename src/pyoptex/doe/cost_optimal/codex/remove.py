@@ -41,18 +41,23 @@ def groups_remove(Yn, Zs, pos, colstart):
         if Zs[i] is not None:
             # Loop initialization
             Zi = Zs[i]
-            cols = slice(colstart[i], colstart[i+1])
+            cols = slice(colstart[i], colstart[i + 1])
 
             # Detect double split
-            if pos > 0 and pos < len(Zi) - 1 \
-                        and np.all(Yn[pos-1, cols] == Yn[pos, cols]) \
-                        and Zi[pos-1] != Zi[pos+1]:
-                block_end = detect_block_end_from_start(Zi, pos+1)
-                b[i] = (pos, block_end-1, Zi[pos+1], Zi[pos-1])
+            if (
+                pos > 0
+                and pos < len(Zi) - 1
+                and np.all(Yn[pos - 1, cols] == Yn[pos, cols])
+                and Zi[pos - 1] != Zi[pos + 1]
+            ):
+                block_end = detect_block_end_from_start(Zi, pos + 1)
+                b[i] = (pos, block_end - 1, Zi[pos + 1], Zi[pos - 1])
 
     return b
 
+
 ###################################################
+
 
 @profile
 def remove_optimal_onebyone(state, params, prevent_insert=False):
@@ -81,11 +86,10 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     keep = np.ones(len(state.Y), dtype=np.bool_)
 
     # Stats
-    insert_loc = params.stats['insert_loc'][params.stats['it']]
+    insert_loc = params.stats["insert_loc"][params.stats["it"]]
 
     # Find which to drop
     while np.any(state.cost_Y > state.max_cost):
-
         # Loop initialization
         best_metric = np.inf
         best_state = state
@@ -101,33 +105,22 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             keep[k] = False
 
             # Define new design
-            Yn = state.Y[keep[:len(state.Y)]]
-            Xn = state.X[keep[:len(state.Y)]]
+            Yn = state.Y[keep[: len(state.Y)]]
+            Xn = state.X[keep[: len(state.Y)]]
 
             # Compute Zsn and Vinvn
             if any(Zi is not None for Zi in state.Zs):
                 if params.use_formulas:
                     b = groups_remove(Yn, state.Zs, k, params.colstart)
-                    Zsn, Vinvn = remove_update_vinv(
-                        state.Vinv, state.Zs, k, b, params.ratios
-                    )
-                    Zsn = tuple(
-                        force_Zi_asc(Zi) if Zi is not None else None
-                        for Zi in Zsn
-                    )
+                    Zsn, Vinvn = remove_update_vinv(state.Vinv, state.Zs, k, b, params.ratios)
+                    Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
                 else:
                     Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
-                    Vinvn = np.array([
-                        np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios))
-                        for ratios in params.ratios
-                    ])
+                    Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
             else:
                 # Shortcut as there are no hard-to-vary factors
                 Zsn = state.Zs
-                Vinvn = np.broadcast_to(
-                    np.eye(len(Yn)),
-                    (state.Vinv.shape[0], len(Yn), len(Yn))
-                )
+                Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
 
             # Compute cost reduction
             costsn = params.fn.cost(Yn, params)
@@ -142,13 +135,15 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
             # Compute metric loss per cost
             # pylint: disable=line-too-long
-            mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y) \
-                - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
+            mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(
+                state.Y
+            ) - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
             metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
-            if (metric_temp < best_metric or np.isinf(best_metric)) \
-                    and (k != insert_loc or not prevent_insert or insert_loc < 0):
+            if (metric_temp < best_metric or np.isinf(best_metric)) and (
+                k != insert_loc or not prevent_insert or insert_loc < 0
+            ):
                 best_metric = metric_temp
                 best_state = staten
                 best_k = k
@@ -159,11 +154,12 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
         # Drop the run
         state = best_state
         if best_k == insert_loc:
-            params.stats['removed_insert'][params.stats['it']] = True
+            params.stats["removed_insert"][params.stats["it"]] = True
         elif best_k < insert_loc:
             insert_loc -= 1
 
     return state
+
 
 def remove_optimal_onebyone_prevent(state, params):
     """

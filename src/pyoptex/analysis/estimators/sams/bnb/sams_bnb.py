@@ -27,10 +27,12 @@ def sparsify(models, nterms):
     sparse_matrix : `scipy.sparse.csc_matrix`
         The sparse csc matrix.
     """
-    return sparse.csc_matrix((
-                np.ones(models.size, dtype=np.bool_),
-                (np.repeat(np.arange(len(models)), models.shape[1]), models.flatten())
-            ), shape=(len(models), nterms), dtype=np.bool_)
+    return sparse.csc_matrix(
+        (np.ones(models.size, dtype=np.bool_), (np.repeat(np.arange(len(models)), models.shape[1]), models.flatten())),
+        shape=(len(models), nterms),
+        dtype=np.bool_,
+    )
+
 
 class SamsBnB(BnB):
     """
@@ -68,8 +70,7 @@ class SamsBnB(BnB):
 
     """
 
-    def __init__(self, model_size, models, nterms,
-                 mode=None, dependencies=None, forced_model=None):
+    def __init__(self, model_size, models, nterms, mode=None, dependencies=None, forced_model=None):
         """
         Initializes the branch-and-bound object.
 
@@ -98,12 +99,12 @@ class SamsBnB(BnB):
         """
 
         # Input validation
-        assert mode in (None, 'weak', 'strong'), 'The drop-mode must be None, weak or strong'
-        if mode in ('weak', 'strong'):
-            assert dependencies is not None, 'Must specify dependency matrix if using weak or strong heredity'
-            assert len(dependencies.shape) == 2, 'Dependencies must be a 2D array'
-            assert dependencies.shape[0] == dependencies.shape[1], 'Dependency matrix must be square'
-            assert dependencies.shape[0] == nterms, 'Must specify a dependency for each term'
+        assert mode in (None, "weak", "strong"), "The drop-mode must be None, weak or strong"
+        if mode in ("weak", "strong"):
+            assert dependencies is not None, "Must specify dependency matrix if using weak or strong heredity"
+            assert len(dependencies.shape) == 2, "Dependencies must be a 2D array"
+            assert dependencies.shape[0] == dependencies.shape[1], "Dependency matrix must be square"
+            assert dependencies.shape[0] == nterms, "Must specify a dependency for each term"
 
         # Default values
         if forced_model is None:
@@ -171,7 +172,7 @@ class SamsBnB(BnB):
                 models_with_submodel = models_with_submodel[keep]
 
             # Drop all results with this model sequence
-            models_with_sequence = (models[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1])
+            models_with_sequence = models[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1]
             models = models[~models_with_sequence]
 
             # Compute the frequency of this model
@@ -216,10 +217,10 @@ class SamsBnB(BnB):
         for i in options:
             # Create a node
             node = np.zeros(self.model_size, dtype=np.int64)
-            node[:self.forced_model.size] = self.forced_model
+            node[: self.forced_model.size] = self.forced_model
             node[self.forced_model.size] = i
-            node[self.forced_model.size + 1:] = -1
-            yield (node, self.forced_model.size+1)
+            node[self.forced_model.size + 1 :] = -1
+            yield (node, self.forced_model.size + 1)
 
     def upperbound(self, node):
         """
@@ -285,16 +286,16 @@ class SamsBnB(BnB):
         permitted = np.ones(self.nterms, dtype=np.bool_)
         permitted[self.forced_model] = False
         permitted[self.kill] = False
-        permitted[:sized_model[-1]+1] = False # Only allow new terms to the right, otherwise the same model is checked multiple times
-        permitted[permitted] = permitted_dep_add(
-            sized_model, self.mode, self.dependencies, subset=permitted
+        permitted[: sized_model[-1] + 1] = (
+            False  # Only allow new terms to the right, otherwise the same model is checked multiple times
         )
+        permitted[permitted] = permitted_dep_add(sized_model, self.mode, self.dependencies, subset=permitted)
 
         # Add the permitted combinations to the queue
         for i in np.flatnonzero(permitted):
             n = node.copy()
             n[size] = i
-            yield (n, size+1)
+            yield (n, size + 1)
 
     def node_in_results(self, node, results):
         """

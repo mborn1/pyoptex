@@ -39,10 +39,12 @@ def _compute_cs(plot_sizes, ratios, thetas):
     for j, ratio in enumerate(ratios):
         c[j, 0] = 1
         for i in range(1, c.shape[1]):
-            c[j, i] = -ratio[i-1] * np.sum(thetas[:i] * c[j, :i])\
-                         / (thetas[0] + np.sum(ratio[:i] * thetas[1:i+1]))
+            c[j, i] = (
+                -ratio[i - 1] * np.sum(thetas[:i] * c[j, :i]) / (thetas[0] + np.sum(ratio[:i] * thetas[1 : i + 1]))
+            )
     c = c[:, 1:]
     return c
+
 
 def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize_feasible):
     """
@@ -76,10 +78,7 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
-        mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture],
-            factors
-        )
+        mix_constr = mixture_constraints([str(f.name) for f in factors if f.is_mixture], factors)
 
         # Add the mixture constraints
         constraints = mix_constr if constraints is None else (constraints | mix_constr)
@@ -89,6 +88,7 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
         constraints = no_constraints
 
     return FunctionSet(metric, Y2X, constraints.encode(), constraints.func(), init)
+
 
 def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     """
@@ -118,13 +118,13 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         The simulation parameters.
     """
     # Assertions
-    assert len(factors) > 0, 'At least one factor must be provided'
+    assert len(factors) > 0, "At least one factor must be provided"
     for i, f in enumerate(factors):
-        assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
-        assert isinstance(f.re, Plot), f'Factor {i} with name {f.name} does not have a Plot as random effect'
+        assert isinstance(f, Factor), f"Factor {i} is not of type Factor"
+        assert isinstance(f.re, Plot), f"Factor {i} with name {f.name} does not have a Plot as random effect"
     if prior is not None:
-        assert isinstance(prior[0], pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
-    assert min(f.re.level for f in factors) == 0, 'The plots must start from level 0 (easy-to-change factors)'
+        assert isinstance(prior[0], pd.DataFrame), f"The prior must be specified as a dataframe but is a {type(prior)}"
+    assert min(f.re.level for f in factors) == 0, "The plots must start from level 0 (easy-to-change factors)"
 
     # Extract the plot sizes
     nb_plots = max(f.re.level for f in factors) + 1
@@ -135,27 +135,29 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         if plot_sizes[f.re.level] == -1:
             plot_sizes[f.re.level] = f.re.size
         else:
-            assert plot_sizes[f.re.level] == f.re.size, f'Plot sizes at the same plot level must be equal, but are {plot_sizes[f.re.level]} and {f.re.size}'
+            assert plot_sizes[f.re.level] == f.re.size, (
+                f"Plot sizes at the same plot level must be equal, but are {plot_sizes[f.re.level]} and {f.re.size}"
+            )
 
         # Fix ratios
-        r = np.sort(f.re.ratio) \
-                if isinstance(f.re.ratio, (tuple, list, np.ndarray)) else [f.re.ratio]
+        r = np.sort(f.re.ratio) if isinstance(f.re.ratio, (tuple, list, np.ndarray)) else [f.re.ratio]
         if ratios[f.re.level] is None:
             ratios[f.re.level] = r
         else:
-            assert all(i==j for i, j in zip(ratios[f.re.level], r, strict=True)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.re.level]} and {r}'
-    assert not any(r is None for r in ratios), 'Must specify every integer level in the interval [0, nb_plots)'
+            assert all(i == j for i, j in zip(ratios[f.re.level], r, strict=True)), (
+                f"Plot ratios at the same plot level must be equal, but are {ratios[f.re.level]} and {r}"
+            )
+    assert not any(r is None for r in ratios), "Must specify every integer level in the interval [0, nb_plots)"
 
     # Compute number of runs
     nruns = np.prod(plot_sizes)
 
     # Align ratios
     nratios = max([len(r) for r in ratios])
-    assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
-    ratios = np.array([
-        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
-        for ratio in ratios
-    ]).T
+    assert all(len(r) == 1 or len(r) == nratios for r in ratios), (
+        "All ratios must be either a single number or and array of the same size"
+    )
+    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios]).T
 
     # Normalize ratios
     ratios = ratios[:, 1:] / ratios[:, 0:1]
@@ -167,15 +169,12 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
-    colstart = np.concatenate((
-        [0],
-        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ))
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
 
     # Alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
     thetas = np.cumprod(np.concatenate((np.array([1]), plot_sizes)))
-    thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1/thetas[1:])))
+    thetas_inv = np.cumsum(np.concatenate((np.array([0], dtype=np.float64), 1 / thetas[1:])))
 
     # Compute cs
     cs = _compute_cs(plot_sizes, ratios, thetas)
@@ -190,7 +189,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     if prior is not None:
         # Expand prior
         prior, old_plots = prior
-        assert all(isinstance(p, Plot) for p in old_plots), 'Old plots must be of type Plot'
+        assert all(isinstance(p, Plot) for p in old_plots), "Old plots must be of type Plot"
 
         # Normalize factors
         for f in factors:
@@ -209,20 +208,28 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
             if old_plot_sizes[p.level] == -1:
                 old_plot_sizes[p.level] = p.size
             else:
-                assert plot_sizes[p.level] == p.size, f'Prior plot sizes at the same prior plot level must be equal, but are {plot_sizes[p.level]} and {p.size}'
+                assert plot_sizes[p.level] == p.size, (
+                    f"Prior plot sizes at the same prior plot level must be equal, but are {plot_sizes[p.level]} and {p.size}"
+                )
 
         # Assert the prior
-        assert np.prod(old_plot_sizes) == len(prior), f'Prior plot sizes are misspecified, prior has {len(prior)} runs, but plot sizes require {np.prod(old_plot_sizes)} runs'
-        assert nb_old_plots == nb_plots, f'The prior must specify the same number of levels as the factors: prior has {len(old_plot_sizes)} levels, but new design requires {len(plot_sizes)} levels'
+        assert np.prod(old_plot_sizes) == len(prior), (
+            f"Prior plot sizes are misspecified, prior has {len(prior)} runs, but plot sizes require {np.prod(old_plot_sizes)} runs"
+        )
+        assert nb_old_plots == nb_plots, (
+            f"The prior must specify the same number of levels as the factors: prior has {len(old_plot_sizes)} levels, but new design requires {len(plot_sizes)} levels"
+        )
 
         # Validate prior
-        assert not np.any(fn.constraintso(prior)), 'Prior contains constraint violating runs'
-        fn.constraintso.clear() # Clear to permit pickling for multiprocessing
+        assert not np.any(fn.constraintso(prior)), "Prior contains constraint violating runs"
+        fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
             if f.re.level != 0:
                 p = prior[:, i].reshape(alphas_old[f.re.level], -1)
-                assert np.all(np.all(p == np.expand_dims(p[:, 0], 1), axis=1)), f'Prior is not a split-plot design for factor {f.name}'
+                assert np.all(np.all(p == np.expand_dims(p[:, 0], 1), axis=1)), (
+                    f"Prior is not a split-plot design for factor {f.name}"
+                )
 
         # Augment the design
         prior = extend_design(prior, old_plot_sizes, plot_sizes, effect_levels)
@@ -238,20 +245,37 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     if grps is None:
         grps = [lgrps[lvl] for lvl in effect_levels]
     else:
-        grps = [np.concatenate(
-            (grps[i].astype(np.int64), lgrps[effect_levels[i]]),
-            dtype=np.int64
-        ) for i in range(len(effect_levels))]
-    grp_runs = None # Not implemented yet for this optimization
+        grps = [
+            np.concatenate((grps[i].astype(np.int64), lgrps[effect_levels[i]]), dtype=np.int64)
+            for i in range(len(effect_levels))
+        ]
+    grp_runs = None  # Not implemented yet for this optimization
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios,
-        coords, prior, colstart, Zs, Vinv, plot_sizes, np.ascontiguousarray(cs),
-        alphas, thetas, thetas_inv, use_formulas
+        fn,
+        factors,
+        nruns,
+        effect_types,
+        effect_levels,
+        grps,
+        grp_runs,
+        ratios,
+        coords,
+        prior,
+        colstart,
+        Zs,
+        Vinv,
+        plot_sizes,
+        np.ascontiguousarray(cs),
+        alphas,
+        thetas,
+        thetas_inv,
+        use_formulas,
     )
 
     return params
+
 
 def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     """
@@ -278,8 +302,8 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
         The state corresponding to the returned design.
         Contains the encoded design, model matrix, metric, etc.
     """
-    assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'
-    assert max_it > 0, 'Must specify at least one iteration of the coordinate-exchange per random initialization'
+    assert n_tries > 0, "Must specify at least one random initialization (n_tries > 0)"
+    assert max_it > 0, "Must specify at least one iteration of the coordinate-exchange per random initialization"
 
     # Pre initialize metric
     params.fn.metric.preinit(params)
@@ -289,7 +313,6 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     best_state = None
     try:
         for _ in tqdm(range(n_tries)):
-
             # Optimize the design
             Y, state = optimize(params, max_it, validate=validate)
 
@@ -298,7 +321,7 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
                 best_metric = state.metric
                 best_state = State(np.copy(state.Y), np.copy(state.X), state.metric)
     except KeyboardInterrupt:
-        print('Interrupted: returning current results...')
+        print("Interrupted: returning current results...")
 
     # Decode the design
     if best_state is not None:

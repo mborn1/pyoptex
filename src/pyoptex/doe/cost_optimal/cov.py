@@ -34,11 +34,11 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
         new_ratios = np.broadcast_to(new_ratios, (Vinv.shape[0], *new_ratios.shape[1:]))
 
     # Make sure there are enough ratios
-    assert Vinv.shape[0] == new_ratios.shape[0], 'Every Vinv requires a ratio'
-    assert len(new_Zs) == new_ratios.shape[1], 'Every grouping requires a ratio'
+    assert Vinv.shape[0] == new_ratios.shape[0], "Every Vinv requires a ratio"
+    assert len(new_Zs) == new_ratios.shape[1], "Every grouping requires a ratio"
 
     # Convert to expanded format
-    new_Zs = [np.eye(Zi[-1]+1, dtype=np.bool_)[Zi] for Zi in new_Zs]
+    new_Zs = [np.eye(Zi[-1] + 1, dtype=np.bool_)[Zi] for Zi in new_Zs]
 
     # Apply each Zs sequentially
     for i in range(len(new_Zs)):
@@ -50,12 +50,13 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
         VR = np.stack([np.sum(Vinv[:, :, Zi[:, j]], axis=-1) for j in range(Zi.shape[1])], axis=-1)
         SVR = np.stack([np.sum(VR[:, Zi[:, j]], axis=1) for j in range(Zi.shape[1])], axis=1)
         idx = np.diag_indices_from(SVR[0])
-        SVR[:, idx[0], idx[0]] += 1/ratios[:, np.newaxis]
+        SVR[:, idx[0], idx[0]] += 1 / ratios[:, np.newaxis]
 
         # Compute woodbury
         Vinv -= VR @ np.linalg.solve(SVR, np.swapaxes(VR, -2, -1))
 
     return Vinv
+
 
 # pylint: disable=unused-argument,too-many-arguments
 def no_cov(Y, X, Zs, Vinv, costs, random=False):
@@ -93,6 +94,7 @@ def no_cov(Y, X, Zs, Vinv, costs, random=False):
     """
     return Y, X, Zs, Vinv
 
+
 def cov_time_trend(time=1, cost_index=0):
     """
     Covariance function to account for time trends.
@@ -117,6 +119,7 @@ def cov_time_trend(time=1, cost_index=0):
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
     """
+
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
         # Define time array
@@ -134,6 +137,7 @@ def cov_time_trend(time=1, cost_index=0):
         return Y, X, Zs, Vinv
 
     return _cov
+
 
 def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     """
@@ -167,6 +171,7 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
     """
+
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
         if random:
@@ -183,7 +188,7 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
             # Define inner time array
             t_inner = np.mod(cum_cost, time_outer)
             t_inner = np.floor_divide(t_inner, time_inner)
-            t_inner = t_inner / (np.floor_divide(time_outer, time_inner)-1) * 2 - 1
+            t_inner = t_inner / (np.floor_divide(time_outer, time_inner) - 1) * 2 - 1
 
         # Concatenate time array
         Y = np.concatenate((Y, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
@@ -193,7 +198,8 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
 
     return _cov
 
-def cov_block(cost=1, ratios=1., cost_index=0):
+
+def cov_block(cost=1, ratios=1.0, cost_index=0):
     """
     Covariance function to add a blocking factor to the
     system every `cost` in the cumulative cost. This

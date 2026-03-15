@@ -2,6 +2,7 @@
 Module for all restart functions of the CODEX algorithm
 """
 
+
 class RestartEveryNFailed:
     """
     Restarts every `max_it` rejected samples. This is to counter
@@ -15,6 +16,7 @@ class RestartEveryNFailed:
     max_it : int
         The maximum number of consecutively rejected iterations.
     """
+
     def __init__(self, max_it):
         """
         Initializes the restart function
@@ -66,7 +68,7 @@ class RestartEveryNFailed:
         """
         if self.i > self.max_it:
             self.i = 0
-            print('Restarted the optimization from optimum')
+            print("Restarted the optimization from optimum")
             return best_state
         else:
             return state

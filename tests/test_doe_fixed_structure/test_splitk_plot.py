@@ -35,9 +35,15 @@ def test_splitk_plot():
 
     metric = Aopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
     prior = (
-        pd.DataFrame([
-            ["L1", 0, 2], ["L1", 1, 5], ["L2", -1, 3.5], ["L2", 0, 2],
-        ], columns=["A", "B", "C"]),
+        pd.DataFrame(
+            [
+                ["L1", 0, 2],
+                ["L1", 1, 5],
+                ["L2", -1, 3.5],
+                ["L2", 0, 2],
+            ],
+            columns=["A", "B", "C"],
+        ),
         [Plot(level=0, size=2), Plot(level=1, size=2)],
     )
     constraints = parse_constraints_script('(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)

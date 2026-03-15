@@ -1,6 +1,7 @@
 """
 Module for the SAMS MixedLM modelling.
 """
+
 import numpy as np
 from scipy import linalg
 

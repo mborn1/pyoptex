@@ -9,7 +9,7 @@ from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 
 
-def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None):
+def plot_res_diagnostics(df, y_true="y", y_pred="pred", textcols=(), color=None):
     """
     Plots the residual diagnostics of the fit. This plot contains
     four subplots in a 2-by-2 grid.
@@ -73,10 +73,12 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
     true_quant = (true_quant - np.nanmean(true_quant)) / np.nanstd(true_quant)
 
     # Compute figure ranges
-    pred_range = np.array([
-        min(np.nanmin(y_true), np.nanmin(y_pred)),
-        max(np.nanmax(y_true), np.nanmax(y_pred)),
-    ])
+    pred_range = np.array(
+        [
+            min(np.nanmin(y_true), np.nanmin(y_pred)),
+            max(np.nanmax(y_true), np.nanmax(y_pred)),
+        ]
+    )
     quant_range = np.array([theoretical_quant[0], theoretical_quant[-1]])
 
     # Create the figure
@@ -87,72 +89,115 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
         # Create subsets
         c = np.flatnonzero(npcolor == uc)
         tt = dict(
-            hovertemplate=f'x: %{{x}}<br>y: %{{y}}<br>color: {uc}<br>' \
-                    + '<br>'.join(f'{col}: %{{customdata[{j}]}}' for j, col in enumerate(textcols)),
-            customdata=df.iloc[c][list(textcols)].to_numpy()
+            hovertemplate=f"x: %{{x}}<br>y: %{{y}}<br>color: {uc}<br>"
+            + "<br>".join(f"{col}: %{{customdata[{j}]}}" for j, col in enumerate(textcols)),
+            customdata=df.iloc[c][list(textcols)].to_numpy(),
         )
 
         # Quantile subsets
         cquant = quant_idx_inv[c]
 
         # Prediction figure
-        fig.add_trace(go.Scatter(
-            x=y_pred[c], y=y_true[c], mode='markers',
-            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
-            name=str(uc), legendgroup=str(uc), **tt
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=y_pred[c],
+                y=y_true[c],
+                mode="markers",
+                marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
+                name=str(uc),
+                legendgroup=str(uc),
+                **tt,
+            ),
+            row=1,
+            col=1,
+        )
 
         # Error figure 1
-        fig.add_trace(go.Scatter(
-            x=y_pred[c], y=error[c], mode='markers',
-            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
-            name=str(uc), legendgroup=str(uc), showlegend=False, **tt
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Scatter(
+                x=y_pred[c],
+                y=error[c],
+                mode="markers",
+                marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
+                name=str(uc),
+                legendgroup=str(uc),
+                showlegend=False,
+                **tt,
+            ),
+            row=1,
+            col=2,
+        )
 
         # Error figure 2
-        fig.add_trace(go.Scatter(
-            x=c, y=error[c], mode='markers',
-            marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
-            name=str(uc), legendgroup=str(uc), showlegend=False, **tt
-        ), row=2, col=2)
+        fig.add_trace(
+            go.Scatter(
+                x=c,
+                y=error[c],
+                mode="markers",
+                marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
+                name=str(uc),
+                legendgroup=str(uc),
+                showlegend=False,
+                **tt,
+            ),
+            row=2,
+            col=2,
+        )
 
         # QQ-plot
-        fig.add_trace(go.Scatter(
-            x=theoretical_quant[cquant], y=true_quant[cquant],
-            mode='markers', marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
-            name=str(uc), legendgroup=str(uc), showlegend=False, **tt
-        ), row=2, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=theoretical_quant[cquant],
+                y=true_quant[cquant],
+                mode="markers",
+                marker_color=DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)],
+                name=str(uc),
+                legendgroup=str(uc),
+                showlegend=False,
+                **tt,
+            ),
+            row=2,
+            col=1,
+        )
 
     # Draw diagonals
-    fig.add_trace(go.Scatter(
-        x=pred_range, y=pred_range, marker_size=0.01, showlegend=False, line_color='black',
-    ), row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=quant_range, y=quant_range, marker_size=0.01, showlegend=False, line_color='black',
-    ), row=2, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=pred_range,
+            y=pred_range,
+            marker_size=0.01,
+            showlegend=False,
+            line_color="black",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=quant_range,
+            y=quant_range,
+            marker_size=0.01,
+            showlegend=False,
+            line_color="black",
+        ),
+        row=2,
+        col=1,
+    )
 
     # Update ax titles
-    fig.update_xaxes(title='Predicted', row=1, col=1)
-    fig.update_yaxes(title='Real', row=1, col=1)
-    fig.update_xaxes(title='Predicted', row=1, col=2)
-    fig.update_yaxes(title='Error (prediction - real)', row=1, col=2)
-    fig.update_xaxes(title='Run', row=2, col=2)
-    fig.update_yaxes(title='Error (prediction - real)', row=2, col=2)
-    fig.update_xaxes(title='Theoretical quantile', row=2, col=1)
-    fig.update_yaxes(title='Sample quantile', row=2, col=1)
+    fig.update_xaxes(title="Predicted", row=1, col=1)
+    fig.update_yaxes(title="Real", row=1, col=1)
+    fig.update_xaxes(title="Predicted", row=1, col=2)
+    fig.update_yaxes(title="Error (prediction - real)", row=1, col=2)
+    fig.update_xaxes(title="Run", row=2, col=2)
+    fig.update_yaxes(title="Error (prediction - real)", row=2, col=2)
+    fig.update_xaxes(title="Theoretical quantile", row=2, col=1)
+    fig.update_yaxes(title="Sample quantile", row=2, col=1)
 
     # Define legend
     fig.update_layout(
         showlegend=(len(unique_colors) > 1),
-        legend=dict(
-            orientation='h',
-            yanchor='bottom',
-            y=1.02,
-            xanchor='left',
-            x=0,
-            title=color
-        )
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, title=color),
     )
-
 
     return fig

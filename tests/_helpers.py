@@ -9,6 +9,7 @@ import pandas as pd
 
 _REFERENCE_ROOT = Path(__file__).parent / "references"
 
+
 def load_reference(name: str) -> dict:
     """Load a reference JSON file by its key (e.g. 'analysis/simple_model')."""
     path = _REFERENCE_ROOT / f"{name}.json"
@@ -56,6 +57,4 @@ def assert_frame_equal(actual: pd.DataFrame, ref_data: dict, *, rtol: float = 1e
                 err_msg=f"Column '{col}' mismatch",
             )
         else:
-            assert actual[col].tolist() == expected[col].tolist(), (
-                f"Column '{col}' string mismatch"
-            )
+            assert actual[col].tolist() == expected[col].tolist(), f"Column '{col}' string mismatch"

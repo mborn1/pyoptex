@@ -56,7 +56,7 @@ def parse_checkpoints(stdout: str) -> dict:
     checkpoints = {}
     for line in stdout.splitlines():
         if line.startswith("@@CHECKPOINT@@"):
-            payload = line[len("@@CHECKPOINT@@"):]
+            payload = line[len("@@CHECKPOINT@@") :]
             try:
                 obj = json.loads(payload)
                 checkpoints[obj["name"]] = obj["value"]

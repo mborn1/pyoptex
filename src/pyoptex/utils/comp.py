@@ -1,6 +1,7 @@
 """
 Module for utility functions related to computational formulas.
 """
+
 import multiprocessing
 
 import numpy as np
@@ -25,6 +26,7 @@ def outer_integral(arr):
         The integral of the outer product, up to the volume factor.
     """
     return outer_integral_cython_impl(np.ascontiguousarray(arr))
+
 
 def int2bool(arr, size):
     """
@@ -69,6 +71,7 @@ def int2bool(arr, size):
 
     # Return the reshaped array
     return out.reshape(*original_shape[:-1], size)
+
 
 def timeout(func, *args, timeout=1, default=None):
     """

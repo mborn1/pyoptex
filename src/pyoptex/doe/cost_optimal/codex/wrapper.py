@@ -21,13 +21,22 @@ from .utils import FunctionSet
 
 
 def default_fn(
-    nsims, factors, cost, metric, Y2X,
-    init=init_feasible, sample=sample_random, temperature=None,
-    accept=exponential_accept_rel, restart=None, insert=insert_optimal,
-    remove=remove_optimal_onebyone, constraints=None,
-    optimizers=[CEOptimizer(1), CEStructOptimizer(1)], # noqa: B006, B008
-    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)] # noqa: B006, B008
-    ):
+    nsims,
+    factors,
+    cost,
+    metric,
+    Y2X,
+    init=init_feasible,
+    sample=sample_random,
+    temperature=None,
+    accept=exponential_accept_rel,
+    restart=None,
+    insert=insert_optimal,
+    remove=remove_optimal_onebyone,
+    constraints=None,
+    optimizers=[CEOptimizer(1), CEStructOptimizer(1)],  # noqa: B006, B008
+    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)],  # noqa: B006, B008
+):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
@@ -103,10 +112,7 @@ def default_fn(
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
         # Create the mixture constraints
-        mix_constr = mixture_constraints(
-            [str(f.name) for f in factors if f.is_mixture],
-            factors
-        )
+        mix_constr = mixture_constraints([str(f.name) for f in factors if f.is_mixture], factors)
 
         # Add the mixture constraints
         constraints = mix_constr if constraints is None else (constraints | mix_constr)
@@ -117,11 +123,21 @@ def default_fn(
 
     # Return the function set
     return FunctionSet(
-        Y2X, init, cost, metric, constraints.encode(),
-        sample, temperature,
-        accept, restart, insert, remove,
-        optimizers, final_optimizers
+        Y2X,
+        init,
+        cost,
+        metric,
+        constraints.encode(),
+        sample,
+        temperature,
+        accept,
+        restart,
+        insert,
+        remove,
+        optimizers,
+        final_optimizers,
     )
+
 
 def create_parameters(factors, fn, prior=None, use_formulas=True):
     """
@@ -147,33 +163,30 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
         The simulation parameters.
     """
     # Initial input validation
-    assert len(factors) > 0, 'At least one factor must be provided'
+    assert len(factors) > 0, "At least one factor must be provided"
     for i, f in enumerate(factors):
-        assert isinstance(f, Factor), f'Factor {i} is not of type Factor'
+        assert isinstance(f, Factor), f"Factor {i} is not of type Factor"
     if prior is not None:
-        assert isinstance(prior, pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
+        assert isinstance(prior, pd.DataFrame), f"The prior must be specified as a dataframe but is a {type(prior)}"
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     grouped_cols = np.array([bool(f.grouped) for f in factors])
-    ratios = [f.ratio if isinstance(f.ratio, (tuple, list, np.ndarray)) else [f.ratio]
-              for f in factors]
+    ratios = [f.ratio if isinstance(f.ratio, (tuple, list, np.ndarray)) else [f.ratio] for f in factors]
     coords = [f.coords_ for f in factors]
 
     # Align ratios
     nratios = max([len(r) for r in ratios])
-    assert all(len(r) == 1 or len(r) == nratios for r in ratios), 'All ratios must be either a single number or and array of the same size'
-    ratios = np.array([
-        np.repeat(ratio, nratios) if len(ratio) == 1 else ratio
-        for ratio in ratios
-    ]).T.astype(np.float64)
+    assert all(len(r) == 1 or len(r) == nratios for r in ratios), (
+        "All ratios must be either a single number or and array of the same size"
+    )
+    ratios = np.array([np.repeat(ratio, nratios) if len(ratio) == 1 else ratio for ratio in ratios]).T.astype(
+        np.float64
+    )
 
     # Define the starting columns
-    colstart = np.concatenate((
-        [0],
-        np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))
-    ))
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
 
     # Create the prior
     if prior is not None:
@@ -188,26 +201,24 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
         prior = encode_design(prior, effect_types, coords=coords)
 
         # Validate prior
-        assert not np.any(fn.constraints(prior)), 'Prior contains constraint violating runs'
-        fn.constraints.clear() # Clear to permit pickling for multiprocessing
+        assert not np.any(fn.constraints(prior)), "Prior contains constraint violating runs"
+        fn.constraints.clear()  # Clear to permit pickling for multiprocessing
 
     else:
         prior = np.empty((0, colstart[-1]))
 
     # Create the parameters
-    params = Parameters(
-        fn, factors, colstart, coords, ratios, effect_types,
-        grouped_cols, prior, {}, use_formulas
-    )
+    params = Parameters(fn, factors, colstart, coords, ratios, effect_types, grouped_cols, prior, {}, use_formulas)
 
     # Validate the cost of the prior
     if len(params.prior) > 0:
         costs = params.fn.cost(params.prior, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        assert np.all(cost_Y <= max_cost), 'Prior exceeds maximum cost'
+        assert np.all(cost_Y <= max_cost), "Prior exceeds maximum cost"
 
     return params
+
 
 def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True):
     """
@@ -234,7 +245,7 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
         Contains the encoded design, model matrix,
         costs, metric, etc.
     """
-    assert nreps > 0, 'Must specify at least one repetition for the algorithm'
+    assert nreps > 0, "Must specify at least one repetition for the algorithm"
 
     # Simulation
     try:
@@ -243,7 +254,7 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
 
         # If not yet interrupted, run the rest of the repetitions
         if not interrupted:
-            for _ in range(nreps-1):
+            for _ in range(nreps - 1):
                 try:
                     # Run another simulation
                     state, interrupted = simulate(params, nsims=nsims, validate=validate)
@@ -259,7 +270,7 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
                 except ValueError as e:
                     print(e)
     except KeyboardInterrupt:
-        print('Interrupted: returning current results')
+        print("Interrupted: returning current results")
 
     # Decode the design
     Y = decode_design(best_state.Y, params.effect_types, coords=params.coords)
@@ -267,4 +278,3 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
     for f in params.factors:
         Y[str(f.name)] = f.denormalize(Y[str(f.name)])
     return Y, best_state
-

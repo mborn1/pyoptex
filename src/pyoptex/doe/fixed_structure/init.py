@@ -53,15 +53,19 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
         # Initialize unconstrained
         Y = __init_unconstrained(
-            params.effect_types, params.effect_levels, params.grps,
-            params.coords, params.Zs, Y, complete
+            params.effect_types, params.effect_levels, params.grps, params.coords, params.Zs, Y, complete
         )
 
         # Constraint corrections
         Y = __correct_constraints(
-            params.effect_types, params.effect_levels, params.grps,
-            params.coords, params.fn.constraintso,
-            params.Zs, Y, complete
+            params.effect_types,
+            params.effect_levels,
+            params.grps,
+            params.coords,
+            params.fn.constraintso,
+            params.Zs,
+            Y,
+            complete,
         )
 
         # Encode the design
@@ -73,17 +77,18 @@ def initialize_feasible(params, complete=False, max_tries=1000):
 
         # Check if not in infinite loop
         if tries >= max_tries and not feasible:
-
             # Determine which column causes rank deficiency
-            for i in range(1, Xenc.shape[1]+1):
+            for i in range(1, Xenc.shape[1] + 1):
                 if np.linalg.matrix_rank(Xenc[:, :i]) < i:
                     break
 
             # pylint: disable=line-too-long
-            raise ValueError(f'Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded)')
-
+            raise ValueError(
+                f"Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded)"
+            )
 
     return Y, (Yenc, Xenc)
+
 
 def init_random(params, n=1, complete=False):
     """

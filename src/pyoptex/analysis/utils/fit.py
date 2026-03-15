@@ -47,13 +47,17 @@ def r2adj(fit):
 
         # Fit intercept model
         fit0 = sm.MixedLM(
-            fit.model.endog, np.ones((nobs, 1)), fit.model.groups,
-            fit.model.exog_re, fit.model.exog_vc, fit.model.use_sqrt
+            fit.model.endog,
+            np.ones((nobs, 1)),
+            fit.model.groups,
+            fit.model.exog_re,
+            fit.model.exog_vc,
+            fit.model.use_sqrt,
         ).fit()
 
         # If unable to estimate random effect variance, set to zero to avoid instability (similar to lme4)
-        nans = np.isnan(fit0.bse[fit0.k_fe:])
-        fit0.params[fit0.k_fe:][nans] = 0
+        nans = np.isnan(fit0.bse[fit0.k_fe :])
+        fit0.params[fit0.k_fe :][nans] = 0
         fit0.vcomp[nans] = 0
 
         # Extract the groups
@@ -61,21 +65,21 @@ def r2adj(fit):
         Zs = np.stack([np.argmax(vc_mats[i][0], axis=1) for i in range(len(vc_mats))])
 
         # Compute intercept semi-variance
-        V0 = obs_var_from_Zs(Zs, nobs, fit0.params[fit0.k_fe:]) * fit0.scale
-        rss0 = np.sum(V0 * P.T) # = np.trace(V0 @ P)
+        V0 = obs_var_from_Zs(Zs, nobs, fit0.params[fit0.k_fe :]) * fit0.scale
+        rss0 = np.sum(V0 * P.T)  # = np.trace(V0 @ P)
 
         # Compute model semi-variance
-        V1 = obs_var_from_Zs(Zs, nobs, fit.params[fit.k_fe:]) * fit.scale
+        V1 = obs_var_from_Zs(Zs, nobs, fit.params[fit.k_fe :]) * fit.scale
         rss = np.sum(V1 * P.T)
 
         # Compute adjusted R2
         r2a = 1 - rss / rss0
     else:
-
         # Attribute already exists for OLS
         r2a = fit.rsquared_adj
 
     return r2a
+
 
 def fit_ols(X, y):
     """
@@ -105,6 +109,7 @@ def fit_ols(X, y):
     fit.vcomp = np.array([], dtype=np.float64)
     fit.converged = True
     return fit
+
 
 def fit_mixedlm(X, y, groups):
     """
@@ -141,25 +146,21 @@ def fit_mixedlm(X, y, groups):
 
     # Create the mixed lm spec
     exog_vc = VCSpec(
-        [f'g{i}' for i in range(len(groups))],
-        [[[f'g{i}[{col}]' for col in dummy.columns]] for i, dummy in enumerate(dummies)],
-        [[dummy.to_numpy()] for dummy in dummies]
+        [f"g{i}" for i in range(len(groups))],
+        [[[f"g{i}[{col}]" for col in dummy.columns]] for i, dummy in enumerate(dummies)],
+        [[dummy.to_numpy()] for dummy in dummies],
     )
 
     # Fit the model
     fit = sm.MixedLM(y, X, np.ones(len(X)), exog_vc=exog_vc).fit()
 
     # If unable to estimate random effect variance, set to zero to avoid instability (similar to lme4)
-    nans = np.isnan(fit.bse[fit.k_fe:])
-    fit.params[fit.k_fe:][nans] = 0
+    nans = np.isnan(fit.bse[fit.k_fe :])
+    fit.params[fit.k_fe :][nans] = 0
     fit.vcomp[nans] = 0
 
     # Add additional values
-    fit.rsquared = cached_property(
-        lambda self: r2_score(self.model.endog, self.predict(self.model.exog))
-    )
-    fit.rsquared_adj = cached_property(
-        lambda self: r2adj(self)
-    )
+    fit.rsquared = cached_property(lambda self: r2_score(self.model.endog, self.predict(self.model.exog)))
+    fit.rsquared_adj = cached_property(lambda self: r2adj(self))
 
     return fit

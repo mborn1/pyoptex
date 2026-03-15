@@ -33,12 +33,19 @@ def test_splitk_augment_split():
 
     metric = Aopt()
     prior = (
-        pd.DataFrame([
-            ["L1", 0, -1], ["L1", 1, 1],
-            ["L2", -1, 0], ["L2", 0, 0],
-            ["L3", -1, 0], ["L3", 1, 1],
-            ["L2", 1, -1], ["L2", 0, 1],
-        ], columns=["A", "B", "C"]),
+        pd.DataFrame(
+            [
+                ["L1", 0, -1],
+                ["L1", 1, 1],
+                ["L2", -1, 0],
+                ["L2", 0, 0],
+                ["L3", -1, 0],
+                ["L3", 1, 1],
+                ["L2", 1, -1],
+                ["L2", 0, 1],
+            ],
+            columns=["A", "B", "C"],
+        ),
         [Plot(level=0, size=2), Plot(level=1, size=4)],
     )
 

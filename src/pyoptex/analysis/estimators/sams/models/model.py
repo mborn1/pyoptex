@@ -9,7 +9,8 @@ import numpy as np
 
 from .....utils.model import permitted_dep_add
 
-ModelResults = namedtuple('ModelResults', 'metric params')
+ModelResults = namedtuple("ModelResults", "metric params")
+
 
 class Model:
     """
@@ -34,7 +35,8 @@ class Model:
         of terms in the encoded model (output from Y2X). Term i depends on term j
         if dep(i, j) = true.
     """
-    def __init__(self, X, y, forced=None, mode='weak', dep=None):
+
+    def __init__(self, X, y, forced=None, mode="weak", dep=None):
         """
         Initialize of the base model in the SAMS algorithm.
 
@@ -54,14 +56,16 @@ class Model:
             if dep(i, j) = true.
         """
         # Validate the inputs
-        assert len(X) == len(y), 'Must have the same number of runs for the data as the output variable'
-        assert forced is None or np.all(forced < X.shape[1]), 'The forced terms are not in the model matrix, index is too high'
-        assert mode in (None, 'weak', 'strong'), 'The mode must be None, weak or strong heredity'
+        assert len(X) == len(y), "Must have the same number of runs for the data as the output variable"
+        assert forced is None or np.all(forced < X.shape[1]), (
+            "The forced terms are not in the model matrix, index is too high"
+        )
+        assert mode in (None, "weak", "strong"), "The mode must be None, weak or strong heredity"
         if mode is not None:
-            assert dep is not None, 'Must specify a dependency matrix if the mode is weak or strong heredity'
-            assert len(dep.shape) == 2, 'Dependencies must be a 2D array'
-            assert dep.shape[0] == dep.shape[1], 'Dependency matrix must be square'
-            assert dep.shape[0] == X.shape[1], 'Must specify a dependency for each term'
+            assert dep is not None, "Must specify a dependency matrix if the mode is weak or strong heredity"
+            assert len(dep.shape) == 2, "Dependencies must be a 2D array"
+            assert dep.shape[0] == dep.shape[1], "Dependency matrix must be square"
+            assert dep.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
         # Create default forced
         if forced is None:
@@ -93,7 +97,7 @@ class Model:
             forced terms.
         """
         # Sort in-place (non-forced part)
-        model[self.forced.size:].sort()
+        model[self.forced.size :].sort()
 
         # Return the model
         return model
@@ -193,7 +197,7 @@ class Model:
             in the model matrix X.
         """
         # Sample sequentially
-        model[:self.forced.size] = self.forced
+        model[: self.forced.size] = self.forced
         for i in range(self.forced.size, len(model)):
             model[i] = self._sample(model[:i])
 
@@ -247,7 +251,9 @@ class Model:
         models = []
         for model in combinations(range(len(self.dep)), model_size):
             model = np.array(model)
-            if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(np.isin(self.forced, model, assume_unique=True)):
+            if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(
+                np.isin(self.forced, model, assume_unique=True)
+            ):
                 models.append(model)
         return np.array(models)
 
@@ -266,7 +272,8 @@ class Model:
             An object of type model results containing the optimization
             metric and the estimated coefficients.
         """
-        raise NotImplementedError('This function must be implemented')
+        raise NotImplementedError("This function must be implemented")
+
 
 def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=10, n_warmup=1000):
     """
@@ -322,12 +329,12 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
         m.mutate(model)
 
     # Main sampling loop
-    for i in range(n_samples*skip):
+    for i in range(n_samples * skip):
         # Mutate the model
         m.mutate(model)
 
         # Every skip, store the result
         if i % skip == 0:
-            samples[int(i/skip)] = model
+            samples[int(i / skip)] = model
 
     return samples

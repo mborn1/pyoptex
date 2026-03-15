@@ -30,10 +30,12 @@ def test_approx_omars():
 
     n1, n2 = len(factors), len(model) - 2 * len(factors) - 1
     w1, w2 = 1 / ((n1 + 1) * (n1 + 1)), 1 / ((n2 + n1) * (n1 + 1))
-    W = np.block([
-        [w1 * np.ones((1, 1)), w1 * np.ones((1, n1)), w2 * np.ones((1, n2)), w2 * np.zeros((1, n1))],
-        [w1 * np.ones((n1, 1)), w1 * np.ones((n1, n1)), w2 * np.ones((n1, n2)), w2 * np.ones((n1, n1))],
-    ])
+    W = np.block(
+        [
+            [w1 * np.ones((1, 1)), w1 * np.ones((1, n1)), w2 * np.ones((1, n2)), w2 * np.zeros((1, n1))],
+            [w1 * np.ones((n1, 1)), w1 * np.ones((n1, n1)), w2 * np.ones((n1, n2)), w2 * np.ones((n1, n1))],
+        ]
+    )
     W[np.arange(len(W)), np.arange(len(W))] = 0
 
     main_effects = np.arange(len(factors) + 1)

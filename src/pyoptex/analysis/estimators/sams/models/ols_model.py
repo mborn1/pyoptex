@@ -89,7 +89,7 @@ class OlsModel(Model):
 
         else:
             # Compute results
-            mse_resid = (se[0] / (X.shape[0] - X.shape[1]))
+            mse_resid = se[0] / (X.shape[0] - X.shape[1])
 
         # Compute the adjusted R2
         r2adj = 1 - mse_resid / (self.ss_intercept)

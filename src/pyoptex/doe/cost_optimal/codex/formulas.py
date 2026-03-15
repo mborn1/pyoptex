@@ -10,6 +10,7 @@ from ._formulas_cy import group_update_vinv as group_update_vinv_cy
 # Variable in a to indicate no update is necessary
 NO_UPDATE = -1
 
+
 def ce_update_vinv(Vinv, Zi, b, ratios):
     """
     Computes the update to Vinv based on the iterative application
@@ -44,6 +45,7 @@ def ce_update_vinv(Vinv, Zi, b, ratios):
 
     return Zi, Vinv
 
+
 def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
     """
     Computes the update to Vinv based on the insertion of a row
@@ -74,10 +76,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
     """
     # Insert run 'a' in grouping matrices
     Vinvn = add_update_vinv(Vinv, Zs, a, pos, ratios)
-    Zsn = tuple([
-        np.insert(Zi, pos, ai) if Zi is not None else None
-        for Zi, ai in zip(Zs, a, strict=True)
-    ])
+    Zsn = tuple([np.insert(Zi, pos, ai) if Zi is not None else None for Zi, ai in zip(Zs, a, strict=True)])
 
     # Compute updates to Zi
     for i in range(len(Zsn)):
@@ -90,6 +89,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
             Zsn[i][row_start:row_end] = group_to
 
     return Zsn, Vinvn
+
 
 def remove_update_vinv(Vinv, Zs, pos, b, ratios):
     """
@@ -119,10 +119,7 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
     """
     # Remove run from groupings
     Vinvn = del_vinv_update(Vinv, pos, ratios)
-    Zsn = tuple([
-        np.delete(Zi, pos) if Zi is not None else None
-        for Zi in Zs
-    ])
+    Zsn = tuple([np.delete(Zi, pos) if Zi is not None else None for Zi in Zs])
 
     # Compute updates to Zi
     for i in range(len(Zsn)):
@@ -136,7 +133,9 @@ def remove_update_vinv(Vinv, Zs, pos, b, ratios):
 
     return Zsn, Vinvn
 
+
 ###################################
+
 
 def detect_block_end_from_start(groups, start):
     """
@@ -158,11 +157,12 @@ def detect_block_end_from_start(groups, start):
     end : int
         The last index (excluded) of the block.
     """
-    end = start + (groups.size - start) \
-            - np.searchsorted((groups[start:] == groups[start])[::-1], True)
+    end = start + (groups.size - start) - np.searchsorted((groups[start:] == groups[start])[::-1], True)
     return end
 
+
 ###################################
+
 
 @profile
 def group_update_vinv(Vinv, Zi, b, ratios):
@@ -180,9 +180,9 @@ def group_update_vinv(Vinv, Zi, b, ratios):
     V = np.zeros((2, len(Zi)))
 
     # Create V
-    V[0, Zi==group_from] = -1
-    V[0, Zi==group_to] = 1
-    V[0, row_start:row_end] = 2*(1 + V[0, row_start:row_end])
+    V[0, Zi == group_from] = -1
+    V[0, Zi == group_to] = 1
+    V[0, row_start:row_end] = 2 * (1 + V[0, row_start:row_end])
     V[1, row_start:row_end] = 1
 
     # Create U
@@ -198,6 +198,7 @@ def group_update_vinv(Vinv, Zi, b, ratios):
     Vinv -= VU @ (PpDinv @ (V @ Vinv))
 
     return Vinv
+
 
 @profile
 def add_update_vinv(Vinv, Zs, a, pos, ratios):
@@ -228,13 +229,14 @@ def add_update_vinv(Vinv, Zs, a, pos, ratios):
 
     # If pos is not the last row
     if pos < Vinv.shape[1]:
-        Vinvn[:, pos+1:, pos] = Bn[:, pos:]
-        Vinvn[:, pos, pos+1:] = Bn[:, pos:]
-        Vinvn[:, :pos, pos+1:] = An[:, :pos, pos:]
-        Vinvn[:, pos+1:, :pos] = An[:, pos:, :pos]
-        Vinvn[:, pos+1:, pos+1:] = An[:, pos:, pos:]
+        Vinvn[:, pos + 1 :, pos] = Bn[:, pos:]
+        Vinvn[:, pos, pos + 1 :] = Bn[:, pos:]
+        Vinvn[:, :pos, pos + 1 :] = An[:, :pos, pos:]
+        Vinvn[:, pos + 1 :, :pos] = An[:, pos:, :pos]
+        Vinvn[:, pos + 1 :, pos + 1 :] = An[:, pos:, pos:]
 
     return Vinvn
+
 
 @profile
 def del_vinv_update(Vinv, pos, ratios):
@@ -250,8 +252,7 @@ def del_vinv_update(Vinv, pos, ratios):
 
     # Update
     b = Vinv[:, pos, keep]
-    dinv = 1/Vinv[:, pos, pos]
+    dinv = 1 / Vinv[:, pos, pos]
     Vinvn -= ((b.T * dinv).T)[:, :, np.newaxis] @ b[:, np.newaxis, :]
 
     return Vinvn
-
