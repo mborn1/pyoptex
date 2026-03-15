@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 EXAMPLES_ROOT = Path(__file__).parent.parent / "examples"
-REFERENCE_ROOT = Path(__file__).parent / "references" / "local"
+REFERENCE_ROOT = Path(__file__).parent / "references"
 
 EXAMPLE_MAP = {
     # (script_path_relative_to_examples, reference_key)

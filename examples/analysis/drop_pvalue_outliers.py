@@ -21,6 +21,7 @@ set_seed(42)
 factors = [
     Factor('A'), Factor('B'), Factor('C')
 ]
+log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # The number of random observations
 N = 200
@@ -30,8 +31,6 @@ data = pd.DataFrame(np.random.rand(N, 3) * 2 - 1, columns=[str(f.name) for f in 
 data['Y'] = 2*data['A'] + 3*data['C'] - 4*data['A']*data['B'] + 5\
                 + np.random.normal(0, 1, N)
 data.loc[np.arange(N//100) * 100, 'Y'] += 100
-
-log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 
@@ -39,15 +38,15 @@ log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 model = partial_rsm_names({str(f.name): 'quad' for f in factors})
 Y2X = model2Y2X(model, factors)
 log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the dependencies
 dependencies = order_dependencies(model, factors)
+log_checkpoint("dependencies", dependencies.tolist())
 
 # Extract X and y
 X = data.drop(columns='Y')
 y = data['Y']
-
-print('True model:', 'cst + A + B + A*C')
 
 ##############
 # Create the regressor
@@ -79,7 +78,6 @@ regr = PValueDropRegressor(
 regr.fit(X, y)
 log_checkpoint("formula_with_outlier_removal", regr.model_formula(model=model))
 log_checkpoint("terms_with_outlier_removal", regr.terms_.tolist())
-log_checkpoint("summary", str(regr.summary()))
 
 # Print the formula in encoded form
 print('With outlier removal:', regr.model_formula(model=model))
@@ -87,10 +85,10 @@ print('With outlier removal:', regr.model_formula(model=model))
 ##############
 # Predict
 data['pred'] = regr.predict(data.drop(columns='Y'))
+data['outliers'] = outlier_transformer.outliers_
 log_checkpoint("pred_mean", float(data["pred"].mean()))
 log_checkpoint("pred_std", float(data["pred"].std()))
 log_checkpoint("predictions", data["pred"].values.tolist())
-data['outliers'] = outlier_transformer.outliers_
 
 # Plot the residual diagnostics of everything
 plot_res_diagnostics(

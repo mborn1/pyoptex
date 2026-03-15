@@ -90,4 +90,3 @@ appreciated by the community.
 
 ## Contributing
 Any ideas, bugs and features requests can be added as an [issue](https://github.com/mborn1/pyoptex/issues). Any direct code contributions can be added via pull requests.
-If you want to run the tests, make sure to run `python tests/_capture_references.py` from a stable branch first to generate the references for the tests.

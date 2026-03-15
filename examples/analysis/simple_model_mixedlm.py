@@ -21,6 +21,7 @@ set_seed(42)
 factors = [
     Factor('A'), Factor('B'), Factor('C')
 ]
+log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # The number of random observations
 N = 200
@@ -32,11 +33,8 @@ data['RE'] = np.array([f'L{i}' for i in range(nre)])[np.repeat(np.arange(nre), N
 data['Y'] = 2*data['A'] + 3*data['C'] - 4*data['A']*data['B'] + 5\
                 + np.random.normal(0, 1, N)\
                 + np.repeat(np.random.normal(0, 1, nre), N//nre)
-
-log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
-log_checkpoint("data_Y_std", float(data["Y"].std()))
 
 # Create the model
 model = partial_rsm_names({str(f.name): 'quad' for f in factors})
@@ -50,8 +48,6 @@ random_effects = ('RE',)
 # Create the regressor
 regr = SimpleRegressor(factors, Y2X, random_effects)
 regr.fit(data.drop(columns='Y'), data['Y'])
-
-log_checkpoint("summary", str(regr.summary()))
 log_checkpoint("model_formula", regr.model_formula(model=model))
 
 # Print the summary

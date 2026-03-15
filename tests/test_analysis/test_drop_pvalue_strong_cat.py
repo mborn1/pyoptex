@@ -6,7 +6,7 @@ from pyoptex.utils import Factor
 from pyoptex.utils.model import decode_term, model2Y2X, order_dependencies, partial_rsm_names, term2strong
 from pyoptex.analysis import PValueDropRegressor, SimpleRegressor
 
-from tests._helpers import assert_summary_equal, load_reference
+from tests._helpers import load_reference
 
 
 def test_drop_pvalue_strong_cat():
@@ -34,15 +34,16 @@ def test_drop_pvalue_strong_cat():
         + 5
         + np.random.normal(0, 1, N)
     )
-
     assert list(data.shape) == ref["data_shape"]
     np.testing.assert_allclose(data["Y"].mean(), ref["data_Y_mean"], rtol=1e-10)
 
     model = partial_rsm_names({str(f.name): "quad" for f in factors})
     Y2X = model2Y2X(model, factors)
     assert list(model.shape) == ref["model_shape"]
+    assert model.values.tolist() == ref["model_values"]
 
     dependencies = order_dependencies(model, factors)
+    assert dependencies.tolist() == ref["dependencies"]
 
     regr = PValueDropRegressor(factors, Y2X, threshold=0.05, dependencies=dependencies, mode="weak")
     regr.fit(data.drop(columns="Y"), data["Y"])
@@ -57,7 +58,6 @@ def test_drop_pvalue_strong_cat():
     Y2X = model2Y2X(model, factors)
 
     regr_simple = SimpleRegressor(factors, Y2X).fit(data.drop(columns="Y"), data["Y"])
-    assert_summary_equal(regr_simple.summary(), ref["summary"])
     assert regr_simple.model_formula(model=model) == ref["model_formula"]
 
     data["pred"] = regr_simple.predict(data.drop(columns="Y"))

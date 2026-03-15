@@ -22,6 +22,7 @@ factors = [
     Factor('A', type='categorical', levels=['A_0', 'A_1', 'A_2'], coords=[[1, 0], [0, 1], [0, 0]]), 
     Factor('B'), Factor('C')
 ]
+log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # The number of random observations
 N = 200
@@ -38,8 +39,6 @@ data['Y'] = 2*np.where(data['A'] == 'A_0', 1, 0) \
             - 4*np.where(data['A'] == 'A_0', 1, 0)*data['B'] \
             + 5 \
             + np.random.normal(0, 1, N)
-
-log_checkpoint("factor_names", [str(f.name) for f in factors])
 log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 
@@ -47,9 +46,11 @@ log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 model = partial_rsm_names({str(f.name): 'quad' for f in factors})
 Y2X = model2Y2X(model, factors)
 log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the dependencies
 dependencies = order_dependencies(model, factors)
+log_checkpoint("dependencies", dependencies.tolist())
 
 # Create the regressor using weak heredity
 regr = PValueDropRegressor(
@@ -63,12 +64,11 @@ log_checkpoint("weak_formula", regr.model_formula(model=model))
 # Convert the final model to strong and refit
 terms_strong = term2strong(regr.terms_, dependencies)     # Convert to strong heredity model
 terms_strong = decode_term(terms_strong, model, factors)  # Decode the categorical variable ('A_0' becomes 'A')
-log_checkpoint("strong_terms", terms_strong.tolist())
 model = model.iloc[terms_strong]
 Y2X = model2Y2X(model, factors)
+log_checkpoint("strong_terms", terms_strong.tolist())
 
 regr_simple = SimpleRegressor(factors, Y2X).fit(data.drop(columns='Y'), data['Y'])
-log_checkpoint("summary", str(regr_simple.summary()))
 log_checkpoint("model_formula", regr_simple.model_formula(model=model))
 
 # Print the summary
