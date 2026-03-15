@@ -1,6 +1,6 @@
 # Run full test suite on every PR across Python versions and platforms.
 # Each job runs independently; any failure fails the workflow with clear per-job errors.
-name: Test suite (PR)
+name: Test suite
 
 on:
   pull_request:
