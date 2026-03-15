@@ -8,8 +8,8 @@ class Accept:
     """
     The base class to create an acceptance function for the SAMS
     procedure. Requires the functions
-    :py:func:`reset <pyoptex.analysis.estimators.sams.accept.Accept.reset>`, 
-    :py:func:`accepted <pyoptex.analysis.estimators.sams.accept.Accept.accepted>`, 
+    :py:func:`reset <pyoptex.analysis.estimators.sams.accept.Accept.reset>`,
+    :py:func:`accepted <pyoptex.analysis.estimators.sams.accept.Accept.accepted>`,
     :py:func:`rejected <pyoptex.analysis.estimators.sams.accept.Accept.rejected>`,
     and :py:func:`__call__ <<pyoptex.analysis.estimators.sams.accept.Accept.__call__>`.
     """
@@ -62,7 +62,7 @@ class ExponentialAccept:
     ----------
     T0 : float
         The initial temperature of the system.
-    rho : float 
+    rho : float
         The reduction factor when the new state is accepted.
         Should be less than 1.
     alpha : float

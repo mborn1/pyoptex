@@ -10,7 +10,7 @@ from pyoptex.utils._comp_cy import choice_bool, int2bool_cython_impl, outer_inte
 
 def outer_integral(arr):
     """
-    Computes the integral of the outer products of the array rows 
+    Computes the integral of the outer products of the array rows
     using the Monte-Carlo approximation, up to the volume factor.
     This is a simple average of the outer products.
 

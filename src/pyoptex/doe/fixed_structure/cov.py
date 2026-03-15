@@ -90,7 +90,7 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
     Returns
     -------
     cov : func(Y, X)
-        The covariance function. 
+        The covariance function.
     """
     assert nruns % ntime_outer == 0, 'Number of runs should be divisable by the number of time changes'
     assert (nruns//ntime_outer) % ntime_inner == 0, 'Number of runs within one outer timestep should be divisable by the number of inner time changes'

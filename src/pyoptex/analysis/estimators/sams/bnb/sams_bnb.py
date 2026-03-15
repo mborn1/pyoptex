@@ -71,7 +71,7 @@ class SamsBnB(BnB):
     def __init__(self, model_size, models, nterms,
                  mode=None, dependencies=None, forced_model=None):
         """
-        Initializes the branch-and-bound object. 
+        Initializes the branch-and-bound object.
 
         Parameters
         ----------
@@ -256,7 +256,7 @@ class SamsBnB(BnB):
 
         Returns
         -------
-        is_leaf : bool 
+        is_leaf : bool
             Whether the node is a leaf.
         """
         # Check if a full model
@@ -309,7 +309,7 @@ class SamsBnB(BnB):
         
         Returns
         -------
-        in_results : bool 
+        in_results : bool
             Whether the node is in the results or not.
         """
         return any(np.all(results[i][0] == node[0]) for i in range(len(results)))

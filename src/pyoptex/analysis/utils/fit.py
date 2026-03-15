@@ -20,12 +20,12 @@ def r2adj(fit):
     .. math::
 
         R_{adj}^2 &= 1 - \\frac{trace(V1 P)}{trace(V0 P)} \\\\
-        P &= I_N - \\frac{1}{n} 1_N 1_N^T 
+        P &= I_N - \\frac{1}{n} 1_N 1_N^T
 
     N is the number of runs.
     :math:`V_0` and :math:`V_1` are the observation covariance matrices
     of the model fitted with only the intercept and the complete model.
-    :math:`I_N` is the identity matrix of size (N, N). :math:`1_N` is 
+    :math:`I_N` is the identity matrix of size (N, N). :math:`1_N` is
     a vector of ones of size N.
 
     Parameters
@@ -80,12 +80,12 @@ def r2adj(fit):
 def fit_ols(X, y):
     """
     Wrapper to fit a statsmodels OLS model. It includes
-    the following additional attributes required for a 
+    the following additional attributes required for a
     more synchronized output between OLS and Mixed LM.
 
     * **k_fe**: The number of parameters.
     * **vcomp**: An empty array.
-    * **converged**: True. 
+    * **converged**: True.
 
     Parameters
     ----------
@@ -109,7 +109,7 @@ def fit_ols(X, y):
 def fit_mixedlm(X, y, groups):
     """
     Wrapper to fit a statsmodels Mixed LM model. It includes
-    the following additional attributes required for a 
+    the following additional attributes required for a
     more synchronized output between OLS and Mixed LM.
 
     * **rsquared** : The simple r2_score of the fit.

@@ -47,7 +47,7 @@ class RestartEveryNFailed:
 
     def call(self, state, best_state):
         """
-        Calls the restart function. If the number of 
+        Calls the restart function. If the number of
         consecutively rejected iterations is larger
         than `max_it`, the `best_state` is returned.
         Otherwise the `state` is returned.

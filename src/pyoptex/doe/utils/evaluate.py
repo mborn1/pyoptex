@@ -152,10 +152,10 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     drop_nans : bool
         Whether to drop rows and columns that are completely nan.
     corr_abs : bool
-        Whether to drop the sign of the correlation. 
-        If True, the colors in the figure only display magnitudes 
+        Whether to drop the sign of the correlation.
+        If True, the colors in the figure only display magnitudes
         using a sequential colormap ('Cividis').
-        If False, the colors of the figure show the sign, using 
+        If False, the colors of the figure show the sign, using
         a diverging colormap ('RdBu').
 
     Returns

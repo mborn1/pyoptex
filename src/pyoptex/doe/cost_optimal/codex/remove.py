@@ -58,7 +58,7 @@ def groups_remove(Yn, Zs, pos, colstart):
 def remove_optimal_onebyone(state, params, prevent_insert=False):
     """
     Removes runs from the design until within the cost constraints. Runs
-    are selected and removed one-by-one for minimal metric loss and 
+    are selected and removed one-by-one for minimal metric loss and
     maximal cost reduction.
 
     Parameters
@@ -167,8 +167,8 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
 
 def remove_optimal_onebyone_prevent(state, params):
     """
-    Similar to 
-    :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.codex.remove.remove_optimal_onebyone>`, 
+    Similar to
+    :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.codex.remove.remove_optimal_onebyone>`,
     but with prevent_insert = True.
 
     Parameters

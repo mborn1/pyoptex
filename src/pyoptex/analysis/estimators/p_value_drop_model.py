@@ -21,7 +21,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
     'weak' or 'strong' respectively, and providing a dependency matrix.
 
     .. note::
-        It also includes all parameters and attributes from 
+        It also includes all parameters and attributes from
         :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>` and
         :py:class:`ConditionalRegressionMixin <pyoptex.analysis.mixins.conditional_mixin.ConditionalRegressionMixin>`
 
@@ -52,7 +52,7 @@ class PValueDropRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstim
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         conditional : bool
             Whether to create a conditional model or not.

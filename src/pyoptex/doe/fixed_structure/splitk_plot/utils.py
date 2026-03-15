@@ -56,7 +56,7 @@ def obs_var_Zs(plot_sizes):
 def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>` 
+    :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>`
     followed by :py:func:`obs_var_from_Zs <pyoptex.utils.design.obs_var_from_Zs>`.
 
     Parameters
@@ -65,7 +65,7 @@ def obs_var(plot_sizes, ratios=None):
         The sizes of each plot. e.g. [3, 4] is a split-plot design
         with 4 plots and 3 runs per plot.
     ratios : np.array(1d)
-        The variance ratios of the different groups compared to the variance of 
+        The variance ratios of the different groups compared to the variance of
         the random errors.
 
     Returns
@@ -131,15 +131,15 @@ def level_grps(s0, s1):
 def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     """
     Extend an existing design Y with initial plot sizes (`plot_sizes`) to
-    a new design with `new_plot_sizes`. This function only extends the 
-    existing design by adding new runs in the correct positions and forcing 
-    the correct factor levels where necessary. It does not perform any 
+    a new design with `new_plot_sizes`. This function only extends the
+    existing design by adding new runs in the correct positions and forcing
+    the correct factor levels where necessary. It does not perform any
     optimization or initialization of the new runs.
 
     Parameters
     ----------
     Y : np.array(2d)
-        The initial design. If all initial plot sizes are zero, 
+        The initial design. If all initial plot sizes are zero,
         a new design is created with all zeros.
     plot_sizes : np.array(1d)
         The initial plot sizes of the design.
@@ -243,7 +243,7 @@ def min_plot_levels(tppl):
     ----------
     tppl : np.array(1d)
         The number of terms per plot level. Is the result
-        of calling 
+        of calling
         :py:func:`terms_per_plot_level <pyoptex.doe.fixed_structure.splitk_plot.utils.terms_per_plot_level>`.
 
     Returns

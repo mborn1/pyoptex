@@ -16,7 +16,7 @@ from .utils import Parameters, Plot, extend_design, level_grps, obs_var, obs_var
 
 def _compute_cs(plot_sizes, ratios, thetas):
     """
-    Computes the c-coefficients of the inverse of the 
+    Computes the c-coefficients of the inverse of the
     observation covariance matrix (Vinv).
 
     Parameters
@@ -59,8 +59,8 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
         The function converting from the design matrix to the
         model matrix.
     constraints : func
-        The constraints function, 
-        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>` 
+        The constraints function,
+        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
         by default.
     init : func
         The initialization function,
@@ -95,8 +95,8 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
 
 def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     """
-    Creates the parameters object by preprocessing the inputs. 
-    This is a utility function to transform each variable 
+    Creates the parameters object by preprocessing the inputs.
+    This is a utility function to transform each variable
     to its correct representation.
 
     Parameters
@@ -106,7 +106,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         A set of operators for the algorithm.
     prior : None or (pd.DataFrame, list(:py:class:`Plot <pyoptex.doe.fixed_structure.splitk_plot.utils.Plot>`)
-        A possible prior design to use for augmentation. Must be 
+        A possible prior design to use for augmentation. Must be
         denormalized and decoded. The list of plots represents the configuration
         of the prior.
     grps : list(np.array(1d) or None)
@@ -279,7 +279,7 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
         A pandas dataframe with the best found design. The
         design is decoded and denormalized.
     best_state : :py:class:`State <pyoptex.doe.fixed_structure.splitk_plot.utils.State>`
-        The state corresponding to the returned design. 
+        The state corresponding to the returned design.
         Contains the encoded design, model matrix, metric, etc.
     """
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'

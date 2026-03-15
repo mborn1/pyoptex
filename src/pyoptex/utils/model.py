@@ -61,9 +61,9 @@ def partial_rsm(nquad, ntfi, nlin):
 
 def partial_rsm_names(effects):
     """
-    Creates a partial response surface model 
-    :py:func:`partial_rsm <pyoptex.utils.model.partial_rsm>` 
-    from the provided effects. The effects is a dictionary mapping 
+    Creates a partial response surface model
+    :py:func:`partial_rsm <pyoptex.utils.model.partial_rsm>`
+    from the provided effects. The effects is a dictionary mapping
     the column name to one of ('lin', 'tfi', 'quad').
 
     Parameters
@@ -93,7 +93,7 @@ def encode_model(model, effect_types):
     """
     Encodes the model according to the effect types.
     Each continuous variable is encoded as a single column,
-    each categorical variable is encoded by creating n-1 columns 
+    each categorical variable is encoded by creating n-1 columns
     (with n the number of categorical levels).
 
     Parameters
@@ -201,7 +201,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
     Examples:
 
-    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_) 
+    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
         
@@ -365,7 +365,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
 
     Examples:
 
-    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_) 
+    * mixture = [('A', 'B'), 'lin'] will yield (as defined in `Scheffé (1958) <https://www-jstor-org.kuleuven.e-bronnen.be/stable/2983895?sid=primo&seq=4>`_)
       
       .. math::
         
@@ -522,7 +522,7 @@ def encode_names(col_names, effect_types):
 def model2names(model, col_names=None):
     """
     Converts the model to parameter names. Each row of the
-    model represents one term. 
+    model represents one term.
 
     For example, the row [1, 2] with column names ['A', 'B']
     is converted to 'A * B^2'.
@@ -716,9 +716,9 @@ def term2strong(term, dep):
 
 def decode_term(term, model, factors):
     """
-    Decodes the encoded terms (the encoded categorical variables). 
+    Decodes the encoded terms (the encoded categorical variables).
     For example, 'y ~ A_0 + A_1 + B * A_0' is decoded
-    to 'y ~ A + B * A' according to the given model matrix.  
+    to 'y ~ A + B * A' according to the given model matrix.
 
     Parameters
     ----------
@@ -784,7 +784,7 @@ def permitted_dep_add(model, mode=None, dep=None, subset=None):
         of terms in the encoded model (output from Y2X). Term i depends on term j
         if dep(i, j) = true.
     subset : np.array(1d)
-        The subset of terms to validate. 
+        The subset of terms to validate.
         If None, all terms are validated.
 
     Returns
@@ -828,7 +828,7 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
     Parameters
     ----------
     model : np.array(1d)
-        The terms in the current model. 
+        The terms in the current model.
     mode : None or 'weak' or 'strong'
         The heredity mode.
     dep : np.array(2d)
@@ -837,7 +837,7 @@ def permitted_dep_drop(model, mode=None, dep=None, subset=None):
         if dep(i, j) = true.
     subset : np.array(1d)
         The subset of terms to validate, represented as indices in the
-        `model` parameter. 
+        `model` parameter.
         If None, all terms in the model are validated.
 
     Returns
@@ -964,7 +964,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
 
     * First you uniformly sample any term.
     * Then you look at the necessary dependencies and add these one-by-one.
-    * If multiple dependencies exist, you sample from them uniformly. 
+    * If multiple dependencies exist, you sample from them uniformly.
     * Go back to step one and continue until you sampled `size` terms.
 
     .. note::

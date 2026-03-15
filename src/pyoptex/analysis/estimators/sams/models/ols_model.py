@@ -11,7 +11,7 @@ from .model import Model, ModelResults
 class OlsModel(Model):
     """
     A default OLS model for use with the SAMS algorithm which
-    extends the 
+    extends the
     :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
     interface.
 

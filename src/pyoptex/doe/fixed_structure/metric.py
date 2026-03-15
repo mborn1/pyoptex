@@ -254,7 +254,7 @@ class Iopt(Metric):
     def call(self, Y, X, params):
         """
         Computes the I-optimality criterion.
-        Computes the average (average) prediction variance if 
+        Computes the average (average) prediction variance if
         multiple Vinv are provided.
 
         Parameters
@@ -332,7 +332,7 @@ class Aliasing(Metric):
     def call(self, Y, X, params):
         """
         Computes the aliasing criterion.
-        Computes the average (average) prediction variance if 
+        Computes the average (average) prediction variance if
         multiple Vinv are provided.
 
         Parameters

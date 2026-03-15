@@ -33,7 +33,7 @@ class SamsRegressor(MultiRegressionMixin):
     and adapted here to include any dependency matrix and random effects.
 
     .. note::
-        It also includes all parameters and attributes from 
+        It also includes all parameters and attributes from
         :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`
 
     .. note::
@@ -88,7 +88,7 @@ class SamsRegressor(MultiRegressionMixin):
     nterms_bnb : None or int or iterable(int)
         The fixed sizes of submodels to apply the branch-and-bound algorithm
         on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-        as recommended by the original paper. If an int, every size from 
+        as recommended by the original paper. If an int, every size from
         one until the specified number is tested. If an iterable, only the
         values from the iterable are tested.
     bnb_timeout : int
@@ -127,10 +127,10 @@ class SamsRegressor(MultiRegressionMixin):
     frequencies\\_ : np.array(1d)
         The occurence frequency of each submodel in `models\\_`
     kmeans\\_ : None or :py:class:`sklearn.cluster.Kmeans`
-        A kmeans object used to cluster the raster plot. Added 
+        A kmeans object used to cluster the raster plot. Added
         a parameter `skips` equal to 5% of the cluster size to
         be skipped for entropy calculations.
-    metric_name\\_ : str  
+    metric_name\\_ : str
         The name of the selection metric.
     """
 
@@ -154,7 +154,7 @@ class SamsRegressor(MultiRegressionMixin):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         dependencies : np.array(2d)
             The dependency matrix of size (N, N) with N the number
@@ -203,7 +203,7 @@ class SamsRegressor(MultiRegressionMixin):
         nterms_bnb : None or int or iterable(int)
             The fixed sizes of submodels to apply the branch-and-bound algorithm
             on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-            as recommended by the original paper. If an int, every size from 
+            as recommended by the original paper. If an int, every size from
             one until the specified number is tested. If an iterable, only the
             values from the iterable are tested.
         bnb_timeout : int
@@ -334,7 +334,7 @@ class SamsRegressor(MultiRegressionMixin):
     def _topn_selection(self, results, sizes, nterms, topn=4, timeout_sec=180):
         """
         Selects the top n submodels of fixed sizes in the results using
-        the branch-and-bound algorithm. For each size in `sizes`, the 
+        the branch-and-bound algorithm. For each size in `sizes`, the
         `topn` submodels of that size are extracted from the results.
 
         Parameters

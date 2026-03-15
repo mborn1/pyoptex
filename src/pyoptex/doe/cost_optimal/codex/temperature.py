@@ -79,7 +79,7 @@ class LinearTemperature(Temperature):
 class ExponentialTemperature(Temperature):
     """
     Exponential temperature which decreases with an accepted
-    state, and increases with a rejected state. The rate of 
+    state, and increases with a rejected state. The rate of
     increase/decrease is represented by kappa. E.g. kappa = 4
     requires 4 rejections to reach the same temperature as one
     acceptation.

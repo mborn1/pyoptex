@@ -49,42 +49,42 @@ def default_fn(
         The function converting from the design matrix to the
         model matrix.
     init : func
-        The initialization function, 
-        :py:func:`init_feasible <pyoptex.doe.cost_optimal.init.init_feasible>` 
+        The initialization function,
+        :py:func:`init_feasible <pyoptex.doe.cost_optimal.init.init_feasible>`
         by default.
     sample : func
-        The sampling function, 
-        :py:func:`sample_random <pyoptex.doe.cost_optimal.sample.sample_random>` 
+        The sampling function,
+        :py:func:`sample_random <pyoptex.doe.cost_optimal.sample.sample_random>`
         by default.
     temperature : obj
-        The temperature object, 
-        :py:class:`LinearTemperature <pyoptex.doe.cost_optimal.temperature.LinearTemperature>` 
+        The temperature object,
+        :py:class:`LinearTemperature <pyoptex.doe.cost_optimal.temperature.LinearTemperature>`
         by default.
     accept : func
-        The acceptance function, 
-        :py:func:`exponential_accept_rel <pyoptex.doe.cost_optimal.accept.exponential_accept_rel>` 
+        The acceptance function,
+        :py:func:`exponential_accept_rel <pyoptex.doe.cost_optimal.accept.exponential_accept_rel>`
         by default.
     restart : obj
-        The restart object, 
-        :py:class:`RestartEveryNFailed <pyoptex.doe.cost_optimal.restart.RestartEveryNFailed>` 
+        The restart object,
+        :py:class:`RestartEveryNFailed <pyoptex.doe.cost_optimal.restart.RestartEveryNFailed>`
         by default.
     insert : func
-        The insertion function, 
-        :py:func:`insert_optimal <pyoptex.doe.cost_optimal.insert.insert_optimal>` 
+        The insertion function,
+        :py:func:`insert_optimal <pyoptex.doe.cost_optimal.insert.insert_optimal>`
         by default.
     remove : func
-        The removal function, 
-        :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone>` 
+        The removal function,
+        :py:func:`remove_optimal_onebyone <pyoptex.doe.cost_optimal.remove.remove_optimal_onebyone>`
         by default.
     constraints : func
-        The constraints function, 
-        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>` 
+        The constraints function,
+        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
         by default.
     optimizers : list(:py:class:`Optimizer <pyoptex.doe.cost_optimal.optimization.Optimizer>`)
-        A list of optimizers. If None, it defaults to 
-        :py:class:`CEOptimizer <pyoptex.doe.cost_optimal.optimization.CEOptimizer>` 
+        A list of optimizers. If None, it defaults to
+        :py:class:`CEOptimizer <pyoptex.doe.cost_optimal.optimization.CEOptimizer>`
         and :py:class:`CEStructOptimizer <pyoptex.doe.cost_optimal.optimization.CEStructOptimizer>`.
-        To provide no optimizers, pass an empty list. 
+        To provide no optimizers, pass an empty list.
     final_optimizers : list(:py:class:`Optimizer <pyoptex.doe.cost_optimal.optimization.Optimizer>`)
         Similar to optimizers, but run at the very end of the algorithm to perform the
         final optimizations. These optimizers are run until no improvements are found.
@@ -128,8 +128,8 @@ def default_fn(
 
 def create_parameters(factors, fn, prior=None, use_formulas=True):
     """
-    Creates the parameters object by preprocessing the inputs. 
-    This is a utility function to transform each variable 
+    Creates the parameters object by preprocessing the inputs.
+    This is a utility function to transform each variable
     to its correct representation.
 
     Parameters
@@ -139,7 +139,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     fn : :py:class:`FunctionSet <pyoptex.doe.cost_optimal.codex.utils.FunctionSet>`
         A set of operators for the algorithm.
     prior : None or pd.DataFrame
-        A possible prior design to use for augmentation. Must be 
+        A possible prior design to use for augmentation. Must be
         denormalized and decoded.
     use_formulas : bool
         Whether to use the internal update formulas or not.
@@ -234,8 +234,8 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
         A pandas dataframe with the best found design. The
         design is decoded and denormalized.
     best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
-        The state corresponding to the returned design. 
-        Contains the encoded design, model matrix, 
+        The state corresponding to the returned design.
+        Contains the encoded design, model matrix,
         costs, metric, etc.
     """
     assert nreps > 0, 'Must specify at least one repetition for the algorithm'

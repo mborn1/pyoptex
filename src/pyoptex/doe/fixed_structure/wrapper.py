@@ -28,8 +28,8 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
         The function converting from the design matrix to the
         model matrix.
     constraints : func
-        The constraints function, 
-        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>` 
+        The constraints function,
+        :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
         by default.
     init : func
         The initialization function,
@@ -64,8 +64,8 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
 
 def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=None):
     """
-    Creates the parameters object by preprocessing the inputs. 
-    This is a utility function to transform each variable 
+    Creates the parameters object by preprocessing the inputs.
+    This is a utility function to transform each variable
     to its correct representation.
 
     Parameters
@@ -215,7 +215,7 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
         A pandas dataframe with the best found design. The
         design is decoded and denormalized.
     best_state : :py:class:`State <pyoptex.doe.fixed_structure.utils.State>`
-        The state corresponding to the returned design. 
+        The state corresponding to the returned design.
         Contains the encoded design, model matrix, metric, etc.
     """
     assert n_tries > 0, 'Must specify at least one random initialization (n_tries > 0)'

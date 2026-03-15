@@ -133,7 +133,7 @@ class Aopt(Metric):
         cov : func(Y, X, Zs, Vinv, costs)
             The covariance function
         W : np.array(1d)
-            The weights for the trace of the inverse 
+            The weights for the trace of the inverse
             of the information matrix.
         """
         super().__init__(cov)
@@ -191,8 +191,8 @@ class Iopt(Metric):
     if multiple Vinv are provided.
 
     .. note::
-        The covariance function is called by passing 
-        random=True for initialization. The function 
+        The covariance function is called by passing
+        random=True for initialization. The function
         should not use grouping or costs in this case.
 
     Attributes
@@ -207,7 +207,7 @@ class Iopt(Metric):
     n : int
         The number of samples.
     complete : bool
-        Whether to initialize the samples between -1 and 1, 
+        Whether to initialize the samples between -1 and 1,
         or from the given coordinates.
     """
     def __init__(self, n=10000, cov=None, complete=True):

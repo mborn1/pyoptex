@@ -41,7 +41,7 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
     decoded : bool
         Whether to only decode, but not denormalize the data before passing it to `f`.
     contains_params : bool
-        Whether the cost function requires the CODEX 
+        Whether the cost function requires the CODEX
         :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`.
         This prevents numba compilation.
 
@@ -131,7 +131,7 @@ def combine_costs(costs):
 
 def discount_cost(costs, factors, max_cost, base_cost=1):
     """
-    Create a transition cost function according to the formula C = max(c1, c2, ..., base). 
+    Create a transition cost function according to the formula C = max(c1, c2, ..., base).
     This means the total transition cost is determined by the most-hard-to-change factor.
     
     Parameters
@@ -162,7 +162,7 @@ def discount_cost(costs, factors, max_cost, base_cost=1):
     # Define the transition costs
     @numba.njit
     def _cost(Y):
-        """Internal cost function according to 
+        """Internal cost function according to
         :py:function:`discount_cost <pyoptex.doe.cost_optimal.cost.discount_cost>`"""
         # Initialize costs
         cc = np.zeros(len(Y))
@@ -220,7 +220,7 @@ def parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
 
 def additive_cost(costs, factors, max_cost, base_cost=1):
     """
-    Create a transition cost function according to the formula C = c1 + c2 + ... + base. 
+    Create a transition cost function according to the formula C = c1 + c2 + ... + base.
     This means that every factor is independently, and sequentially changed.
     
     Parameters
@@ -316,9 +316,9 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
         A dictionary mapping the factor name to the transition cost.
         The cost is a tuple with as first element the base cost of any
         positive transition (-1 to +1), as second element the base cost
-        of any negative transition (+1 to -1), as third element the 
+        of any negative transition (+1 to -1), as third element the
         additional cost to positively scale between min (-1) and max (+1),
-        and as third element the additional cost to negatively scale between 
+        and as third element the additional cost to negatively scale between
         max (+1) and min (-1).
         Categorical factors should have only a float indicating the base cost
         of any transition.
@@ -423,9 +423,9 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
         A dictionary mapping the factor name to the transition cost.
         The cost is a tuple with as first element the base cost of any
         positive transition (-1 to +1), as second element the base cost
-        of any negative transition (+1 to -1), as third element the 
+        of any negative transition (+1 to -1), as third element the
         additional cost to positively scale between min (-1) and max (+1),
-        and as third element the additional cost to negatively scale between 
+        and as third element the additional cost to negatively scale between
         max (+1) and min (-1).
         Categorical factors should have only a float indicating the base cost
         of any transition.

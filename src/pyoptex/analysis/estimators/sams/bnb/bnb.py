@@ -80,7 +80,7 @@ class BnB:
 
         Returns
         -------
-        is_leaf : bool 
+        is_leaf : bool
             Whether the node is a leaf.
         """
         raise NotImplementedError('Class BnB should be extended')
@@ -114,7 +114,7 @@ class BnB:
         
         Returns
         -------
-        in_results : bool 
+        in_results : bool
             Whether the node is in the results or not.
         """
         raise NotImplementedError('Class BnB should be extended')

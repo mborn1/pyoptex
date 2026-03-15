@@ -71,8 +71,8 @@ def init(params, n=1, complete=False):
     n : int
         The number of runs to initialize
     complete : bool
-        False means use the coordinates and prior specified in params, 
-        otherwise, no coords or prior are used. 
+        False means use the coordinates and prior specified in params,
+        otherwise, no coords or prior are used.
         Can be used to perform a complete sample of the design space.
     
     Returns
@@ -116,7 +116,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     max_tries : int
-        The maximum number of random tries. If all random tries fail, a 
+        The maximum number of random tries. If all random tries fail, a
         final non-randomized design is created. If this also fails, a ValueError is thrown.
     max_size : int
         The maximum number of runs before iteratively removing them.
@@ -221,7 +221,7 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     max_tries : int
-        The maximum number of random tries. If all random tries fail, a 
+        The maximum number of random tries. If all random tries fail, a
         final non-randomized design is created. If this also fails, a ValueError is thrown.
     minimal : bool
         Whether to remove runs for a minimal initial design, or only until

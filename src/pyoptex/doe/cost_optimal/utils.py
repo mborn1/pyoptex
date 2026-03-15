@@ -79,7 +79,7 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
 def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`obs_var_Zs <pyoptex.doe.cost_optimal.utils.obs_var_Zs>` 
+    :py:func:`obs_var_Zs <pyoptex.doe.cost_optimal.utils.obs_var_Zs>`
     followed by :py:func:`obs_var_from_Zs <pyoptex.utils.design.obs_var_from_Zs>`.
 
     Parameters
@@ -89,7 +89,7 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     colstart : np.array(1d)
         The start column of each factor.
     ratios : np.array(1d)
-        The variance ratios of the different groups compared to the variance of 
+        The variance ratios of the different groups compared to the variance of
         the random errors.
     grouped_cols : np.array(1d)
         A boolean array indicating whether the factor is grouped or not.

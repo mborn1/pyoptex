@@ -25,7 +25,7 @@ class BaseMixin:
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         """
         # Store the parameters
@@ -53,7 +53,7 @@ class BaseMixin:
         """
         Computes any necessary derived parameters from the
         inputs such as the number of features, feature names,
-        effect types and coordinates for encoding the 
+        effect types and coordinates for encoding the
         categorical variables.
         """
         # Compute derived parameters from the inputs
@@ -94,7 +94,7 @@ class BaseMixin:
 
     def _preprocess_X(self, X):
         """
-        Preprocesses X by normalizing, encoding 
+        Preprocesses X by normalizing, encoding
         the categorical factors, and applying
         Y2X.
 
@@ -265,7 +265,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     >>>     def _fit(self, X, y):
     >>>         # Your fit code
     >>>         pass
-    >>> 
+    >>>
     >>>     def _predict(self, X):
     >>>         # Optional, if you require a custom prediction
     >>>         # Defaults to
@@ -330,7 +330,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         The function to transform a design matrix Y to a model matrix X.
     random_effects : list(str)
         The names of any random effect columns. Every random effect
-        is interpreted as a string column and encoded using 
+        is interpreted as a string column and encoded using
         effect encoding.
     n_features_in\\_ : int
         The number of features. Equals len(self._factors).
@@ -342,7 +342,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         An array indicating the type of each factor (effect). A
         1 indicates a continuous variable, anything higher indicates
         a categorical factor with that many levels. Can be
-        used for internal package functions such as 
+        used for internal package functions such as
         :py:func:`encode_model <pyoptex.utils.model.encode_model>`.
     coords\\_ : list
         A list of 2d numpy arrays. Each element corresponds to
@@ -354,7 +354,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         The standard deviation of the y-value, used in normalization.
     fit_fn\\_ : func(X, y, terms)
         A fit function used to fit a model from data and the specified
-        terms. When random effects are specified, this fits a 
+        terms. When random effects are specified, this fits a
         mixed model, otherwise an OLS is fitted.
     Zs\\_ : np.array(2d)
         The groups of each random effect. Zs.shape[0] == len(self._re)
@@ -378,7 +378,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         """
         super().__init__(factors, Y2X, random_effects)
@@ -447,7 +447,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
 
         Parameters
         ----------
-        X : pd.DataFrame    
+        X : pd.DataFrame
             The data.
         
         Returns
@@ -489,7 +489,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     @property
     def V_(self):
         """
-        Alias for 
+        Alias for
         :py:func:`obs_cov <pyoptex.analysis.mixins.fit_mixin.obs_cov>`
         """
         return self.obs_cov
@@ -507,7 +507,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     @property
     def Vinv_(self):
         """
-        Alias for 
+        Alias for
         :py:func:`inv_obs_cov <pyoptex.analysis.mixins.fit_mixin.inv_obs_cov>`
         """
         return self.inv_obs_cov
@@ -521,7 +521,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
 
             M = X^T V^{-1} X
 
-        where :math:`X` is the normalized, encoded data, and 
+        where :math:`X` is the normalized, encoded data, and
         :math:`V` the observation covariance matrix
         (:py:func:`obs_cov <pyoptex.analysis.mixins.fit_mixin.obs_cov>`).
         When no random effects are specified, this reduces to
@@ -538,7 +538,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     @property
     def M_(self):
         """
-        Alias for 
+        Alias for
         :py:func:`information_matrix <pyoptex.analysis.mixins.fit_mixin.information_matrix>`
         """
         return self.information_matrix
@@ -555,7 +555,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     @property
     def Minv_(self):
         """
-        Alias for 
+        Alias for
         :py:func:`inv_information_matrix <pyoptex.analysis.mixins.fit_mixin.inv_information_matrix>`
         """
         return self.inv_information_matrix
@@ -635,31 +635,31 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
@@ -694,7 +694,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
     def formula(self, labels=None):
         """
         Creates the prediction formula of the fit for the encoded and
-        normalized data. The labels for each term are given by the 
+        normalized data. The labels for each term are given by the
         `labels` parameter.
         The number of labels must be the number of parameters from Y2X,
         i.e., len(labels) == Y2X(Y).shape[1].
@@ -708,31 +708,31 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
@@ -791,7 +791,7 @@ class MultiRegressionMixin(RegressionMixin):
     >>>     def _fit(self, X, y):
     >>>         # Your fit code
     >>>         pass
-    >>> 
+    >>>
     >>>     def _predict(self, X):
     >>>         # Optional, if you require a custom prediction
     >>>         # Defaults to
@@ -818,7 +818,7 @@ class MultiRegressionMixin(RegressionMixin):
         :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>`.
 
     .. note::
-        Prediction happens based on the top model (is the first model 
+        Prediction happens based on the top model (is the first model
         in `models\\_`). To predict based on any other model, fit that
         specific model using
         :py:class:`SimpleRegressor <pyoptex.analysis.estimators.simple_model.SimpleRegressor>`.
@@ -828,11 +828,11 @@ class MultiRegressionMixin(RegressionMixin):
 
         >>> model = ...
         >>> multi_regr = ...
-        >>> 
+        >>>
         >>> terms = multi_regr.models_[1]
         >>> new_model = model.iloc[terms]
         >>> Y2X = model2Y2X(new_model, factors)
-        >>> 
+        >>>
         >>> regr = SimpleRegressor(factors, Y2X, random_effects).fit(X, y)
 
     Parameters
@@ -866,7 +866,7 @@ class MultiRegressionMixin(RegressionMixin):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         """
         super().__init__(factors, Y2X, random_effects)
@@ -942,7 +942,7 @@ class MultiRegressionMixin(RegressionMixin):
 
         Returns
         -------
-        fig : :py:class:`plotly.graph_objects.Figure`        
+        fig : :py:class:`plotly.graph_objects.Figure`
         """
         raise NotImplementedError('No selection plot was implemented')
 
@@ -963,31 +963,31 @@ class MultiRegressionMixin(RegressionMixin):
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
@@ -1024,7 +1024,7 @@ class MultiRegressionMixin(RegressionMixin):
     def formula(self, labels=None, idx=0):
         """
         Creates the prediction formula of the fit for the encoded and
-        normalized data. The labels for each term are given by the 
+        normalized data. The labels for each term are given by the
         `labels` parameter.
         The number of labels must be the number of parameters from Y2X,
         i.e., len(labels) == Y2X(Y).shape[1].
@@ -1038,31 +1038,31 @@ class MultiRegressionMixin(RegressionMixin):
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
@@ -1109,13 +1109,13 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
     >>>     def _fit(self, X, y):
     >>>         # Your fit code
     >>>         pass
-    >>> 
+    >>>
     >>>     def _apply_transform(self, X, y):
     >>>         # Your transform code to transform X and y
     >>>         return X, y
 
     You should implement two functions: the _fit function which fits the
-    transformer to the data (given the encoded and normalized X, and normalized y), 
+    transformer to the data (given the encoded and normalized X, and normalized y),
     and the _apply_transform function which applies the transformation to the data.
 
     Any attributes suffixed by `_` is only accessible after
@@ -1143,7 +1143,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
         The function to transform a design matrix Y to a model matrix X.
     random_effects : list(str)
         The names of any random effect columns. Every random effect
-        is interpreted as a string column and encoded using 
+        is interpreted as a string column and encoded using
         effect encoding.
     n_features_in\\_ : int
         The number of features. Equals len(self._factors).
@@ -1155,7 +1155,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
         An array indicating the type of each factor (effect). A
         1 indicates a continuous variable, anything higher indicates
         a categorical factor with that many levels. Can be
-        used for internal package functions such as 
+        used for internal package functions such as
         :py:func:`encode_model <pyoptex.utils.model.encode_model>`.
     coords\\_ : list
         A list of 2d numpy arrays. Each element corresponds to
@@ -1167,7 +1167,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
         The standard deviation of the y-value, used in normalization.
     fit_fn\\_ : func(X, y, terms)
         A fit function used to fit a model from data and the specified
-        terms. When random effects are specified, this fits a 
+        terms. When random effects are specified, this fits a
         mixed model, otherwise an OLS is fitted.
     Zs\\_ : np.array(2d)
         The groups of each random effect. Zs.shape[0] == len(self._re)
@@ -1190,7 +1190,7 @@ class TransformerMixin(BaseMixin, TransformerMixinSklearn):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         """
         super().__init__(factors, Y2X, random_effects)
@@ -1281,7 +1281,7 @@ class OutlierTransformerMixin(TransformerMixin):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         """
         super().__init__(factors, Y2X, random_effects)

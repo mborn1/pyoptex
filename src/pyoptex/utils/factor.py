@@ -12,7 +12,7 @@ __Factor__ = namedtuple('__Factor__', 'name type min max levels coords',
 class FactorMixin:
     """
     Factor Mixin to be used whenever creating a new factor class.
-    This mixin contains common validation code and functions to normalize 
+    This mixin contains common validation code and functions to normalize
     and denormalize columns based on the factors settings.
 
     Attributes
@@ -28,7 +28,7 @@ class FactorMixin:
         The maximum of the factor. Used for continuous factors.
     levels : list(float) or list(str)
         For continuous factors, this is the list of possible numerical values.
-        For categorical factors, this is a list of strings for the possible 
+        For categorical factors, this is a list of strings for the possible
         categories.
     coords : list(np.array(2d))
         Only possible for categorical factors. The list of encodings of each level.

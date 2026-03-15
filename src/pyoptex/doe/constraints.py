@@ -49,9 +49,9 @@ class ConstraintsFunc:
 
         Parameters
         ----------
-        *args : tuple
+        \\*args : tuple
             The arguments to pass to the function.
-        **kwargs : dict
+        \\*\\*kwargs : dict
             The keyword arguments to pass to the function.
 
         Returns
@@ -78,7 +78,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     Parses a formula of constraints. The function returns an object of type
     :py:class:`Col <pyoptex.doe.constraints.Col>` which can generate a function evaluating
     either the encoded or non-encoded design matrix.
-    The generated function returns True where the constraints are violated. 
+    The generated function returns True where the constraints are violated.
 
     For example, "(`A` > 0) & (`B` < 0)" specifies that if A is larger than 0, B cannot
     be smaller than 0.
@@ -90,7 +90,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     use constraint.encode() to retrieve a function which can evaluate an encoded design matrix.
 
     .. note::
-        Parameter `exclude` can invert the function, specifying where the 
+        Parameter `exclude` can invert the function, specifying where the
         constraints are upheld.
 
     Parameters
@@ -100,7 +100,7 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     factors : list(:py:class:`Factor <pyoptex.utils.factor.Factor>`)
         The list of factors in the design.
     exclude : bool
-        Determines whether the presented formula should be excluded 
+        Determines whether the presented formula should be excluded
         (= return True when the constraints are violated), or not
         (= return False when the constraints are violated).
     eps : float
@@ -197,7 +197,7 @@ class Col:
     ##############################################
     def __str__(self):
         """
-        Retrieves the string representation of a function to evaluate 
+        Retrieves the string representation of a function to evaluate
         the decoded, but normalized design matrix.
 
         Returns
@@ -232,7 +232,7 @@ class Col:
 
     def _encode(self):
         """
-        Retrieves the string representation of a function to evaluate 
+        Retrieves the string representation of a function to evaluate
         the encoded design matrix.
 
         Returns

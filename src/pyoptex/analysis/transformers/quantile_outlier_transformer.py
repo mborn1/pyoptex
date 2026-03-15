@@ -11,7 +11,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
     from the ideal value. Drops the terms one-by-one based on the largest deviation as
     long as the value is above the threshold.
 
-    The :py:func:`fit_transform <pyoptex.analysis.transformers.quantile_outlier_transformer.QuantileOutliersTransformer.fit_transform>` 
+    The :py:func:`fit_transform <pyoptex.analysis.transformers.quantile_outlier_transformer.QuantileOutliersTransformer.fit_transform>`
     function fits the data and removes the detected outliers. During regular transform, nothing happens as this
     should only remove training outliers.
 
@@ -24,9 +24,9 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
         The threshold for dropping terms on the deviation from the quantile line.
     stat : str
         The distribution to use for the quantile-quantile plot.
-    errors_ : np.ndarray(1d)
+    errors\\_ : np.ndarray(1d)
         The errors (pred - y) for a simple model fit.
-    outliers_ : np.ndarray(1d)
+    outliers\\_ : np.ndarray(1d)
         A boolean array marking which rows are considered
         outliers in the training dataset.
     """
@@ -44,7 +44,7 @@ class QuantileOutliersTransformer(OutlierTransformerMixin):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         threshold : float
             The threshold for dropping terms on the deviation from the quantile line.

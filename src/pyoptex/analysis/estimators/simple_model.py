@@ -16,7 +16,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
     Permits to fit a simple model provided in Y2X with optionally random effects.
 
     .. note::
-        It includes all parameters and attributes from 
+        It includes all parameters and attributes from
         :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>` and
         :py:class:`ConditionalRegressionMixin <pyoptex.analysis.mixins.conditional_mixin.ConditionalRegressionMixin>`
     """
@@ -34,7 +34,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         conditional : bool
             Whether to create a conditional model or not.

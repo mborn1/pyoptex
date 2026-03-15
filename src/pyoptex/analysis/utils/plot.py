@@ -17,7 +17,7 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
     * The upper left is the predicted vs. real plot. The black diagonal indicates
       the perfect fit.
     * The upper right is the predicted vs. error plot. This can indicate
-      if there is any trend or correlation between the predictions and the 
+      if there is any trend or correlation between the predictions and the
       random error (they should be uncorrelated).
     * The lower left is the quantile-quantile plot for a normal distribution
       of the errors. The black diagonal line indicates the perfect normal
@@ -33,9 +33,9 @@ def plot_res_diagnostics(df, y_true='y', y_pred='pred', textcols=(), color=None)
     ----------
     df : pd.DataFrame
         The dataframe with the data, output, and predictions.
-    y_true : str    
+    y_true : str
         The name of the output column.
-    y_pred : str    
+    y_pred : str
         The name of the prediction column.
     textcols : list(str) or tuple(str)
         Any columns which should be added as text upon hover over the graph.

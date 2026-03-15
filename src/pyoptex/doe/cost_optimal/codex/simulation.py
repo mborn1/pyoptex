@@ -14,7 +14,7 @@ from ..validation import validate_state
 @profile
 def simulate(params, nsims=100, validate=False):
     """
-    Performs the simulated annealing algorithm (SA). 
+    Performs the simulated annealing algorithm (SA).
     This is the main loop calling all of the operators.
 
     Parameters
@@ -29,7 +29,7 @@ def simulate(params, nsims=100, validate=False):
     Returns
     -------
     best_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
-        The best found state containing the encoded design matrix, 
+        The best found state containing the encoded design matrix,
         model matrix, costs, metric, etc.
     interrupted : bool
         Whether the simulation was interrupted by the user.

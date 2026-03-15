@@ -9,7 +9,7 @@ class ConditionalRegressionMixin:
     """
     Mixin to provide additional capabilities of
     fitting a conditional model or not. Should be used
-    as 
+    as
 
     >>> class MyRegressor(ConditionalRegressionMixin, RegressionMixin):
     >>>     ...
@@ -118,31 +118,31 @@ class ConditionalRegressionMixin:
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 
@@ -180,7 +180,7 @@ class ConditionalRegressionMixin:
     def formula(self, labels=None):
         """
         Creates the prediction formula of the fit for the encoded and
-        normalized data. The labels for each term are given by the 
+        normalized data. The labels for each term are given by the
         `labels` parameter.
         The number of labels must be the number of parameters from Y2X,
         i.e., len(labels) == Y2X(Y).shape[1].
@@ -196,31 +196,31 @@ class ConditionalRegressionMixin:
             >>> # Imports
             >>> from pyoptex.utils import Factor
             >>> from pyoptex.utils.design import encode_design
-            >>> 
+            >>>
             >>> # Example factors
             >>> factors = [
-            >>>     Factor('A'), 
+            >>>     Factor('A'),
             >>>     Factor('B'),
             >>>     Factor('C', type='categorical', levels=['L1', 'L2', 'L3'])
             >>> ]
-            >>> 
+            >>>
             >>> # Compute derived parameters
             >>> effect_types = np.array([
             >>>     1 if f.is_continuous else len(f.levels)
             >>>     for f in factors
             >>> ])
             >>> coords = [f.coords_ for f in factors]
-            >>> 
+            >>>
             >>> # Normalize the factors
             >>> for f in factors:
             >>>     data[str(f.name)] = f.normalize(data[str(f.name)])
-            >>> 
+            >>>
             >>> # Select correct order + to numpy
             >>> data = data[[str(f.name) for f in factors]].to_numpy()
-            >>> 
+            >>>
             >>> # Encode
             >>> data = encode_design(data, effect_types, coords=coords)
-            >>> 
+            >>>
             >>> # Transform according to the model
             >>> data = Y2X(data)
 

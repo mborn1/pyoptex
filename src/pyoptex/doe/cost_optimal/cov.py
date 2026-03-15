@@ -8,8 +8,8 @@ import numpy as np
 # Update function when adding new blocking factors
 def _update_woodbury(Vinv, new_Zs, new_ratios):
     """
-    Update formula designed to add random effects 
-    which do not depend on any factor reset (e.g. blocking factors). 
+    Update formula designed to add random effects
+    which do not depend on any factor reset (e.g. blocking factors).
     
     Parameters
     ----------
@@ -140,14 +140,14 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     Covariance function to account for double time trends. The inner
     time column is reset every time the outer time column resets.
     The cost at `cost_index` is assumed to represent some form
-    of time. Every `time_outer`, the level of the outer time trend is 
+    of time. Every `time_outer`, the level of the outer time trend is
     increased by one unit. Every `time_inner`, the level of the inner
     time trend is increased by one unit, being reset whenever the outer
     time trend changes.
 
     For example, if outer time is 2 and inner time is 1 we have runs with
     cumulative cost [0, 1, 2, 3, 4, 5], the added outer time column
-    will be [-1, -1, 0, 0, 1, 1], and inner time column 
+    will be [-1, -1, 0, 0, 1, 1], and inner time column
     [-1, 1, -1, 1, -1, 1].
 
     Parameters

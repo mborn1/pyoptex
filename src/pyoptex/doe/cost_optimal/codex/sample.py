@@ -7,7 +7,7 @@ import numpy as np
 
 def sample_last(state, params):
     """
-    Samples a new run by taking the last run 
+    Samples a new run by taking the last run
     and randomly changing one coordinate.
 
     Parameters

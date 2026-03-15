@@ -8,14 +8,14 @@ from ._design_cy import *
 
 def create_default_coords(effect_type):
     """
-    Defines the default possible coordinates per effect type. 
-    A continuous variable has [-1, 0, 1], a categorical variable 
+    Defines the default possible coordinates per effect type.
+    A continuous variable has [-1, 0, 1], a categorical variable
     is an array from 1 to the number of categorical levels.
 
     Parameters
     ----------
     effect_type : int
-        The type of the effect. 1 indicates continuous, 
+        The type of the effect. 1 indicates continuous,
         higher indicates categorical with that number of levels.
     
     Returns
@@ -118,16 +118,16 @@ def encode_design(Y, effect_types, coords=None):
     ----------
     Y : np.array(2d)
         The current design matrix.
-    effect_types : np.array(1d) 
+    effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
     coords : None or list[np.ndarray]
-        The possible coordinates for each factor. 
+        The possible coordinates for each factor.
 
     Returns
     -------
     Yenc : np.array(2d)
-        The encoded design-matrix 
+        The encoded design-matrix
     """
     return encode_design_cython_impl(np.ascontiguousarray(Y), np.ascontiguousarray(effect_types, dtype=np.int64), coords)
 
@@ -143,7 +143,7 @@ def decode_design(Yenc, effect_types, coords=None):
     ----------
     Y : np.array(2d)
         The effect-encoded design matrix.
-    effect_types : np.array(1d) 
+    effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
     coords: None or list[np.ndarray]
@@ -152,6 +152,6 @@ def decode_design(Yenc, effect_types, coords=None):
     Returns
     -------
     Ydec : np.array(2d)
-        The decoded design-matrix 
+        The decoded design-matrix
     """
     return decode_design_cython_impl(np.ascontiguousarray(Yenc), np.ascontiguousarray(effect_types, dtype=np.int64), coords)

@@ -33,7 +33,7 @@ def entropies_approx(submodels, freqs, model_size, dep, mode,
     freqs : np.array(1d)
         The frequencies of these submodels in the raster plot.
     model_size : int
-        The size of the overfitted models. 
+        The size of the overfitted models.
         The overfitted model includes the forced model,
         and its size must thus be larger than the forced model.
     dep : np.array(2d)
@@ -149,7 +149,7 @@ def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
     Please read the warning in the documentation on customizing SAMS.
 
     .. warning::
-        Asserts weak heredity and a partial response surface model 
+        Asserts weak heredity and a partial response surface model
         in a particular order.
 
     Parameters

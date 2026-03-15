@@ -137,7 +137,7 @@ class Model:
         -------
         idx : np.array(1d)
             A boolean array of size model.size specifying which terms
-            are invalid.      
+            are invalid.
         """
         # Initialize indices to remove
         o = np.zeros(len(model), dtype=np.bool_)
@@ -274,7 +274,7 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
     fixed size. The terms are sampled using Markov-chain Monte-carlo.
 
     First a random model is sampled by adding terms one-by-one. Next,
-    that sample is mutated for `n_warmup` times. Finally, a chain 
+    that sample is mutated for `n_warmup` times. Finally, a chain
     is built by mutating the sample and extracting every `skip` th sample
     until `n_samples` are generated.
 

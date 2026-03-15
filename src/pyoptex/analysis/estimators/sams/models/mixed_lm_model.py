@@ -30,7 +30,7 @@ def Vsqrt_inv(V):
 class MixedLMModel(OlsModel):
     """
     A Mixed linear model for use with the SAMS algorithm which
-    extends the 
+    extends the
     :py:class:`OLSModel <pyoptex.analysis.estimators.sams.models.ols_model.OLSModel>`.
 
     The data (X) and output variable (y) are adjusted to an OLS model

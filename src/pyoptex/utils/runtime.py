@@ -18,7 +18,7 @@ def set_nb_cores(n=1):
 
         >>> from pyoptex.utils.runtime import set_nb_cores
         >>> set_nb_cores(1)
-        >>> 
+        >>>
         >>> import numba
         >>> import numpy as np
 
@@ -48,7 +48,7 @@ def set_nb_cores(n=1):
 def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs):
     """
     Allows parallel generation of the design. For example, the generation using the
-    CODEX algorithm will parallelize the `nreps` argument over `ncores` cores. The 
+    CODEX algorithm will parallelize the `nreps` argument over `ncores` cores. The
     generation using the split-plot or fixed structure algorithms will parallelize
     the `n_tries` argument over `ncores` cores.
 
@@ -59,7 +59,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     ----------
     fn : callable
         The function to parallelize.
-    *args : tuple
+    \\*args : tuple
         The arguments to pass to the function.
     ncores : int, optional
         The number of cores to use. If not specified, the number of available cores
@@ -67,7 +67,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     parallel_arg_name : str, optional
         The name of the argument to parallelize. If not specified, the function will
         look for an argument named `nreps`, `n_reps`, `ntries`, or `n_tries`.
-    **kwargs : dict
+    \\*\\*kwargs : dict
         The keyword arguments to pass to the function.
 
     Returns
