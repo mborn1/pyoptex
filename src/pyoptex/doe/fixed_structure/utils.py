@@ -17,16 +17,16 @@ class RandomEffect(__RandomEffect__):
     __slots__ = ()
 
     def __new__(cls, *args, **kwargs):
-        self = super(RandomEffect, cls).__new__(cls, *args, **kwargs)
+        self = super(RandomEffect, cls).__new__(cls, *args, **kwargs) # noqa: UP008
         # Assert Z
         assert self.Z is not None and len(self.Z) > 0, f'Z must be an array with at least one element, but is {self.Z}'
 
         # Assert type of Z
         Z = np.array(self.Z)
         max_Z = np.max(Z)
-        assert len(Z.shape) == 1, f'Z must be a 1-D array'
-        assert np.issubdtype(Z.dtype, np.integer), f'Z must be an integer array'
-        assert np.all(np.any(np.expand_dims(Z, 0) == np.expand_dims(np.arange(max_Z), 1), axis=1)), f'The Z array must contain all integers in the interval [0, np.max(Z)]'
+        assert len(Z.shape) == 1, 'Z must be a 1-D array'
+        assert np.issubdtype(Z.dtype, np.integer), 'Z must be an integer array'
+        assert np.all(np.any(np.expand_dims(Z, 0) == np.expand_dims(np.arange(max_Z), 1), axis=1)), 'The Z array must contain all integers in the interval [0, np.max(Z)]'
 
         # Assert ratios
         if isinstance(self.ratio, (tuple, list, np.ndarray)):
@@ -53,5 +53,5 @@ class Factor(FactorMixin, __Factor__):
     __slots__ = ()
 
     def __new__(cls, *args, **kwargs):
-        self = super(Factor, cls).__new__(cls, *args, **kwargs)
+        self = super(Factor, cls).__new__(cls, *args, **kwargs) # noqa: UP008
         return self.validate()

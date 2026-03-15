@@ -338,12 +338,12 @@ def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_c
     assert all(
         isinstance(transition_costs[str(f.name)], (int, float))
         for f in factors if f.is_categorical
-    ), f'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    ), 'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
     # Validate continuous factors
     assert all(
         len(transition_costs[str(f.name)]) == 4
         for f in factors if f.is_continuous
-    ), f'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+    ), 'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
 
     # Restructure transition costs
     transition_costs = {
@@ -445,12 +445,12 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
     assert all(
         isinstance(transition_costs[str(f.name)], (int, float))
         for f in factors if f.is_categorical
-    ), f'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
+    ), 'Categorical factors must only have a single float or integer representing the base transition cost of any transition'
     # Validate continuous factors
     assert all(
         len(transition_costs[str(f.name)]) == 4
         for f in factors if f.is_continuous
-    ), f'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
+    ), 'Continuous variables must specify (base positive, base negative, scaling positive, scaling negative)'
 
     # Restructure transition costs
     transition_costs = {

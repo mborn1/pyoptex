@@ -86,11 +86,11 @@ class BaseMixin:
         X : pd.DataFrame
             The data.
         """
-        assert isinstance(X, pd.DataFrame), f'X must be a dataframe'
-        assert all(c in X.columns for c in self.features_names_in_), f'X does not have the correct features'
+        assert isinstance(X, pd.DataFrame), 'X must be a dataframe'
+        assert all(c in X.columns for c in self.features_names_in_), 'X does not have the correct features'
         for f in self._factors:
             if f.is_categorical:
-                assert all(l in f.levels for l in X[str(f.name)].unique()), f'X contains a categorical level not specified in the factor, unable to encode'
+                assert all(l in f.levels for l in X[str(f.name)].unique()), 'X contains a categorical level not specified in the factor, unable to encode'
 
     def _preprocess_X(self, X):
         """
@@ -135,13 +135,13 @@ class BaseMixin:
             The output variable.
         """
         # Validate init parameters
-        assert len(self._factors) > 0, f'Must have at least one factor'
+        assert len(self._factors) > 0, 'Must have at least one factor'
 
         # Validate inputs
         self._validate_X(X)
         q = 'Did you forget the random effects?' if X.shape[1] == self.n_features_in_ else ''
         assert X.shape[1] == self.n_features_in_ + len(self._re), f'X does not have the correct number of features: {self.n_features_in_ + len(self.re)} vs. {X.shape[1]}. {q}'
-        assert all(c in X.columns for c in self._re), f'X does not have the correct random effects'
+        assert all(c in X.columns for c in self._re), 'X does not have the correct random effects'
 
     def preprocess_fit(self, X, y):
         """
@@ -168,7 +168,7 @@ class BaseMixin:
         # Normalize y
         self.y_mean_ = np.mean(y)
         self.y_std_ = np.std(y)
-        assert self.y_std_ > 0, f'y is a constant vector, cannot do regression'
+        assert self.y_std_ > 0, 'y is a constant vector, cannot do regression'
         y = (y - self.y_mean_) / (self.y_std_)
         y = np.asarray(y)
 

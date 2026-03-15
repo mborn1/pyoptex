@@ -91,7 +91,7 @@ log_checkpoint("n_experiments", len(state.Y))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_approx_omars.csv'), index=False)
+Y.to_csv(os.path.join(root, 'example_approx_omars.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

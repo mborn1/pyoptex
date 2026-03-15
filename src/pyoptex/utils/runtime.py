@@ -149,7 +149,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     nreps_remainder = nreps % ncores
 
     # Prepare the arguments
-    args = list(args) + [kwargs[name] if name in kwargs else value for name, value in fn_args[len(args):]]
+    args = list(args) + [kwargs.get(name, value) for name, value in fn_args[len(args):]]
     args = [list(args)] * ncores
     for i in range(len(args)):
         if i < nreps_remainder:

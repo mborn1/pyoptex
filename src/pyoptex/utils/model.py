@@ -187,7 +187,7 @@ def model2Y2X(model, factors):
 
     return Y2X
 
-def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp='_mixture_comp_'):
+def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=None, mcomp='_mixture_comp_'): # noqa: B006
     """
     Creates a Scheffe model with potential process effects and
     potential cross-terms between the mixture effects and process effects.
@@ -269,7 +269,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
     me = [*me, mcomp]
 
     # Validate all mixture effects are continuous
-    assert mo in ('lin', 'tfi'), f'The order of a mixture experiment cannot be higher than two-factor interactions'
+    assert mo in ('lin', 'tfi'), 'The order of a mixture experiment cannot be higher than two-factor interactions'
     assert cross_order in (None, 'lin', 'tfi'), 'Can only consider no cross, linear crossing, or two-factor interaction (tfi) crossing'
 
     # Create the scheffe model and process model
@@ -309,7 +309,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
         # Combine them with linear mixture effects (apart from M_COMP)
         lin_mixt_tfi_process = pd.merge(
-            model.loc[tfi_process_effects, list(process_comps) + [mcomp]],
+            model.loc[tfi_process_effects, list(process_comps) + [mcomp]], #noqa: RUF005
             pd.DataFrame(
                 np.eye(len(mixture_comps) - 1, dtype=np.int64),
                 columns=mixture_comps.drop(mcomp)
@@ -335,7 +335,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
         # Combine them with linear mixture effects (apart from M_COMP)
         additional_terms = pd.merge(
-            model.loc[lin_process_effects, list(process_comps) + [mcomp]],
+            model.loc[lin_process_effects, list(process_comps) + [mcomp]], #noqa: RUF005
             pd.DataFrame(
                 np.eye(len(mixture_comps) - 1, dtype=np.int64),
                 columns=mixture_comps.drop(mcomp)
@@ -351,7 +351,7 @@ def mixture_scheffe_model(mixture_effects, process_effects=dict(), cross_order=N
 
     return model
 
-def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None):
+def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=None): # noqa: B006
     """
     Creates a Scheffe model Y2X with potential process effects and
     potential cross-terms between the mixture effects and process effects.
@@ -425,7 +425,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
         the model matrix (X).
     """
     # Validation
-    assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), f'Mixture factors must be of type mixture'
+    assert all(f.is_mixture for f in factors if str(f.name) in mixture_effects[0]), 'Mixture factors must be of type mixture'
 
     # Create the mixture model
     me, _ = mixture_effects
@@ -455,7 +455,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
     me_idx_enc = np.array([colstart[col_names.index(e)] for e in me])
 
     # Detect model in correct order
-    model = model[col_names + [mcomp]].to_numpy()
+    model = model[[*col_names, mcomp]].to_numpy()
 
     # Encode model
     modelenc = encode_model(model, effect_types)
@@ -562,7 +562,7 @@ def model2names(model, col_names=None):
 
         # Concatenate with main effects and join
         term_repr = np.concatenate((col_names[term == 1], high))
-        term_repr = f' * '.join(term_repr)
+        term_repr = ' * '.join(term_repr)
 
         # Constant term
         if term_repr == '':

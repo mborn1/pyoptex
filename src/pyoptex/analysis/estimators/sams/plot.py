@@ -132,7 +132,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     fig.add_trace(
         go.Heatmap(z=raster,
                    x=terms,
-                   colorscale=[(0, 'red')] + [(0.5-1e-5, 'lightgray'), (0.5, 'white'), (0.5+1e-5, 'lightgray')] + [(1, 'blue')],
+                   colorscale=[(0, 'red'), (0.5-1e-5, 'lightgray'), (0.5, 'white'), (0.5+1e-5, 'lightgray'), (1, 'blue')],
                    zmid=0,
                    customdata=np.expand_dims(np.broadcast_to(
                         np.arange(raster.shape[1]),

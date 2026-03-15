@@ -19,10 +19,10 @@ class Plot(__Plot__):
     __slots__ = ()
 
     def __new__(cls, *args, **kwargs):
-        self = super(Plot, cls).__new__(cls, *args, **kwargs)
+        self = super(Plot, cls).__new__(cls, *args, **kwargs) # noqa: UP008
         assert self.level >= 0, f'Plot levels must be larger than or equal to zero, but is {self.level}'
         assert self.size > 0, f'Plot sizes must be larger than zero, but is {self.size}'
-        if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
+        if isinstance(self.ratio, (tuple, list, np.ndarray)):
             assert all(r >= 0 for r in self.ratio), f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
         else:
             assert self.ratio >= 0, f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'

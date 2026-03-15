@@ -20,11 +20,11 @@ class Factor(FactorMixin, __Factor__):
 
     def __new__(cls, *args, **kwargs):
         # Create the object
-        self = super(Factor, cls).__new__(cls, *args, **kwargs)
+        self = super(Factor, cls).__new__(cls, *args, **kwargs) # noqa: UP008
         self = self.validate()
 
         # Validate object
-        if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
+        if isinstance(self.ratio, (tuple, list, np.ndarray)):
             assert all(r >= 0 for r in self.ratio), f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'
         else:
             assert self.ratio >= 0, f'Variance ratio of factor {self.name} must be larger than or equal to zero, but is {self.ratio}'

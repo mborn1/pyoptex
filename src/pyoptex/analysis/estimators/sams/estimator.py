@@ -296,7 +296,7 @@ class SamsRegressor(MultiRegressionMixin):
             else:
                 assert self.model_size > len(self.forced_model), 'The overfitted model size must be at least one larger than the forced model'
         assert self.nb_models == 'all' or self.nb_models > 0, 'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
-        assert self.skipn == 'auto' or isinstance(self.skipn, int) or isinstance(self.skipn, float), 'Skipn must be "auto" or an integer or a float'
+        assert self.skipn == 'auto' or isinstance(self.skipn, (int, float)), 'Skipn must be "auto" or an integer or a float'
         if isinstance(self.skipn, int) and self.nb_models != 'all':
             assert 0 <= self.skipn < self.nb_models, 'Cannot skip all SAMS models, skipn must be smaller than nb_models'
         if isinstance(self.skipn, float):

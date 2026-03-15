@@ -25,9 +25,9 @@ def default_fn(
     init=init_feasible, sample=sample_random, temperature=None,
     accept=exponential_accept_rel, restart=None, insert=insert_optimal,
     remove=remove_optimal_onebyone, constraints=None,
-    optimizers=[CEOptimizer(1), CEStructOptimizer(1)],
-    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)]
-    ):
+    optimizers=[CEOptimizer(1), CEStructOptimizer(1)], # noqa: B006
+    final_optimizers=[CEOptimizer(1), CEStructOptimizer(1)] # noqa: B006
+    ): 
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
@@ -160,8 +160,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     col_names = [str(f.name) for f in factors]
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     grouped_cols = np.array([bool(f.grouped) for f in factors])
-    ratios = [f.ratio if isinstance(f.ratio, tuple) or isinstance(f.ratio, list)
-                             or isinstance(f.ratio, np.ndarray) else [f.ratio]
+    ratios = [f.ratio if isinstance(f.ratio, (tuple, list, np.ndarray)) else [f.ratio]
               for f in factors]
     coords = [f.coords_ for f in factors]
 

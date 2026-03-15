@@ -58,7 +58,7 @@ log_checkpoint("model_values", model.values.tolist())
 metric = Dopt(cov=cov_double_time_trend(nplots, nruns//nplots, nruns))
 
 # Constraints
-constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
+constraints = parse_constraints_script('(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
 #########################################################################
 

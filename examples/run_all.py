@@ -116,7 +116,7 @@ def main():
                 # Show first few lines of output if any
                 lines = output.strip().split('\n')
                 if len(lines) > 3:
-                    print(f"   📄 Output (first 3 lines):")
+                    print("   📄 Output (first 3 lines):")
                     for line in lines[:3]:
                         print(f"      {line}")
                     if len(lines) > 3:

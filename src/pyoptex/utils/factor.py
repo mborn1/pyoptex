@@ -229,7 +229,7 @@ class FactorMixin:
             return data * self.scale + self.mean
         else:
             m = {i: lname for i, lname in enumerate(self.levels)}
-            if isinstance(data, int) or isinstance(data, float):
+            if isinstance(data, (int, float)):
                 x = m[int(data)]
             else:
                 x = pd.Series(data).astype(int).map(m)
@@ -242,7 +242,7 @@ class Factor(FactorMixin, __Factor__):
     The base factor, also used for the analysis.
     """
     def __new__(cls, *args, **kwargs):
-        self = super(Factor, cls).__new__(cls, *args, **kwargs)
+        self = super(Factor, cls).__new__(cls, *args, **kwargs) # noqa: UP008
         return self.validate()
 
 

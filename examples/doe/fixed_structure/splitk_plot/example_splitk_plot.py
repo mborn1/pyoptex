@@ -65,7 +65,7 @@ prior = (
 )
 
 # Constraints
-constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
+constraints = parse_constraints_script('(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
 #########################################################################
 

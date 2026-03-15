@@ -93,8 +93,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         assert f.re is None or isinstance(f.re, RandomEffect), f'Factor {i} with name {f.name} does not have a RandomEffect as random effect'
         if f.re is not None:
             assert len(f.re.Z) == nruns, f'Factor {i} with name {f.name} does not have enough runs as random effect'
-    assert prior is None, f'Priors have not yet been implemented'
-    assert grps is None, f'Grouped optimization has not yet been implemented'
+    assert prior is None, 'Priors have not yet been implemented'
+    assert grps is None, 'Grouped optimization has not yet been implemented'
     for i, be in enumerate(block_effects):
         assert len(be.Z) == nruns, f'Blocking effect {i} does not have the correct length: {len(be.Z)}. Should be the number of runs {nruns}'
 

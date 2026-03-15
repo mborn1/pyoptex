@@ -67,7 +67,7 @@ cost_fn = parallel_worker_cost(transition_costs, factors, max_transition_cost, e
 
 # Define constraints
 constraints = parse_constraints_script(
-    f'(`A1` == "L1") & (`E` < -0.5-0.25)',
+    '(`A1` == "L1") & (`E` < -0.5-0.25)',
     factors, exclude=True
 )
 
@@ -96,7 +96,7 @@ log_checkpoint("n_experiments", len(state.Y))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_codex.csv'), index=False)
+Y.to_csv(os.path.join(root, 'example_codex.csv'), index=False)
 print(Y)
 
 print('Completed optimization')

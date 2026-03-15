@@ -127,7 +127,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         assert isinstance(f.re, Plot), f'Factor {i} with name {f.name} does not have a Plot as random effect'
     if prior is not None:
         assert isinstance(prior[0], pd.DataFrame), f'The prior must be specified as a dataframe but is a {type(prior)}'
-    assert min(f.re.level for f in factors) == 0, f'The plots must start from level 0 (easy-to-change factors)'
+    assert min(f.re.level for f in factors) == 0, 'The plots must start from level 0 (easy-to-change factors)'
 
     # Extract the plot sizes
     nb_plots = max(f.re.level for f in factors) + 1
@@ -142,8 +142,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Fix ratios
         r = np.sort(f.re.ratio) \
-                if isinstance(f.re.ratio, tuple) or isinstance(f.re.ratio, list) \
-                or isinstance(f.re.ratio, np.ndarray) else [f.re.ratio]
+                if isinstance(f.re.ratio, (tuple, list, np.ndarray)) else [f.re.ratio]
         if ratios[f.re.level] is None:
             ratios[f.re.level] = r
         else:
@@ -194,7 +193,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     if prior is not None:
         # Expand prior
         prior, old_plots = prior
-        assert all(isinstance(p, Plot) for p in old_plots), f'Old plots must be of type Plot'
+        assert all(isinstance(p, Plot) for p in old_plots), 'Old plots must be of type Plot'
 
         # Normalize factors
         for f in factors:

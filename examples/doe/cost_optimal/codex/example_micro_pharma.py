@@ -45,7 +45,7 @@ metric = Dopt()
 
 # Define the constraints
 constraints = parse_constraints_script(
-    f'(`X2` <= `X3`)',
+    '(`X2` <= `X3`)',
     factors, exclude=False
 )
 
@@ -81,7 +81,7 @@ log_checkpoint("n_experiments", len(state.Y))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_micro_pharma.csv'), index=False)
+Y.to_csv(os.path.join(root, 'example_micro_pharma.csv'), index=False)
 
 print('Completed optimization')
 print(f'Metric: {state.metric:.3f}')

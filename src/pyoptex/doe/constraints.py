@@ -459,5 +459,5 @@ def mixture_constraints(names, factors):
     mixture_constraint : :py:class:`Col <pyoptex.doe.constraints.Col>`
         The mixture constraint.
     """
-    script = ' + '.join(f'`{name}`' for name in names) + f' > 1 + eps'
+    script = ' + '.join(f'`{name}`' for name in names) + ' > 1 + eps'
     return parse_constraints_script(script, factors)

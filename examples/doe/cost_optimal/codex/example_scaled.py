@@ -85,7 +85,7 @@ log_checkpoint("n_experiments", len(state.Y))
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, f'example_scaled.csv'), index=False)
+Y.to_csv(os.path.join(root, 'example_scaled.csv'), index=False)
 print(Y)
 
 print('Completed optimization')
