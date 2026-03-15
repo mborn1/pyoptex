@@ -4,7 +4,7 @@ Module containing all the generic initialization functions
 
 import numpy as np
 
-from ._init_cy import *
+from ._init_cy import init_single_unconstrained_cython_impl
 
 
 def init_single_unconstrained(colstart, coords, run, effect_types):

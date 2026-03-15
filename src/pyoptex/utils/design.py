@@ -3,7 +3,7 @@ Module for utility functions related to the design matrices.
 """
 import numpy as np
 
-from ._design_cy import *
+from ._design_cy import decode_design_cython_impl, encode_design_cython_impl, force_Zi_asc_cython_impl, x2fx_cython_impl
 
 
 def create_default_coords(effect_type):
