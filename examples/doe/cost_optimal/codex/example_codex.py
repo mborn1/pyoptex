@@ -19,7 +19,7 @@ from pyoptex.doe.cost_optimal import Factor
 from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.cost_optimal.cov import cov_time_trend
-from pyoptex.doe.cost_optimal.metric import Aopt, Dopt, Iopt
+from pyoptex.doe.cost_optimal.metric import Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed

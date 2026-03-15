@@ -1,7 +1,6 @@
 """Shared helpers for regression tests."""
 
 import json
-import os
 import re
 from pathlib import Path
 

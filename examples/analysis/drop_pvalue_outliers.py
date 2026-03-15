@@ -9,7 +9,7 @@ except ImportError:
     log_checkpoint = lambda *args, **kwargs: None
 
 from pyoptex._seed import set_seed
-from pyoptex.analysis import PValueDropRegressor, QuantileOutliersTransformer, SimpleRegressor
+from pyoptex.analysis import PValueDropRegressor, QuantileOutliersTransformer
 from pyoptex.analysis.utils.plot import plot_res_diagnostics
 from pyoptex.utils import Factor
 from pyoptex.utils.model import model2Y2X, order_dependencies, partial_rsm_names

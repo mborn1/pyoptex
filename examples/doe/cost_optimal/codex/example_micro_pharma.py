@@ -5,7 +5,6 @@ import os
 import time
 
 import numpy as np
-import pandas as pd
 
 try:
     from examples._log_checkpoint import log_checkpoint

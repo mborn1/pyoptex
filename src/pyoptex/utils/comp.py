@@ -5,7 +5,7 @@ import multiprocessing
 
 import numpy as np
 
-from pyoptex.utils._comp_cy import choice_bool, int2bool_cython_impl, outer_integral_cython_impl
+from pyoptex.utils._comp_cy import choice_bool, int2bool_cython_impl, outer_integral_cython_impl # noqa: F401
 
 
 def outer_integral(arr):

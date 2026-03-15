@@ -2,7 +2,6 @@
 Module for the generic coordinate-exchange algorithm.
 """
 
-import numpy as np
 
 from ..._profile import profile
 from ._optimize_cy import _optimize_cython_impl
