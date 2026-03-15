@@ -143,7 +143,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         if ratios[f.re.level] is None:
             ratios[f.re.level] = r
         else:
-            assert all(i==j for i, j in zip(ratios[f.re.level], r)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.re.level]} and {r}'
+            assert all(i==j for i, j in zip(ratios[f.re.level], r, strict=True)), f'Plot ratios at the same plot level must be equal, but are {ratios[f.re.level]} and {r}'
     assert not any(r is None for r in ratios), 'Must specify every integer level in the interval [0, nb_plots)'
 
     # Compute number of runs

@@ -76,7 +76,7 @@ def insert_update_vinv(Vinv, Zs, pos, a, b, ratios):
     Vinvn = add_update_vinv(Vinv, Zs, a, pos, ratios)
     Zsn = tuple([
         np.insert(Zi, pos, ai) if Zi is not None else None
-        for Zi, ai in zip(Zs, a)
+        for Zi, ai in zip(Zs, a, strict=True)
     ])
 
     # Compute updates to Zi

@@ -763,7 +763,7 @@ class RegressionMixin(BaseMixin, RegressorMixinSklearn):
         assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_))
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.coef_, self.terms_, strict=True))
 
         return formula
 
@@ -1095,7 +1095,7 @@ class MultiRegressionMixin(RegressionMixin):
         assert len(labels) == self.n_encoded_features_, 'Must specify one label per encoded feature (= Y2X(Y).shape[1])'
 
         # Create the formula
-        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx]))
+        formula = ' + '.join(f'{c:.3f}{" * " + labels[t] if labels[t] != "cst" else ""}' for c, t in zip(self.model_coef_[idx], self.models_[idx], strict=True))
 
         return formula
 

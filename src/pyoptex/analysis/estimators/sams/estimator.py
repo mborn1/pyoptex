@@ -465,7 +465,7 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             # Compute the number of factors for each
             model_counts = {e: 0 for e in ('quad', 'tfi', 'lin')}
-            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_):
+            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_, strict=True):
                 model_counts[mt] += (1 if et == 1 else et - 1)
             model_counts = [model_counts.get(e, 0) for e in ('quad', 'tfi', 'lin')]
 
@@ -600,7 +600,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Take only the unique submodels
         submodels = self._unique_submodels(self.models_, self.n_encoded_features_)
-        self.models_ = [model for accept, model in zip(submodels, self.models_) if accept]
+        self.models_ = [model for accept, model in zip(submodels, self.models_, strict=True) if accept]
         self.frequencies_ = self.frequencies_[submodels]
         self.entropies_ = self.entropies_[submodels]
 

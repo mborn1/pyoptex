@@ -52,7 +52,7 @@ def design_heatmap(Y, factors):
         else:
             txt = np.full(len(y), '')
         return txt
-    txt = np.stack([create_text(y, f) for y, f in zip(Y.to_numpy().T, factors)], axis=1)
+    txt = np.stack([create_text(y, f) for y, f in zip(Y.to_numpy().T, factors, strict=True)], axis=1)
 
     # Normalize categorical factors for same scale
     for f in factors:
