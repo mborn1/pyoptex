@@ -1,14 +1,17 @@
 """
 Module for utility functions related to computational formulas.
 """
+
 import multiprocessing
+
 import numpy as np
 
-from pyoptex.utils._comp_cy import outer_integral_cython_impl, int2bool_cython_impl, choice_bool
+from pyoptex.utils._comp_cy import choice_bool, int2bool_cython_impl, outer_integral_cython_impl  # noqa: F401
+
 
 def outer_integral(arr):
     """
-    Computes the integral of the outer products of the array rows 
+    Computes the integral of the outer products of the array rows
     using the Monte-Carlo approximation, up to the volume factor.
     This is a simple average of the outer products.
 
@@ -16,13 +19,14 @@ def outer_integral(arr):
     ----------
     arr : np.array(2d)
         The array
-    
+
     Returns
     -------
     out : np.array(2d)
         The integral of the outer product, up to the volume factor.
     """
     return outer_integral_cython_impl(np.ascontiguousarray(arr))
+
 
 def int2bool(arr, size):
     """
@@ -47,7 +51,7 @@ def int2bool(arr, size):
     size : int
         The size of the last dimension in the output array. All
         elements in `arr` must be strictly smaller than this number.
-    
+
     Returns
     -------
     out : np.array(nd)
@@ -68,6 +72,7 @@ def int2bool(arr, size):
     # Return the reshaped array
     return out.reshape(*original_shape[:-1], size)
 
+
 def timeout(func, *args, timeout=1, default=None):
     """
     Sets a timeout on a function by using a ThreadPool with
@@ -85,7 +90,7 @@ def timeout(func, *args, timeout=1, default=None):
     default : obj
         Any object to be returned if the function does not
         complete in time.
-    
+
     Returns
     -------
     result : obj

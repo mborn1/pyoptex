@@ -45,8 +45,35 @@ dev = [
   "sphinx-copybutton==0.5.2",
   "setuptools>=61.0",
   "Cython~=3.0.12",
-  "build"
+  "build~=1.4.0",
+  "ruff~=0.15.6",
+  "mypy~=1.19.1",
+  "pytest~=9.0.2",
+  "pytest-cov~=7.0.0",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E402", "E501", "E731", "SIM300"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyoptex"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["build", "docs", "examples"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
 
 [project.urls]
 Homepage = "https://github.com/mborn1/pyoptex"

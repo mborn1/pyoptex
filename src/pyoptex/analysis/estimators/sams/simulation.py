@@ -44,11 +44,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     accept_fn.reset()
 
     # Initialize model storage
-    rdtype = np.dtype([
-        ('model', np.int64, model_size), 
-        ('coeff', np.float64, model_size),
-        ('metric', np.float64)
-    ])   
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
     models = np.zeros((nb_models, model_size), dtype=np.int64)
 
@@ -59,10 +55,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     # Compute initial metric
     fit = model.fit(m)
     metric0 = fit.metric
-    
+
     # Start the main simulation loop
     with tqdm_(total=nb_models, disable=(not tqdm)) as pbar:
-
         while model_it < nb_models:
             # Mutate to a proposed model
             pm = np.copy(m)
@@ -80,8 +75,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 m = pm
 
                 # Store if unique
-                if allow_duplicate or not np.any(np.all(models[:model_it][np.abs(results['metric'][:model_it] - metric0) < 1e-8] == m, axis=1)):
-                    
+                if allow_duplicate or not np.any(
+                    np.all(models[:model_it][np.abs(results["metric"][:model_it] - metric0) < 1e-8] == m, axis=1)
+                ):
                     # Store the model
                     models[model_it] = m
                     results[model_it] = m, fit.params, metric0
@@ -98,6 +94,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 accept_fn.rejected()
 
     return results
+
 
 def simulate_all(model, model_size, tqdm=True):
     """
@@ -124,11 +121,7 @@ def simulate_all(model, model_size, tqdm=True):
     nb_models = len(models)
 
     # Initialize model storage
-    rdtype = np.dtype([
-        ('model', np.int64, model_size), 
-        ('coeff', np.float64, model_size),
-        ('metric', np.float64)
-    ])   
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
 
     # Compute the metrics for all

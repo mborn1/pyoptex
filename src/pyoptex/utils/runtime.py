@@ -1,8 +1,10 @@
-import os
-import signal
 import inspect
 import multiprocessing
+import os
+import signal
+
 import numpy as np
+
 
 def set_nb_cores(n=1):
     """
@@ -16,7 +18,7 @@ def set_nb_cores(n=1):
 
         >>> from pyoptex.utils.runtime import set_nb_cores
         >>> set_nb_cores(1)
-        >>> 
+        >>>
         >>> import numba
         >>> import numpy as np
 
@@ -25,28 +27,29 @@ def set_nb_cores(n=1):
     n : int, optional
         The number of cores to use. Default is 1.
     """
-    os.environ['OMP_NUM_THREADS'] = str(n)
-    os.environ['OMP_THREAD_LIMIT'] = str(n)
-    os.environ['OMP_DYNAMIC'] = 'FALSE'
+    os.environ["OMP_NUM_THREADS"] = str(n)
+    os.environ["OMP_THREAD_LIMIT"] = str(n)
+    os.environ["OMP_DYNAMIC"] = "FALSE"
 
-    os.environ['MKL_NUM_THREADS'] = str(n)
-    os.environ['MKL_DYNAMIC'] = 'FALSE'
+    os.environ["MKL_NUM_THREADS"] = str(n)
+    os.environ["MKL_DYNAMIC"] = "FALSE"
 
-    os.environ['OPENBLAS_NUM_THREADS'] = str(n)
-    os.environ['GOTO_NUM_THREADS'] = str(n)
+    os.environ["OPENBLAS_NUM_THREADS"] = str(n)
+    os.environ["GOTO_NUM_THREADS"] = str(n)
 
-    os.environ['NUMEXPR_NUM_THREADS'] = str(n)
+    os.environ["NUMEXPR_NUM_THREADS"] = str(n)
 
-    os.environ['NUMBA_NUM_THREADS'] = str(n)
+    os.environ["NUMBA_NUM_THREADS"] = str(n)
 
-    os.environ['PYTHON_CPU_COUNT'] = str(n)
+    os.environ["PYTHON_CPU_COUNT"] = str(n)
 
-    os.environ['VECLIB_MAXIMUM_THREADS'] = str(n)
+    os.environ["VECLIB_MAXIMUM_THREADS"] = str(n)
+
 
 def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs):
     """
     Allows parallel generation of the design. For example, the generation using the
-    CODEX algorithm will parallelize the `nreps` argument over `ncores` cores. The 
+    CODEX algorithm will parallelize the `nreps` argument over `ncores` cores. The
     generation using the split-plot or fixed structure algorithms will parallelize
     the `n_tries` argument over `ncores` cores.
 
@@ -57,7 +60,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     ----------
     fn : callable
         The function to parallelize.
-    *args : tuple
+    \\*args : tuple
         The arguments to pass to the function.
     ncores : int, optional
         The number of cores to use. If not specified, the number of available cores
@@ -65,7 +68,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     parallel_arg_name : str, optional
         The name of the argument to parallelize. If not specified, the function will
         look for an argument named `nreps`, `n_reps`, `ntries`, or `n_tries`.
-    **kwargs : dict
+    \\*\\*kwargs : dict
         The keyword arguments to pass to the function.
 
     Returns
@@ -91,24 +94,25 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     which will parallelize the number of repetitions over the specified or available number of cores.
     """
     # Validate the function
-    assert callable(fn), 'The function argument must be a callable'
-    assert ncores is None or (isinstance(ncores, int) and ncores > 0), 'The ncores argument must be an integer larger than zero, or None'
+    assert callable(fn), "The function argument must be a callable"
+    assert ncores is None or (isinstance(ncores, int) and ncores > 0), (
+        "The ncores argument must be an integer larger than zero, or None"
+    )
 
     # Extract the function arguments for use in starmap
-    fn_args = [(k, v.default) 
-                if v.default is not inspect.Parameter.empty 
-                else (k, None)
-                for k, v in inspect.signature(fn).parameters.items()]
+    fn_args = [
+        (k, v.default) if v.default is not inspect.Parameter.empty else (k, None)
+        for k, v in inspect.signature(fn).parameters.items()
+    ]
     fn_arg_names = [name for name, _ in fn_args]
-    
+
     # Get the parallelizable argument
     if parallel_arg_name is None:
         parallel_arg_idx, parallel_arg_default = None, None
-        for name in ['nreps', 'n_reps', 'ntries', 'n_tries']:
+        for name in ["nreps", "n_reps", "ntries", "n_tries"]:
             try:
                 idx = fn_arg_names.index(name)
-                parallel_arg_idx, parallel_arg_name, parallel_arg_default = \
-                        idx, fn_args[idx][0], fn_args[idx][1]
+                parallel_arg_idx, parallel_arg_name, parallel_arg_default = idx, fn_args[idx][0], fn_args[idx][1]
                 break
             except ValueError:
                 pass
@@ -119,11 +123,13 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
             parallel_arg_idx, parallel_arg_default = idx, fn_args[idx][1]
         except ValueError:
             pass
-    
+
     # Validate the argument
     if parallel_arg_idx is None:
-        raise ValueError('No parallelizable argument found, please provide a function with a '
-                         'keyword argument named nreps, n_reps, ntries, or n_tries')
+        raise ValueError(
+            "No parallelizable argument found, please provide a function with a "
+            "keyword argument named nreps, n_reps, ntries, or n_tries"
+        )
 
     # Retrieve the value of the parallelizable argument
     if len(args) > parallel_arg_idx:
@@ -135,7 +141,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
 
     # Validate the argument
     if not isinstance(nreps, int) or nreps <= 0:
-        raise ValueError('The parallelizable argument must be an integer greater than zero')
+        raise ValueError("The parallelizable argument must be an integer greater than zero")
 
     # Determine the number of cores to use
     if ncores is None:
@@ -147,7 +153,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
     nreps_remainder = nreps % ncores
 
     # Prepare the arguments
-    args = list(args) + [kwargs[name] if name in kwargs else value for name, value in fn_args[len(args):]]
+    args = list(args) + [kwargs.get(name, value) for name, value in fn_args[len(args) :]]
     args = [list(args)] * ncores
     for i in range(len(args)):
         if i < nreps_remainder:
@@ -157,7 +163,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
 
     # Map the results
     with multiprocessing.Pool(ncores) as p:
-        print(f'Starting parallel generation with {nreps} repetitions on {ncores} cores')
+        print(f"Starting parallel generation with {nreps} repetitions on {ncores} cores")
         try:
             # Generate the designs in parallel
             mapresults = p.starmap_async(fn, args)

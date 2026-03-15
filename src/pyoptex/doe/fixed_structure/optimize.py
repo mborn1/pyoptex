@@ -2,12 +2,10 @@
 Module for the generic coordinate-exchange algorithm.
 """
 
-import numpy as np
-
 from ..._profile import profile
-from .validation import validate_state
-from .utils import State
 from ._optimize_cy import _optimize_cython_impl
+from .utils import State
+from .validation import validate_state
 
 
 @profile

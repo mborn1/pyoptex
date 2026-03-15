@@ -19,6 +19,7 @@ class Metric:
         A function computing the covariate parameters
         and potential extra random effects.
     """
+
     def __init__(self, cov=None):
         """
         Creates the metric
@@ -75,13 +76,14 @@ class Metric:
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
             The result metric (to be maximized).
         """
-        raise NotImplementedError('Must implement a call function')
+        raise NotImplementedError("Must implement a call function")
+
 
 class Dopt(Metric):
     """
@@ -108,7 +110,7 @@ class Dopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -121,11 +123,9 @@ class Dopt(Metric):
         M = X.T @ params.Vinv @ X
 
         # Compute D-optimality
-        return np.power(
-            np.prod(np.maximum(np.linalg.det(M), 0)),
-            1/(X.shape[1] * len(params.Vinv))
-        )
- 
+        return np.power(np.prod(np.maximum(np.linalg.det(M), 0)), 1 / (X.shape[1] * len(params.Vinv)))
+
+
 class Aopt(Metric):
     """
     The A-optimality criterion.
@@ -139,6 +139,7 @@ class Aopt(Metric):
     W : None or np.array(1d)
         The weights for computing A-optimality.
     """
+
     def __init__(self, W=None, cov=None):
         """
         Creates the metric
@@ -166,7 +167,7 @@ class Aopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -195,6 +196,7 @@ class Aopt(Metric):
             return -trace
         return -np.inf
 
+
 class Iopt(Metric):
     """
     The I-optimality criterion.
@@ -212,6 +214,7 @@ class Iopt(Metric):
     n : int
         The number of samples.
     """
+
     def __init__(self, n=10000, cov=None, complete=True):
         """
         Creates the metric
@@ -249,12 +252,14 @@ class Iopt(Metric):
         _, self.samples = self.cov(samples, self.samples, random=True)
 
         # Compute moments matrix and normalization factor
-        self.moments = outer_integral(self.samples)  # Correct up to volume factor (Monte Carlo integration), can be ignored
+        self.moments = outer_integral(
+            self.samples
+        )  # Correct up to volume factor (Monte Carlo integration), can be ignored
 
     def call(self, Y, X, params):
         """
         Computes the I-optimality criterion.
-        Computes the average (average) prediction variance if 
+        Computes the average (average) prediction variance if
         multiple Vinv are provided.
 
         Parameters
@@ -265,7 +270,7 @@ class Iopt(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -280,14 +285,18 @@ class Iopt(Metric):
         # Check if invertible (more stable than relying on inverse)
         if np.linalg.matrix_rank(X) >= X.shape[1]:
             # Compute average trace (normalized)
-            trace = np.mean(np.trace(np.linalg.solve(
-                M, 
-                np.broadcast_to(self.moments, (params.Vinv.shape[0], *self.moments.shape))
-            ), axis1=-2, axis2=-1))
+            trace = np.mean(
+                np.trace(
+                    np.linalg.solve(M, np.broadcast_to(self.moments, (params.Vinv.shape[0], *self.moments.shape))),
+                    axis1=-2,
+                    axis2=-1,
+                )
+            )
 
             # Invert for minimization
-            return -trace 
-        return -np.inf 
+            return -trace
+        return -np.inf
+
 
 class Aliasing(Metric):
     """
@@ -309,6 +318,7 @@ class Aliasing(Metric):
     alias : np.array(1d)
         The indices of the effects in the model matrix to alias to.
     """
+
     def __init__(self, effects, alias, cov=None, W=None):
         """
         Creates the metric
@@ -332,7 +342,7 @@ class Aliasing(Metric):
     def call(self, Y, X, params):
         """
         Computes the aliasing criterion.
-        Computes the average (average) prediction variance if 
+        Computes the average (average) prediction variance if
         multiple Vinv are provided.
 
         Parameters
@@ -343,7 +353,7 @@ class Aliasing(Metric):
             The updated model matrix.
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
-        
+
         Returns
         -------
         metric : float
@@ -362,8 +372,4 @@ class Aliasing(Metric):
             A *= self.W
 
         # Compute mean of SS
-        return -np.power(
-            np.mean(np.sum(np.square(A), axis=(-1, -2))), 
-            1/(X.shape[1] * len(params.Vinv))
-        )
-
+        return -np.power(np.mean(np.sum(np.square(A), axis=(-1, -2))), 1 / (X.shape[1] * len(params.Vinv)))

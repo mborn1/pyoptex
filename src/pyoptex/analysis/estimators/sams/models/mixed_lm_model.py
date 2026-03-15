@@ -1,6 +1,7 @@
 """
 Module for the SAMS MixedLM modelling.
 """
+
 import numpy as np
 from scipy import linalg
 
@@ -16,7 +17,7 @@ def Vsqrt_inv(V):
     ----------
     V : np.array(2d)
         The matrix on which the operator applies.
-    
+
     Returns
     -------
     Vsqrt_inv : np.array(2d)
@@ -30,7 +31,7 @@ def Vsqrt_inv(V):
 class MixedLMModel(OlsModel):
     """
     A Mixed linear model for use with the SAMS algorithm which
-    extends the 
+    extends the
     :py:class:`OLSModel <pyoptex.analysis.estimators.sams.models.ols_model.OLSModel>`.
 
     The data (X) and output variable (y) are adjusted to an OLS model
@@ -112,5 +113,5 @@ class MixedLMModel(OlsModel):
             self.X = sqrtV_inverted @ self.X
 
             # Compute the intercept variance
-            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))
+            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))  # noqa: F841
             self.ss_intercept = np.var(self.y) * len(self.y)

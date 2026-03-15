@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 
 # Normal imports
-import numpy as np
-import pandas as pd
 import os
 import time
+
+import numpy as np
+import pandas as pd
+
+try:
+    from examples._log_checkpoint import log_checkpoint
+except ImportError:
+    log_checkpoint = lambda *args, **kwargs: None
 
 # Library imports
 from pyoptex._seed import set_seed
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.utils.model import partial_rsm_names, model2Y2X
 from pyoptex.doe.fixed_structure import Factor
 from pyoptex.doe.fixed_structure.cov import cov_double_time_trend
-from pyoptex.doe.fixed_structure.splitk_plot import (
-    create_splitk_plot_design, default_fn, create_parameters, Plot
-)
-from pyoptex.doe.fixed_structure.splitk_plot.metric import Dopt, Iopt, Aopt
+from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, create_splitk_plot_design, default_fn
+from pyoptex.doe.fixed_structure.splitk_plot.metric import Aopt
 from pyoptex.doe.fixed_structure.splitk_plot.utils import validate_plot_sizes
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 # Set the seed
 set_seed(42)
@@ -29,35 +33,36 @@ nruns = np.prod([p.size for p in plots])
 
 # Define the factors
 factors = [
-    Factor('A', htc, type='categorical', levels=['L1', 'L2', 'L3']),
-    Factor('B', etc, type='continuous'),
-    Factor('C', etc, type='continuous', min=2, max=5),
+    Factor("A", htc, type="categorical", levels=["L1", "L2", "L3"]),
+    Factor("B", etc, type="continuous"),
+    Factor("C", etc, type="continuous", min=2, max=5),
 ]
 
 # Create a partial response surface model
-model = partial_rsm_names({
-    'A': 'tfi',
-    'B': 'quad',
-    'C': 'quad',
-})
+model = partial_rsm_names(
+    {
+        "A": "tfi",
+        "B": "quad",
+        "C": "quad",
+    }
+)
 Y2X = model2Y2X(model, factors)
+log_checkpoint("factor_names", [str(f.name) for f in factors])
+log_checkpoint("nruns", int(nruns))
+log_checkpoint("model_shape", list(model.shape))
+log_checkpoint("model_values", model.values.tolist())
 
 # Define the metric
 metric = Aopt(cov=cov_double_time_trend(htc.size, etc.size, nruns))
 
 # Define prior
 prior = (
-    pd.DataFrame([
-        ['L1', 0, 2],
-        ['L1', 1, 5],
-        ['L2', -1, 3.5],
-        ['L2', 0, 2]
-    ], columns=['A', 'B', 'C']),
-    [Plot(level=0, size=2), Plot(level=1, size=2)]
+    pd.DataFrame([["L1", 0, 2], ["L1", 1, 5], ["L2", -1, 3.5], ["L2", 0, 2]], columns=["A", "B", "C"]),
+    [Plot(level=0, size=2), Plot(level=1, size=2)],
 )
 
 # Constraints
-constraints = parse_constraints_script(f'(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
+constraints = parse_constraints_script('(`A` == "L1") & (`B` < -0.5-0.25)', factors, exclude=True)
 
 #########################################################################
 
@@ -76,15 +81,20 @@ start_time = time.time()
 Y, state = create_splitk_plot_design(params, n_tries=n_tries, validate=True)
 end_time = time.time()
 
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
+
 #########################################################################
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.to_csv(os.path.join(root, 'example_splitk_plot.csv'), index=False)
+Y.to_csv(os.path.join(root, "example_splitk_plot.csv"), index=False)
 
-print('Completed optimization')
-print(f'Metric: {state.metric:.3f}')
-print(f'Execution time: {end_time - start_time:.3f}')
+print("Completed optimization")
+print(f"Metric: {state.metric:.3f}")
+print(f"Execution time: {end_time - start_time:.3f}")
 print(Y)
 
 #########################################################################
@@ -94,7 +104,7 @@ print(Y)
 # plot_correlation_map(Y, factors, fn.Y2X, model=model).show()
 
 # from pyoptex.doe.fixed_structure.evaluate import (
-#     evaluate_metrics, plot_fraction_of_design_space, 
+#     evaluate_metrics, plot_fraction_of_design_space,
 #     plot_estimation_variance_matrix, estimation_variance
 # )
 # print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))

@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 
-from ..mixins.fit_mixin import RegressionMixin
-from ..mixins.conditional_mixin import ConditionalRegressionMixin
 from ...utils.model import identityY2X
+from ..mixins.conditional_mixin import ConditionalRegressionMixin
+from ..mixins.fit_mixin import RegressionMixin
+
 
 class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator):
     """
@@ -15,7 +16,7 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
     Permits to fit a simple model provided in Y2X with optionally random effects.
 
     .. note::
-        It includes all parameters and attributes from 
+        It includes all parameters and attributes from
         :py:class:`RegressionMixin <pyoptex.analysis.mixins.fit_mixin.RegressionMixin>` and
         :py:class:`ConditionalRegressionMixin <pyoptex.analysis.mixins.conditional_mixin.ConditionalRegressionMixin>`
     """
@@ -33,15 +34,12 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         conditional : bool
             Whether to create a conditional model or not.
         """
-        super().__init__(
-            factors=factors, Y2X=Y2X, random_effects=random_effects, 
-            conditional=conditional
-        )
+        super().__init__(factors=factors, Y2X=Y2X, random_effects=random_effects, conditional=conditional)
 
     def _fit(self, X, y):
         """
@@ -61,6 +59,6 @@ class SimpleRegressor(ConditionalRegressionMixin, RegressionMixin, BaseEstimator
         self.fit_ = self.fit_fn_(X, y, self.terms_)
 
         # Store the final results
-        self.coef_ = self.fit_.params[:self.fit_.k_fe]
+        self.coef_ = self.fit_.params[: self.fit_.k_fe]
         self.scale_ = self.fit_.scale
         self.vcomp_ = self.fit_.vcomp

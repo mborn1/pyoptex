@@ -11,7 +11,7 @@ from .model import Model, ModelResults
 class OlsModel(Model):
     """
     A default OLS model for use with the SAMS algorithm which
-    extends the 
+    extends the
     :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
     interface.
 
@@ -66,7 +66,7 @@ class OlsModel(Model):
             selected terms.
         y : np.array(1d)
             The output variable.
-        
+
         Returns
         -------
         params : np.array(1d)
@@ -89,8 +89,8 @@ class OlsModel(Model):
 
         else:
             # Compute results
-            mse_resid = (se / (X.shape[0] - X.shape[1]))
-        
+            mse_resid = se[0] / (X.shape[0] - X.shape[1])
+
         # Compute the adjusted R2
         r2adj = 1 - mse_resid / (self.ss_intercept)
 

@@ -7,7 +7,7 @@ import numpy as np
 
 def sample_last(state, params):
     """
-    Samples a new run by taking the last run 
+    Samples a new run by taking the last run
     and randomly changing one coordinate.
 
     Parameters
@@ -28,9 +28,9 @@ def sample_last(state, params):
 
     # Create a new run out of it
     new_run = np.copy(state.Y[-1])
-    new_run[params.colstart[change]:params.colstart[change+1]] = \
-        coords[np.random.randint(len(coords))]
+    new_run[params.colstart[change] : params.colstart[change + 1]] = coords[np.random.randint(len(coords))]
     return new_run
+
 
 def sample_random(state, params):
     """
@@ -58,6 +58,5 @@ def sample_random(state, params):
     new_run = np.copy(state.Y[idx])
 
     # Change the coordinate
-    new_run[params.colstart[change]:params.colstart[change+1]] = \
-        coords[np.random.randint(len(coords))]
+    new_run[params.colstart[change] : params.colstart[change + 1]] = coords[np.random.randint(len(coords))]
     return new_run

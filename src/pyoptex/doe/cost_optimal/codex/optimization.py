@@ -7,9 +7,9 @@ import numpy as np
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
 from ...utils.init import full_factorial
+from ..utils import obs_var_Zs
 from .formulas import ce_update_vinv, detect_block_end_from_start
 from .simulation import State
-from ..utils import obs_var_Zs
 
 
 def adapt_group(groups, factor, row_start, row_end):
@@ -27,7 +27,7 @@ def adapt_group(groups, factor, row_start, row_end):
         The starting row (included) where the coordinate was changed.
     row_end : int
         The final row (excluded) where the coordinate was changed.
-    
+
     Returns
     -------
     b : list(tuple(row_start, row_end, group_from, group_to))
@@ -41,23 +41,23 @@ def adapt_group(groups, factor, row_start, row_end):
     merge_above, same_above = False, False
     merge_below, same_below = False, False
     if row_start > 0:
-        same_above = groups[row_start-1] == groups[row_start]
-        merge_above = np.all(factor[row_start-1] == factor[row_start])
+        same_above = groups[row_start - 1] == groups[row_start]
+        merge_above = np.all(factor[row_start - 1] == factor[row_start])
     if row_end < len(groups):
-        same_below = groups[row_end] == groups[row_end-1]
+        same_below = groups[row_end] == groups[row_end - 1]
         merge_below = np.all(factor[row_end] == factor[row_start])
-        
+
     # Initialize groups
     b = []
     max_grp = groups[-1]
     if merge_above:
         # Set the group
-        b.append((row_start, row_end, groups[row_start], groups[row_start-1]))
+        b.append((row_start, row_end, groups[row_start], groups[row_start - 1]))
 
         # Validate if below must also be merged (and group dropped)
         if merge_below:
             block_end = detect_block_end_from_start(groups, row_end)
-            b.append((row_end, block_end, groups[row_end], groups[row_start-1]))
+            b.append((row_end, block_end, groups[row_end], groups[row_start - 1]))
     else:
         if merge_below:
             # Set the group
@@ -65,14 +65,15 @@ def adapt_group(groups, factor, row_start, row_end):
         else:
             # Check if split from above / below (new group)
             if same_above or same_below:
-                b.append((row_start, row_end, groups[row_start], max_grp+1))
+                b.append((row_start, row_end, groups[row_start], max_grp + 1))
 
                 # Check for double split
                 if same_above and same_below:
                     block_end = detect_block_end_from_start(groups, row_end)
-                    b.append((row_end, block_end, groups[row_end], max_grp+2))
+                    b.append((row_end, block_end, groups[row_end], max_grp + 2))
 
     return np.array(b)
+
 
 def adapt_groups(groups, Y, colstart, row_start, row_end):
     """
@@ -91,16 +92,17 @@ def adapt_groups(groups, Y, colstart, row_start, row_end):
         The starting row (included) where the coordinate was changed.
     row_end : int
         The final row (excluded) where the coordinate was changed.
-    
+
     Returns
     -------
     b : list(tuple(row_start, row_end, group_from, group_to))
         A list of operations to apply changing the groups of the factors.
     """
     return [
-        adapt_group(groups[i], Y[:, colstart[i]:colstart[i+1]], row_start, row_end)
+        adapt_group(groups[i], Y[:, colstart[i] : colstart[i + 1]], row_start, row_end)
         for i in range(colstart.size - 1)
     ]
+
 
 class Optimizer:
     """
@@ -150,7 +152,7 @@ class Optimizer:
         new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
             The optimized state.
         """
-        raise NotImplementedError('_call function must be implemented for optimizer')
+        raise NotImplementedError("_call function must be implemented for optimizer")
 
     def call(self, state, params, force=False):
         """
@@ -173,7 +175,9 @@ class Optimizer:
             state = self._call(state, params)
         return state
 
+
 ######################################################
+
 
 @profile
 def ce_optimizer(state, params):
@@ -196,10 +200,10 @@ def ce_optimizer(state, params):
     nprior = len(params.prior)
 
     # Loop over all coordinates
-    for row in range(state.Y.shape[0] - 1, nprior-1, -1):
+    for row in range(state.Y.shape[0] - 1, nprior - 1, -1):
         for col in range(params.colstart.size - 1):
             # Store original values
-            Ycoord = np.copy(state.Y[row, params.colstart[col]:params.colstart[col+1]])
+            Ycoord = np.copy(state.Y[row, params.colstart[col] : params.colstart[col + 1]])
             Xrow = np.copy(state.X[row])
 
             # Store original coordinate
@@ -213,11 +217,11 @@ def ce_optimizer(state, params):
                     accept = False
 
                     # Set coordinate
-                    state.Y[row, params.colstart[col]:params.colstart[col+1]] = coord
+                    state.Y[row, params.colstart[col] : params.colstart[col + 1]] = coord
 
                     # Check the constraints
-                    if not params.fn.constraints(state.Y[row:row+1])[0]:
-                        state.X[row] = params.fn.Y2X(state.Y[row:row+1])
+                    if not params.fn.constraints(state.Y[row : row + 1])[0]:
+                        state.X[row] = params.fn.Y2X(state.Y[row : row + 1])
 
                         # Compute costs
                         new_costs = params.fn.cost(state.Y, params)
@@ -228,9 +232,7 @@ def ce_optimizer(state, params):
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(
-                                state.Zs[col], 
-                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
-                                row, row+1
+                                state.Zs[col], state.Y[:, params.colstart[col] : params.colstart[col + 1]], row, row + 1
                             )
                             if len(b) == 0:
                                 Zsn = state.Zs
@@ -238,32 +240,29 @@ def ce_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
-                                        b, params.ratios[:, col]
+                                        np.copy(state.Vinv, order="C"),
+                                        np.copy(state.Zs[col], order="C"),
+                                        b,
+                                        params.ratios[:, col],
                                     )
-                                    Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
-                                        for i, Zi in enumerate(state.Zs)
-                                    ])
+                                    Zsn = tuple(
+                                        [Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)]
+                                    )
                                 else:
-                                    Zsn = obs_var_Zs(
-                                        state.Y, params.colstart, 
-                                        params.grouped_cols
+                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
+                                    Vinvn = np.array(
+                                        [
+                                            np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios))
+                                            for ratios in params.ratios
+                                        ]
                                     )
-                                    Vinvn = np.array([
-                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
-                                        for ratios in params.ratios
-                                    ])
 
                             # Check metric
-                            new_metric = params.fn.metric.call(
-                                state.Y, state.X, Zsn, Vinvn, new_costs
-                            )
+                            new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
 
                             # Compute accept
                             accept = new_metric > state.metric
-                    
+
                     # Accept the update
                     if accept:
                         # Store metric and design
@@ -271,17 +270,15 @@ def ce_optimizer(state, params):
                         Xrow = np.copy(state.X[row])
 
                         # Update the state
-                        state = State(
-                            state.Y, state.X, Zsn, Vinvn, new_metric, 
-                            new_cost, new_costs, max_cost
-                        )
+                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
 
                     else:
                         # Reset values
-                        state.Y[row, params.colstart[col]:params.colstart[col+1]] = Ycoord
+                        state.Y[row, params.colstart[col] : params.colstart[col + 1]] = Ycoord
                         state.X[row] = Xrow
 
     return state
+
 
 class CEOptimizer(Optimizer):
     """
@@ -314,7 +311,9 @@ class CEOptimizer(Optimizer):
         """
         return ce_optimizer(state, params)
 
+
 #########################################################
+
 
 @profile
 def ce_struct_optimizer(state, params):
@@ -340,11 +339,16 @@ def ce_struct_optimizer(state, params):
     # Loop over all coordinates
     for col in range(params.colstart.size - 1):
         # Detect blocks
-        blocks = np.concatenate((
-            np.array([0], np.int64), 
-            np.where(np.any(np.diff(state.Y[:, params.colstart[col]:params.colstart[col+1]], axis=0) != 0, axis=1))[0] + 1,
-            np.array([len(state.Y)], np.int64)
-        ))
+        blocks = np.concatenate(
+            (
+                np.array([0], np.int64),
+                np.where(
+                    np.any(np.diff(state.Y[:, params.colstart[col] : params.colstart[col + 1]], axis=0) != 0, axis=1)
+                )[0]
+                + 1,
+                np.array([len(state.Y)], np.int64),
+            )
+        )
 
         # Extract blocks with no overlap in prior
         blocks = blocks[blocks >= nprior]
@@ -353,10 +357,10 @@ def ce_struct_optimizer(state, params):
 
         for b in range(blocks.size - 1):
             # Rows from that block
-            rows = np.arange(blocks[b], blocks[b+1])
+            rows = np.arange(blocks[b], blocks[b + 1])
 
             # Store original values
-            Ycoord = np.copy(state.Y[rows[0], params.colstart[col]:params.colstart[col+1]])
+            Ycoord = np.copy(state.Y[rows[0], params.colstart[col] : params.colstart[col + 1]])
             Xrows = np.copy(state.X[rows])
 
             # Store original coordinate
@@ -364,15 +368,13 @@ def ce_struct_optimizer(state, params):
 
             # Loop over possible coordinates
             for coord in params.coords[col]:
-
                 # Short-circuit original coordinate
                 if np.any(co != coord):
-
                     # Initialize accept
                     accept = False
 
                     # Set coordinate
-                    state.Y[rows, params.colstart[col]:params.colstart[col+1]] = coord
+                    state.Y[rows, params.colstart[col] : params.colstart[col + 1]] = coord
 
                     # Check constraints
                     if not np.any(params.fn.constraints(state.Y[rows])):
@@ -382,13 +384,14 @@ def ce_struct_optimizer(state, params):
                         new_costs = params.fn.cost(state.Y, params)
                         new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                         max_cost = np.array([m for _, m, _ in new_costs])
-                        
+
                         if np.all(new_cost <= max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(
-                                state.Zs[col], 
-                                state.Y[:, params.colstart[col]:params.colstart[col+1]], 
-                                rows[0], rows[-1]+1
+                                state.Zs[col],
+                                state.Y[:, params.colstart[col] : params.colstart[col + 1]],
+                                rows[0],
+                                rows[-1] + 1,
                             )
                             if len(b) == 0:
                                 Zsn = state.Zs
@@ -396,28 +399,25 @@ def ce_struct_optimizer(state, params):
                             else:
                                 if params.use_formulas:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
-                                        b, params.ratios[:, col]
+                                        np.copy(state.Vinv, order="C"),
+                                        np.copy(state.Zs[col], order="C"),
+                                        b,
+                                        params.ratios[:, col],
                                     )
-                                    Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
-                                        for i, Zi in enumerate(state.Zs)
-                                    ])
+                                    Zsn = tuple(
+                                        [Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)]
+                                    )
                                 else:
-                                    Zsn = obs_var_Zs(
-                                        state.Y, params.colstart, 
-                                        params.grouped_cols
+                                    Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
+                                    Vinvn = np.array(
+                                        [
+                                            np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios))
+                                            for ratios in params.ratios
+                                        ]
                                     )
-                                    Vinvn = np.array([
-                                        np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
-                                        for ratios in params.ratios
-                                    ])
 
                             # Compute new metric
-                            new_metric = params.fn.metric.call(
-                                state.Y, state.X, Zsn, Vinvn, new_costs
-                            )
+                            new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
 
                             # Compute accept
                             accept = new_metric > state.metric
@@ -429,16 +429,14 @@ def ce_struct_optimizer(state, params):
                         Xrows = np.copy(state.X[rows])
 
                         # Update the state
-                        state = State(
-                            state.Y, state.X, Zsn, Vinvn, new_metric, 
-                            new_cost, new_costs, max_cost
-                        )
+                        state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
                     else:
                         # Reset values
-                        state.Y[rows, params.colstart[col]:params.colstart[col+1]] = Ycoord
+                        state.Y[rows, params.colstart[col] : params.colstart[col + 1]] = Ycoord
                         state.X[rows] = Xrows
 
     return state
+
 
 class CEStructOptimizer(Optimizer):
     """
@@ -452,6 +450,7 @@ class CEStructOptimizer(Optimizer):
     n : int
         Every nth iteration, the optimization is applied.
     """
+
     def _call(self, state, params):
         """
         Applies the optimizer.
@@ -470,7 +469,9 @@ class CEStructOptimizer(Optimizer):
         """
         return ce_struct_optimizer(state, params)
 
+
 #########################################################
+
 
 @profile
 def pe_optimizer(state, params):
@@ -497,7 +498,7 @@ def pe_optimizer(state, params):
     points = points[~params.fn.constraints(points)]
 
     # Loop over all coordinates
-    for row in range(state.Y.shape[0] - 1, nprior-1, -1):
+    for row in range(state.Y.shape[0] - 1, nprior - 1, -1):
         # Store original values
         Yrow = np.copy(state.Y[row])
         Xrow = np.copy(state.X[row])
@@ -515,8 +516,8 @@ def pe_optimizer(state, params):
                 state.Y[row] = p
 
                 # Check the constraints
-                if not params.fn.constraints(state.Y[row:row+1])[0]:
-                    state.X[row] = params.fn.Y2X(state.Y[row:row+1])
+                if not params.fn.constraints(state.Y[row : row + 1])[0]:
+                    state.X[row] = params.fn.Y2X(state.Y[row : row + 1])
 
                     # Compute costs
                     new_costs = params.fn.cost(state.Y, params)
@@ -525,14 +526,10 @@ def pe_optimizer(state, params):
 
                     # Check constraints
                     if np.all(new_cost <= max_cost):
-                        
                         # Check if using update formulas
                         if params.use_formulas:
                             # Update Zsn, Vinv
-                            bs = adapt_groups(
-                                state.Zs, state.Y, params.colstart, 
-                                row, row+1
-                            )
+                            bs = adapt_groups(state.Zs, state.Y, params.colstart, row, row + 1)
 
                             # Sequential update of the groups
                             for col, b in enumerate(bs):
@@ -541,30 +538,27 @@ def pe_optimizer(state, params):
                                     Vinvn = state.Vinv
                                 else:
                                     Zin, Vinvn = ce_update_vinv(
-                                        np.copy(state.Vinv, order='C'), 
-                                        np.copy(state.Zs[col], order='C'), 
-                                        b, params.ratios[:, col]
+                                        np.copy(state.Vinv, order="C"),
+                                        np.copy(state.Zs[col], order="C"),
+                                        b,
+                                        params.ratios[:, col],
                                     )
-                                    Zsn = tuple([
-                                        Zi if i != col else force_Zi_asc(Zin) 
-                                        for i, Zi in enumerate(state.Zs)
-                                    ])
+                                    Zsn = tuple(
+                                        [Zi if i != col else force_Zi_asc(Zin) for i, Zi in enumerate(state.Zs)]
+                                    )
                         else:
                             # Recompute from scratch
                             Zsn = obs_var_Zs(state.Y, params.colstart, params.grouped_cols)
-                            Vinvn = np.array([
-                                np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) 
-                                for ratios in params.ratios
-                            ])
+                            Vinvn = np.array(
+                                [np.linalg.inv(obs_var_from_Zs(Zsn, len(state.Y), ratios)) for ratios in params.ratios]
+                            )
 
                         # Check metric
-                        new_metric = params.fn.metric.call(
-                            state.Y, state.X, Zsn, Vinvn, new_costs
-                        )
+                        new_metric = params.fn.metric.call(state.Y, state.X, Zsn, Vinvn, new_costs)
 
                         # Compute accept
                         accept = new_metric > state.metric
-                
+
                 # Accept the update
                 if accept:
                     # Store metric and design
@@ -572,10 +566,7 @@ def pe_optimizer(state, params):
                     Xrow = np.copy(state.X[row])
 
                     # Update the state
-                    state = State(
-                        state.Y, state.X, Zsn, Vinvn, new_metric, 
-                        new_cost, new_costs, max_cost
-                    )
+                    state = State(state.Y, state.X, Zsn, Vinvn, new_metric, new_cost, new_costs, max_cost)
 
                 else:
                     # Reset values
@@ -583,6 +574,7 @@ def pe_optimizer(state, params):
                     state.X[row] = Xrow
 
     return state
+
 
 class PEOptimizer(Optimizer):
     """
@@ -596,6 +588,7 @@ class PEOptimizer(Optimizer):
     n : int
         Every nth iteration, the optimization is applied.
     """
+
     def _call(self, state, params):
         """
         Applies the optimizer.

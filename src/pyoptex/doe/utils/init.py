@@ -3,7 +3,8 @@ Module containing all the generic initialization functions
 """
 
 import numpy as np
-from ._init_cy import *
+
+from ._init_cy import init_single_unconstrained_cython_impl
 
 
 def init_single_unconstrained(colstart, coords, run, effect_types):
@@ -23,13 +24,14 @@ def init_single_unconstrained(colstart, coords, run, effect_types):
         Output buffer of the function. Also returned at the end.
     effect_types : np.array(1d)
         The type of each effect in case no coordinates are specified.
-    
+
     Returns
     -------
     run : np.array(2d)
         The randomly sampled run.
     """
     return init_single_unconstrained_cython_impl(colstart, coords, np.ascontiguousarray(run), effect_types)
+
 
 def full_factorial(colstart, coords, Y=None):
     """
@@ -59,7 +61,7 @@ def full_factorial(colstart, coords, Y=None):
     rep = len(Y)
     for i in range(colstart.size - 1):
         rep = int(rep / coords[i].shape[0])
-        Y[:, colstart[i]:colstart[i+1]] = np.tile(np.repeat(coords[i], rep, axis=0), (tile, 1))
+        Y[:, colstart[i] : colstart[i + 1]] = np.tile(np.repeat(coords[i], rep, axis=0), (tile, 1))
         tile *= coords[i].shape[0]
 
     return Y

@@ -7,9 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def plot_raster(results, terms, skipn=0, metric_name='metric',
-                forced=None, raster_terms=None, kmeans=None,
-                fig=None):
+def plot_raster(results, terms, skipn=0, metric_name="metric", forced=None, raster_terms=None, kmeans=None, fig=None):
     """
     Plot a raster of the results. This plot contains one row per model, sorted
     by metric to identify good performing submodels (=densly colored columns).
@@ -49,9 +47,9 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
         A Plotly figure object of the raster.
     """
     # Order the results ascending
-    idx = np.argsort(results['metric'])
+    idx = np.argsort(results["metric"])
     results = results[idx]
-    
+
     # Check if we require kmeans plotting
     if kmeans is not None:
         # Initialize indices with first skipn
@@ -63,7 +61,7 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
         cluster_thresholds = [skipn]
 
         # Add default skips
-        if not hasattr(kmeans, 'skips'):
+        if not hasattr(kmeans, "skips"):
             kmeans.skips = np.zeros(kmeans.n_clusters, dtype=np.int64)
 
         # Loop over all clusters
@@ -75,10 +73,9 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
             if kmeans.skips[i] > 0:
                 skips.append(cluster_thresholds[i] + kmeans.skips[i])
             cluster_thresholds.append(cluster_thresholds[i] + idx_.size)
-            
+
             # Add the models to the index sorted by metric
-            idx[cluster_thresholds[i]: cluster_thresholds[i+1]] = \
-                    idx_[np.argsort(results['metric'][idx_])]
+            idx[cluster_thresholds[i] : cluster_thresholds[i + 1]] = idx_[np.argsort(results["metric"][idx_])]
 
         # Order the results again
         results = results[idx]
@@ -102,13 +99,13 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
 
         # Set the coefficients
         for i, res in enumerate(results):
-            model = res['model']
+            model = res["model"]
             non_forced_terms = np.isin(model, forced, assume_unique=True, invert=True)
-            raster[i, model[non_forced_terms]] = res['coeff'][non_forced_terms]
+            raster[i, model[non_forced_terms]] = res["coeff"][non_forced_terms]
     else:
         # Set the coefficients
         for i, res in enumerate(results):
-            raster[i, res['model']] = res['coeff']
+            raster[i, res["model"]] = res["coeff"]
 
     # Normalize the coefficients based on absolute value
     raster /= np.expand_dims(np.max(np.abs(raster), 1), 1)
@@ -119,31 +116,26 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
     if fig is None:
         # Create a new figure
         fig = make_subplots(rows=1, cols=2, shared_yaxes=True, column_widths=[0.8, 0.2])
-        rc1 = {'row': 1, 'col': 1}
-        rc2 = {'row': 1, 'col': 2}
+        rc1 = {"row": 1, "col": 1}
+        rc2 = {"row": 1, "col": 2}
         fig.update_layout(height=750)
     else:
         # Unpack the figure
         fig, rc1, rc2 = fig
-        rc1 = {'row': rc1[0], 'col': rc1[1]}
-        rc2 = {'row': rc2[0], 'col': rc2[1]}
+        rc1 = {"row": rc1[0], "col": rc1[1]}
+        rc2 = {"row": rc2[0], "col": rc2[1]}
 
     # Add the heatmap
     fig.add_trace(
-        go.Heatmap(z=raster,
-                   x=terms,
-                   colorscale=[(0, 'red')] + [(0.5-1e-5, 'lightgray'), (0.5, 'white'), (0.5+1e-5, 'lightgray')] + [(1, 'blue')],
-                   zmid=0,
-                   customdata=np.expand_dims(np.broadcast_to(
-                        np.arange(raster.shape[1]), 
-                        raster.shape
-                   ), 2),
-                   hovertemplate='Term: %{x}'+
-                                 '<br>Run: %{y}'+
-                                 '<br>Coefficient: %{z}'+
-                                 '<br>Term ID: %{customdata[0]}'
-                ),
-        **rc1
+        go.Heatmap(
+            z=raster,
+            x=terms,
+            colorscale=[(0, "red"), (0.5 - 1e-5, "lightgray"), (0.5, "white"), (0.5 + 1e-5, "lightgray"), (1, "blue")],
+            zmid=0,
+            customdata=np.expand_dims(np.broadcast_to(np.arange(raster.shape[1]), raster.shape), 2),
+            hovertemplate="Term: %{x}" + "<br>Run: %{y}" + "<br>Coefficient: %{z}" + "<br>Term ID: %{customdata[0]}",
+        ),
+        **rc1,
     )
 
     # Add the term annotations
@@ -154,64 +146,51 @@ def plot_raster(results, terms, skipn=0, metric_name='metric',
         # Add all raster terms as annotations
         for t in raster_terms:
             fig.add_annotation(
-                x=t, 
+                x=t,
                 y=y * len(raster),
-                text=f'<b>{terms[t]}</b>',
+                text=f"<b>{terms[t]}</b>",
                 font_size=18,
                 showarrow=True,
                 arrowhead=1,
-                ax=(t - raster.shape[1]/2) / (raster.shape[1]/2) * -20,
-                **rc1
+                ax=(t - raster.shape[1] / 2) / (raster.shape[1] / 2) * -20,
+                **rc1,
             )
             y = (y + 0.2) % 0.8
 
     # Add the metric line plot
     fig.add_trace(
         go.Scatter(
-            y=np.arange(raster.shape[0]), 
-            x=results['metric'], 
-            name=metric_name, 
-            marker_color='black', 
-            showlegend=False
-        ), **rc2
+            y=np.arange(raster.shape[0]), x=results["metric"], name=metric_name, marker_color="black", showlegend=False
+        ),
+        **rc2,
     )
     fig.update_xaxes(title_text=metric_name, **rc2)
 
     # Add final metric annotation
     fig.add_annotation(
-        x=results['metric'][-1], 
+        x=results["metric"][-1],
         y=results.size - 1,
-        text=f'{results["metric"][-1]:.3f}',
+        text=f"{results['metric'][-1]:.3f}",
         showarrow=True,
         arrowhead=1,
-        ax=-50, ay=20,
-        **rc2
+        ax=-50,
+        ay=20,
+        **rc2,
     )
 
     # Add the thresholds
     for t in cluster_thresholds:
-        fig.add_hline(
-            y=t, line_dash='dot', line_color='black', 
-            line_width=0.5, **rc1
-        )
-        fig.add_hline(
-            y=t, line_dash='dot', line_color='black', 
-            line_width=0.5, **rc2
-        )
+        fig.add_hline(y=t, line_dash="dot", line_color="black", line_width=0.5, **rc1)
+        fig.add_hline(y=t, line_dash="dot", line_color="black", line_width=0.5, **rc2)
 
     # Add skipn horizontal lines
     for s in skips:
-        fig.add_hline(
-            s, line_dash='dash', **rc1
-        )
-        fig.add_hline(
-            s, annotation_text='Skipped', annotation_position='bottom left', 
-            line_dash='dash', **rc2
-        )
+        fig.add_hline(s, line_dash="dash", **rc1)
+        fig.add_hline(s, annotation_text="Skipped", annotation_position="bottom left", line_dash="dash", **rc2)
 
     # The figure size and yrange
-    fig.update_yaxes(range=[0, raster.shape[0]-1], **rc1)
-    fig.update_yaxes(range=[0, raster.shape[0]-1], **rc2)
+    fig.update_yaxes(range=[0, raster.shape[0] - 1], **rc1)
+    fig.update_yaxes(range=[0, raster.shape[0] - 1], **rc2)
 
     # Return the figure
     return fig

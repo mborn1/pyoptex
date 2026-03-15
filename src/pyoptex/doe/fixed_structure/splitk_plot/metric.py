@@ -7,14 +7,18 @@ import warnings
 import numpy as np
 
 from ..metric import (
-    Dopt as Dopto, 
-    Aopt as Aopto, 
-    Iopt as Iopto,
     Aliasing as Aliasingo,
 )
-from ._formulas_cy import (
-    compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
+from ..metric import (
+    Aopt as Aopto,
 )
+from ..metric import (
+    Dopt as Dopto,
+)
+from ..metric import (
+    Iopt as Iopto,
+)
+from ._formulas_cy import compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
 
 
 class SplitkPlotMetricMixin:
@@ -178,6 +182,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
     D : np.array(2d)
         The D-matrix in the update formula.
     """
+
     def __init__(self, cov=None):
         """
         Creates the metric
@@ -237,24 +242,23 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
             The update to the metric.
         """
         # Covariate expansion
-        _, X = self.cov(Y, X) 
+        _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
-            subset=slice(update.run_start, update.run_end)
+            subset=slice(update.run_start, update.run_end),
         )
 
         # Compute U, D update
         self.U, self.D = compute_update_UD(
-            update.level, update.grp, Xi_old, X,
-            params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            update.level, update.grp, Xi_old, X, params.plot_sizes, params.c, params.thetas, params.thetas_inv
         )
 
         # Compute change in determinant
         du, self.P = det_update_UD(self.U, self.D, self.Minv)
         if du > 0:
             # Compute power
-            duu = np.power(np.prod(du), 1/(X.shape[1] * len(self.Minv)))
+            duu = np.power(np.prod(du), 1 / (X.shape[1] * len(self.Minv)))
 
             # Return update as addition
             metric_update = (duu - 1) * update.old_metric
@@ -283,9 +287,14 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
         try:
             self.Minv -= inv_update_UD(self.U, self.D, self.Minv, self.P)
         except np.linalg.LinAlgError as e:
-            warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
+            warnings.warn(
+                "Update formulas are very unstable for this problem, try rerunning without update formulas",
+                RuntimeWarning,
+                stacklevel=2,
+            )
             raise e
- 
+
+
 class Aopt(SplitkPlotMetricMixin, Aopto):
     """
     The A-optimality criterion.
@@ -303,6 +312,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
     Mup : np.array(3d)
         The update for the inverse information matrix.
     """
+
     def __init__(self, W=None, cov=None):
         """
         Creates the metric
@@ -364,24 +374,23 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         # Covariate expansion
         _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
-            subset=slice(update.run_start, update.run_end)
+            subset=slice(update.run_start, update.run_end),
         )
 
         # Compute U, D update
         U, D = compute_update_UD(
-            update.level, update.grp, Xi_old, X,
-            params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            update.level, update.grp, Xi_old, X, params.plot_sizes, params.c, params.thetas, params.thetas_inv
         )
 
         # Compute update to Minv
         try:
             self.Mup = inv_update_UD_no_P(U, D, self.Minv)
-        except np.linalg.LinAlgError as e:
+        except np.linalg.LinAlgError:
             # Infeasible design
             return -np.inf
-        
+
         # Extrace variances
         diag = np.array([np.diag(m) for m in self.Mup])
 
@@ -417,6 +426,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         # Update Minv
         self.Minv -= self.Mup
 
+
 class Iopt(SplitkPlotMetricMixin, Iopto):
     """
     The I-optimality criterion.
@@ -435,6 +445,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
     Mup : np.array(3d)
         The update to the inverse of the information matrix. Used as a cache.
     """
+
     def __init__(self, n=10000, cov=None, complete=True):
         """
         Creates the metric
@@ -500,21 +511,20 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         # Covariate expansion
         _, X = self.cov(Y, X)
         _, Xi_old = self.cov(
-            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))), 
+            np.broadcast_to(update.old_coord, (len(update.Xi_old), len(update.old_coord))),
             update.Xi_old,
-            subset=slice(update.run_start, update.run_end)
+            subset=slice(update.run_start, update.run_end),
         )
 
         # Compute U, D update
         U, D = compute_update_UD(
-            update.level, update.grp, Xi_old, X,
-            params.plot_sizes, params.c, params.thetas, params.thetas_inv
+            update.level, update.grp, Xi_old, X, params.plot_sizes, params.c, params.thetas, params.thetas_inv
         )
 
         # Compute update to Minv
         try:
             self.Mup = inv_update_UD_no_P(U, D, self.Minv)
-        except np.linalg.LinAlgError as e:
+        except np.linalg.LinAlgError:
             # Infeasible design
             return -np.inf
 
@@ -546,6 +556,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         # Update Minv
         self.Minv -= self.Mup
 
+
 class Aliasing(SplitkPlotMetricMixin, Aliasingo):
     """
     The sum of squares criterion for the weighted alias matrix.
@@ -566,4 +577,5 @@ class Aliasing(SplitkPlotMetricMixin, Aliasingo):
     alias : np.array(1d)
         The indices of the effects in the model matrix to alias to.
     """
+
     pass

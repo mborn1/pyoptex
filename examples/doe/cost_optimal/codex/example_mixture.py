@@ -1,39 +1,46 @@
 #!/usr/bin/env python3
 
 # Python imports
-import time
 import os
+import time
+
 import numpy as np
+
+try:
+    from examples._log_checkpoint import log_checkpoint
+except ImportError:
+    log_checkpoint = lambda *args, **kwargs: None
 
 # PyOptEx imports
 from pyoptex._seed import set_seed
-from pyoptex.utils.model import mixtureY2X
 from pyoptex.doe.cost_optimal import Factor, cost_fn
+from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.metric import Iopt
-from pyoptex.doe.cost_optimal.codex import (
-    create_cost_optimal_codex_design, default_fn, create_parameters
-)
+from pyoptex.utils.model import mixtureY2X
 
 # Set the seed
 set_seed(42)
 
 # Define the factors
 factors = [
-    Factor('A', type='mixture', grouped=False, levels=np.arange(0, 1.0001, 0.05)),
-    Factor('B', type='mixture', grouped=False, levels=np.arange(0, 1.0001, 0.05)),
+    Factor("A", type="mixture", grouped=False, levels=np.arange(0, 1.0001, 0.05)),
+    Factor("B", type="mixture", grouped=False, levels=np.arange(0, 1.0001, 0.05)),
 ]
 
 # Create a Scheffe model
 Y2X = mixtureY2X(
     factors,
-    mixture_effects=(('A', 'B'), 'tfi'),
+    mixture_effects=(("A", "B"), "tfi"),
 )
+log_checkpoint("factor_names", [str(f.name) for f in factors])
 
 # Define the criterion for optimization
 metric = Iopt()
 
 # Cost function
 max_cost = np.array([2.5, 4, 10])
+
+
 @cost_fn(denormalize=False, decoded=False, contains_params=False)
 def cost(Y):
     # Extract experiment consumption costs
@@ -44,8 +51,9 @@ def cost(Y):
     return [
         (c1, max_cost[0], np.arange(len(Y))),
         (c2, max_cost[1], np.arange(len(Y))),
-        (1 - c1 - c2, max_cost[2], np.arange(len(Y)))
+        (1 - c1 - c2, max_cost[2], np.arange(len(Y))),
     ]
+
 
 #######################################################################
 
@@ -57,22 +65,26 @@ params = create_parameters(factors, fn)
 
 # Create design
 start_time = time.time()
-Y, state = create_cost_optimal_codex_design(
-    params, nsims=nsims, nreps=nreps
-)
+Y, state = create_cost_optimal_codex_design(params, nsims=nsims, nreps=nreps)
 end_time = time.time()
 
 # Add the final mixture components
-Y['C'] = 1 - Y.sum(axis=1)
+Y["C"] = 1 - Y.sum(axis=1)
+
+log_checkpoint("Y_shape", list(Y.shape))
+log_checkpoint("Y_columns", Y.columns.tolist())
+log_checkpoint("Y_values", Y.values.tolist())
+log_checkpoint("metric", float(state.metric))
+log_checkpoint("n_experiments", len(state.Y))
 
 #######################################################################
 
 # Write design to storage
 root = os.path.split(__file__)[0]
-Y.round(2).to_csv(os.path.join(root, f'example_mixture.csv'), index=False)
+Y.round(2).to_csv(os.path.join(root, "example_mixture.csv"), index=False)
 
-print('Completed optimization')
-print(f'Metric: {state.metric:.3f}')
-print(f'Cost: {state.cost_Y}')
-print(f'Number of experiments: {len(state.Y)}')
-print(f'Execution time: {end_time - start_time:.3f}')
+print("Completed optimization")
+print(f"Metric: {state.metric:.3f}")
+print(f"Cost: {state.cost_Y}")
+print(f"Number of experiments: {len(state.Y)}")
+print(f"Execution time: {end_time - start_time:.3f}")

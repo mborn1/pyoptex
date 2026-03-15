@@ -6,10 +6,9 @@ import numpy as np
 
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
-from .formulas import (NO_UPDATE, detect_block_end_from_start,
-                       insert_update_vinv)
-from .simulation import State
 from ..utils import obs_var_Zs
+from .formulas import NO_UPDATE, detect_block_end_from_start, insert_update_vinv
+from .simulation import State
 
 
 def groups_insert(Yn, Zs, pos, colstart):
@@ -27,7 +26,7 @@ def groups_insert(Yn, Zs, pos, colstart):
         The position of the inserted run
     colstart : np.array(1d)
         The starting column of each factor
-    
+
     Returns
     -------
     a : np.array(1d)
@@ -48,13 +47,13 @@ def groups_insert(Yn, Zs, pos, colstart):
             # Loop initialization
             Zi = Zs[i]
             max_grp = Zi[-1]
-            cols = slice(colstart[i], colstart[i+1])
+            cols = slice(colstart[i], colstart[i + 1])
 
             # Detect change types
-            if pos > 0 and np.all(Yn[pos-1, cols] == Yn[pos, cols]):
+            if pos > 0 and np.all(Yn[pos - 1, cols] == Yn[pos, cols]):
                 # Merge above
-                a[i] = Zi[pos-1]
-            elif pos < len(Zi) and np.all(Yn[pos+1, cols] == Yn[pos, cols]):
+                a[i] = Zi[pos - 1]
+            elif pos < len(Zi) and np.all(Yn[pos + 1, cols] == Yn[pos, cols]):
                 # Merge below
                 a[i] = Zi[pos]
             else:
@@ -62,14 +61,15 @@ def groups_insert(Yn, Zs, pos, colstart):
                 a[i] = max_grp + 1
 
                 # Double split
-                if 0 < pos < len(Zi) and np.all(Yn[pos-1, cols] == Yn[pos+1, cols]):
+                if 0 < pos < len(Zi) and np.all(Yn[pos - 1, cols] == Yn[pos + 1, cols]):
                     block_end = detect_block_end_from_start(Zi, pos)
-                    b[i] = (pos+1, block_end+1, Zi[pos], max_grp + 2)
+                    b[i] = (pos + 1, block_end + 1, Zi[pos], max_grp + 2)
         else:
             # Set non-update
             a[i] = NO_UPDATE
 
     return a, b
+
 
 def _insert_position(new_run, pos, state, params, new_X=None):
     """
@@ -87,7 +87,7 @@ def _insert_position(new_run, pos, state, params, new_X=None):
         The simulation parameters.
     new_X : np.array(1, 1d)
         The model matrix part of that run = x2fx(new_run)
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -109,17 +109,11 @@ def _insert_position(new_run, pos, state, params, new_X=None):
             Zs = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zs)
         else:
             Zs = obs_var_Zs(Y, params.colstart, params.grouped_cols)
-            Vinv = np.array([
-                np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
-                for ratios in params.ratios
-            ])
+            Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     else:
         # Shortcut as there are no hard-to-vary factors
         Zs = state.Zs
-        Vinv = np.broadcast_to(
-            np.eye(len(Y)), 
-            (state.Vinv.shape[0], len(Y), len(Y))
-        )
+        Vinv = np.broadcast_to(np.eye(len(Y)), (state.Vinv.shape[0], len(Y), len(Y)))
 
     # Update costs
     costs = params.fn.cost(Y, params)
@@ -129,11 +123,13 @@ def _insert_position(new_run, pos, state, params, new_X=None):
     metric = params.fn.metric.call(Y, X, Zs, Vinv, costs)
 
     # Collect stats
-    params.stats['insert_loc'][params.stats['it']] = pos
+    params.stats["insert_loc"][params.stats["it"]] = pos
 
     return State(Y, X, Zs, Vinv, metric, cost_Y, costs)
 
+
 ###################################################
+
 
 def insert_last(new_run, state, params):
     """
@@ -147,7 +143,7 @@ def insert_last(new_run, state, params):
         The state from which to start.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -155,6 +151,7 @@ def insert_last(new_run, state, params):
     """
     # Insert in last position
     return _insert_position(new_run, len(state.Y), state, params)
+
 
 @profile
 def insert_optimal(new_run, state, params):
@@ -170,7 +167,7 @@ def insert_optimal(new_run, state, params):
         The state from which to start.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    
+
     Returns
     -------
     new_state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -188,7 +185,7 @@ def insert_optimal(new_run, state, params):
     best_state = state
 
     # Loop over all possible positions
-    for k in range(state.Y.shape[0], nprior-1, -1):
+    for k in range(state.Y.shape[0], nprior - 1, -1):
         # Insert run
         Yn = np.insert(state.Y, k, new_run[0], axis=0)
         Xn = np.insert(state.X, k, new_X[0], axis=0)
@@ -197,26 +194,15 @@ def insert_optimal(new_run, state, params):
         if any(Zi is not None for Zi in state.Zs):
             if params.use_formulas:
                 a, b = groups_insert(Yn, state.Zs, k, params.colstart)
-                Zsn, Vinvn = insert_update_vinv(
-                    state.Vinv, state.Zs, k, a, b, params.ratios
-                )
-                Zsn = tuple(
-                    force_Zi_asc(Zi) if Zi is not None else None 
-                    for Zi in Zsn
-                )
+                Zsn, Vinvn = insert_update_vinv(state.Vinv, state.Zs, k, a, b, params.ratios)
+                Zsn = tuple(force_Zi_asc(Zi) if Zi is not None else None for Zi in Zsn)
             else:
                 Zsn = obs_var_Zs(Yn, params.colstart, params.grouped_cols)
-                Vinvn = np.array([
-                    np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) 
-                    for ratios in params.ratios
-                ])
+                Vinvn = np.array([np.linalg.inv(obs_var_from_Zs(Zsn, len(Yn), ratios)) for ratios in params.ratios])
         else:
             # Shortcut as there are no hard-to-vary factors
             Zsn = state.Zs
-            Vinvn = np.broadcast_to(
-                np.eye(len(Yn)), 
-                (state.Vinv.shape[0], len(Yn), len(Yn))
-            )
+            Vinvn = np.broadcast_to(np.eye(len(Yn)), (state.Vinv.shape[0], len(Yn), len(Yn)))
 
         # Compute cost increase
         costsn = params.fn.cost(Yn, params)
@@ -231,20 +217,22 @@ def insert_optimal(new_run, state, params):
 
         # Target
         # pylint: disable=line-too-long
-        mt = np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y) \
-                - np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y)
+        mt = np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(
+            staten.Y
+        ) - np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y)
         metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))
 
         # Exceeds budget
         exceeds_budget_temp = np.any(cost_Yn > max_cost)
 
         # Maximize
-        if (metric_temp > best_metric and exceeds_budget == exceeds_budget_temp) \
-                or (exceeds_budget and not exceeds_budget_temp):
+        if (metric_temp > best_metric and exceeds_budget == exceeds_budget_temp) or (
+            exceeds_budget and not exceeds_budget_temp
+        ):
             best_metric = metric_temp
             best_state = staten
             exceeds_budget = exceeds_budget_temp
-            params.stats['insert_loc'][params.stats['it']] = k
+            params.stats["insert_loc"][params.stats["it"]] = k
 
     ############################################################
 

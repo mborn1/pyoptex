@@ -1,0 +1,64 @@
+# Run full test suite on every PR across Python versions and platforms.
+# Each job runs independently; any failure fails the workflow with clear per-job errors.
+name: Test suite (PR)
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    # FIX 1: Corrected matrix variable name from matrix.python to matrix.python-version
+    name: Py ${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest, windows-latest]
+
+    # Force deterministic single-threaded math for numerical libraries (match set_nb_cores in runtime.py)
+    env:
+      OMP_NUM_THREADS: "1"
+      OMP_THREAD_LIMIT: "1"
+      OMP_DYNAMIC: "FALSE"
+      MKL_NUM_THREADS: "1"
+      MKL_DYNAMIC: "FALSE"
+      OPENBLAS_NUM_THREADS: "1"
+      GOTO_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      PYTHON_CPU_COUNT: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      
+      # Disables V4 and AVX512 instruction sets in NumPy
+      NPY_DISABLE_CPU_FEATURES: "X86_V4,AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR"
+      # Forces OpenBLAS to use the AVX2 (Haswell) kernels
+      OPENBLAS_CORETYPE: "HASWELL"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          # FIX 3: Enable pip caching to speed up CI runs across matrix jobs
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # FIX 4: Diagnostic dump to compare environments when things fail
+      - name: Environment Diagnostics
+        run: |
+          echo "=== Installed Packages ==="
+          python -m pip freeze
+          echo "=== NumPy Configuration ==="
+          python -c "import numpy as np; np.show_config()" || echo "NumPy not installed"
+
+      - name: Run tests
+        run: python -m pytest -v --tb=short

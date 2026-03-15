@@ -2,10 +2,12 @@
 Module for all temperature functions of the CODEX algorithm
 """
 
+
 class Temperature:
     """
     The base temperature class.
     """
+
     def reset(self):
         """
         Resets the temperature.
@@ -24,6 +26,7 @@ class Temperature:
         """
         pass
 
+
 class LinearTemperature(Temperature):
     """
     Linear temperature operator. Computes temperature as
@@ -40,6 +43,7 @@ class LinearTemperature(Temperature):
     T : float
         The current temperature.
     """
+
     def __init__(self, T0, nsims):
         """
         Initializes the temperature operator.
@@ -67,7 +71,7 @@ class LinearTemperature(Temperature):
         """
         Update when a new design has been accepted.
         """
-        self.T = (1-(self.i+1)/self.nsims) * self.T0
+        self.T = (1 - (self.i + 1) / self.nsims) * self.T0
         self.i += 1
 
     def rejected(self):
@@ -76,10 +80,11 @@ class LinearTemperature(Temperature):
         """
         self.accepted()
 
+
 class ExponentialTemperature(Temperature):
     """
     Exponential temperature which decreases with an accepted
-    state, and increases with a rejected state. The rate of 
+    state, and increases with a rejected state. The rate of
     increase/decrease is represented by kappa. E.g. kappa = 4
     requires 4 rejections to reach the same temperature as one
     acceptation.
@@ -97,7 +102,7 @@ class ExponentialTemperature(Temperature):
     T : float
         The current temperature.
     """
-    
+
     def __init__(self, T0, rho=0.95, kappa=4):
         """
         Initializes the temperature.

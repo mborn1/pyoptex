@@ -21,17 +21,21 @@ def validate_state(state, params, eps=1e-6):
         The epsilon to use for floating point comparison.
     """
     # Validate X
-    assert np.all(state.X == params.fn.Y2X(state.Y)), '(validation) X does not match Y2X(Y)'
+    assert np.all(state.X == params.fn.Y2X(state.Y)), "(validation) X does not match Y2X(Y)"
 
     # Validate metric
     metric = params.fn.metric.call(state.Y, state.X, params)
-    if (metric == 0 and state.metric == 0) \
-        or (np.isnan(metric) and np.isnan(state.metric))\
-        or (np.isinf(metric) and np.isinf(state.metric)):
-        warnings.warn(f'Metric is {state.metric}')
+    if (
+        (metric == 0 and state.metric == 0)
+        or (np.isnan(metric) and np.isnan(state.metric))
+        or (np.isinf(metric) and np.isinf(state.metric))
+    ):
+        warnings.warn(f"Metric is {state.metric}", stacklevel=2)
     else:
-        assert np.abs((state.metric - metric) / metric) < eps, f'(validation) The metric does not match: {state.metric}, {metric}'
+        assert np.abs((state.metric - metric) / metric) < eps, (
+            f"(validation) The metric does not match: {state.metric}, {metric}"
+        )
 
     # Validate constraints
     constraints = params.fn.constraints(state.Y)
-    assert not np.any(constraints), f'(validation) Constraints are violated: {constraints}'
+    assert not np.any(constraints), f"(validation) Constraints are violated: {constraints}"

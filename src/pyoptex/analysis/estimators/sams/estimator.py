@@ -2,25 +2,26 @@
 Module for the SAMS regressor.
 """
 
-import numpy as np
-import ruptures as rpt
-import plotly.graph_objects as go
 from functools import reduce
+
+import numpy as np
+import plotly.graph_objects as go
+import ruptures as rpt
+from plotly.subplots import make_subplots
 from sklearn.cluster import KMeans
 from tqdm import tqdm
-from plotly.subplots import make_subplots
 
-from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X, sample_model_dep_onebyone, model2encnames
 from ....utils.comp import timeout
+from ....utils.design import obs_var_from_Zs
+from ....utils.model import identityY2X, model2encnames, sample_model_dep_onebyone
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
 from .bnb.sams_bnb import SamsBnB
 from .entropy import entropies, entropies_approx
-from .models.ols_model import OlsModel
 from .models.mixed_lm_model import MixedLMModel
+from .models.ols_model import OlsModel
 from .plot import plot_raster
-from .simulation import simulate_sams, simulate_all
+from .simulation import simulate_all, simulate_sams
 
 
 class SamsRegressor(MultiRegressionMixin):
@@ -32,7 +33,7 @@ class SamsRegressor(MultiRegressionMixin):
     and adapted here to include any dependency matrix and random effects.
 
     .. note::
-        It also includes all parameters and attributes from 
+        It also includes all parameters and attributes from
         :py:class:`MultiRegressionMixin <pyoptex.analysis.mixins.fit_mixin.MultiRegressionMixin>`
 
     .. note::
@@ -87,7 +88,7 @@ class SamsRegressor(MultiRegressionMixin):
     nterms_bnb : None or int or iterable(int)
         The fixed sizes of submodels to apply the branch-and-bound algorithm
         on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-        as recommended by the original paper. If an int, every size from 
+        as recommended by the original paper. If an int, every size from
         one until the specified number is tested. If an iterable, only the
         values from the iterable are tested.
     bnb_timeout : int
@@ -126,21 +127,36 @@ class SamsRegressor(MultiRegressionMixin):
     frequencies\\_ : np.array(1d)
         The occurence frequency of each submodel in `models\\_`
     kmeans\\_ : None or :py:class:`sklearn.cluster.Kmeans`
-        A kmeans object used to cluster the raster plot. Added 
+        A kmeans object used to cluster the raster plot. Added
         a parameter `skips` equal to 5% of the cluster size to
         be skipped for entropy calculations.
-    metric_name\\_ : str  
+    metric_name\\_ : str
         The name of the selection metric.
     """
 
-    def __init__(self, factors=(), Y2X=identityY2X, random_effects=(),
-                    dependencies=None, mode=None, forced_model=None,
-                    model_size=None, nb_models=10000, skipn='auto', est_ratios=None,
-                    allow_duplicate_sample=False, max_cluster=8, ncluster=None,
-                    topn_bnb=4, nterms_bnb=None, bnb_timeout=180,
-                    entropy_sampler=sample_model_dep_onebyone, entropy_sampling_N=10000, 
-                    entropy_model_order=None,
-                    tqdm=True):
+    def __init__(
+        self,
+        factors=(),
+        Y2X=identityY2X,
+        random_effects=(),
+        dependencies=None,
+        mode=None,
+        forced_model=None,
+        model_size=None,
+        nb_models=10000,
+        skipn="auto",
+        est_ratios=None,
+        allow_duplicate_sample=False,
+        max_cluster=8,
+        ncluster=None,
+        topn_bnb=4,
+        nterms_bnb=None,
+        bnb_timeout=180,
+        entropy_sampler=sample_model_dep_onebyone,
+        entropy_sampling_N=10000,
+        entropy_model_order=None,
+        tqdm=True,
+    ):
         """
         Initializes the class
 
@@ -153,7 +169,7 @@ class SamsRegressor(MultiRegressionMixin):
             The function to transform a design matrix Y to a model matrix X.
         random_effects : list(str)
             The names of any random effect columns. Every random effect
-            is interpreted as a string column and encoded using 
+            is interpreted as a string column and encoded using
             effect encoding.
         dependencies : np.array(2d)
             The dependency matrix of size (N, N) with N the number
@@ -202,7 +218,7 @@ class SamsRegressor(MultiRegressionMixin):
         nterms_bnb : None or int or iterable(int)
             The fixed sizes of submodels to apply the branch-and-bound algorithm
             on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-            as recommended by the original paper. If an int, every size from 
+            as recommended by the original paper. If an int, every size from
             one until the specified number is tested. If an iterable, only the
             values from the iterable are tested.
         bnb_timeout : int
@@ -262,10 +278,13 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Set some default values
         self._nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
-        self._nterms_bnb = range(len(self.forced_model) + 1, self._nterms_bnb) \
-                                if isinstance(self._nterms_bnb, int) else self._nterms_bnb
+        self._nterms_bnb = (
+            range(len(self.forced_model) + 1, self._nterms_bnb)
+            if isinstance(self._nterms_bnb, int)
+            else self._nterms_bnb
+        )
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
-        
+
     def _validate_fit(self, X, y):
         """
         Validate the inputted parameters before fitting the model.
@@ -278,62 +297,79 @@ class SamsRegressor(MultiRegressionMixin):
             The output variable.
         """
         super()._validate_fit(X, y)
-        
+
         # Validate dependencies and mode
-        assert self.mode in (None, 'weak', 'strong'), 'The drop-mode must be None, weak or strong'
-        if self.mode in ('weak', 'strong'):
-            assert self.dependencies is not None, 'Must specify dependency matrix if using weak or strong heredity'
-            assert len(self.dependencies.shape) == 2, 'Dependencies must be a 2D array'
-            assert self.dependencies.shape[0] == self.dependencies.shape[1], 'Dependency matrix must be square'
+        assert self.mode in (None, "weak", "strong"), "The drop-mode must be None, weak or strong"
+        if self.mode in ("weak", "strong"):
+            assert self.dependencies is not None, "Must specify dependency matrix if using weak or strong heredity"
+            assert len(self.dependencies.shape) == 2, "Dependencies must be a 2D array"
+            assert self.dependencies.shape[0] == self.dependencies.shape[1], "Dependency matrix must be square"
 
         # TODO: validate forced_model hereditary
 
         # Validate SAMS inputs
         if self.model_size is not None:
             if self.forced_model is None:
-                assert self.model_size > 0, 'The overfitted model size must be a positive number'
+                assert self.model_size > 0, "The overfitted model size must be a positive number"
             else:
-                assert self.model_size > len(self.forced_model), 'The overfitted model size must be at least one larger than the forced model' 
-        assert self.nb_models == 'all' or self.nb_models > 0, 'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
-        assert self.skipn == 'auto' or isinstance(self.skipn, int) or isinstance(self.skipn, float), 'Skipn must be "auto" or an integer or a float'
-        if isinstance(self.skipn, int) and self.nb_models != 'all':
-            assert 0 <= self.skipn < self.nb_models, 'Cannot skip all SAMS models, skipn must be smaller than nb_models'
+                assert self.model_size > len(self.forced_model), (
+                    "The overfitted model size must be at least one larger than the forced model"
+                )
+        assert self.nb_models == "all" or self.nb_models > 0, (
+            'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
+        )
+        assert self.skipn == "auto" or isinstance(self.skipn, (int, float)), (
+            'Skipn must be "auto" or an integer or a float'
+        )
+        if isinstance(self.skipn, int) and self.nb_models != "all":
+            assert 0 <= self.skipn < self.nb_models, "Cannot skip all SAMS models, skipn must be smaller than nb_models"
         if isinstance(self.skipn, float):
-            assert 0 <= self.skipn < 1, 'If skipn is a floating point, it must be a fraction between [0, 1)'
+            assert 0 <= self.skipn < 1, "If skipn is a floating point, it must be a fraction between [0, 1)"
         if self.est_ratios is not None:
-            assert len(self.est_ratios) == len(self._re), 'Every random effect must have an estimated ratio when specified, in the same order'
-        assert self.topn_bnb > 0, 'Must select at least one submodel for each fixed size, topn_bnb must be larger than 0'
-        if self.nterms_bnb is not None:
-            if isinstance(self.nterms_bnb, int):
-                assert self.nterms_bnb > 0, 'When an integer is specified for nterms_bnb, it must be larger than zero'
-        assert self.bnb_timeout > 0, 'Must specify a strictly positive number of seconds for the branch-and-bound to run'
+            assert len(self.est_ratios) == len(self._re), (
+                "Every random effect must have an estimated ratio when specified, in the same order"
+            )
+        assert self.topn_bnb > 0, (
+            "Must select at least one submodel for each fixed size, topn_bnb must be larger than 0"
+        )
+        if self.nterms_bnb is not None and isinstance(self.nterms_bnb, int):
+            assert self.nterms_bnb > 0, "When an integer is specified for nterms_bnb, it must be larger than zero"
+        assert self.bnb_timeout > 0, (
+            "Must specify a strictly positive number of seconds for the branch-and-bound to run"
+        )
         if self.forced_model is not None:
-            assert isinstance(self.forced_model, np.ndarray), 'The forced model must be an integer array'
-            assert np.issubdtype(self.forced_model.dtype, np.integer), 'The forced model must be an integer array'
-        assert self.max_cluster >= 3, 'The maximum number of clusters for auto selection must be larger than three'
+            assert isinstance(self.forced_model, np.ndarray), "The forced model must be an integer array"
+            assert np.issubdtype(self.forced_model.dtype, np.integer), "The forced model must be an integer array"
+        assert self.max_cluster >= 3, "The maximum number of clusters for auto selection must be larger than three"
         if self.ncluster is not None:
-            assert self.ncluster == 'auto' or isinstance(self.ncluster, int), 'ncluster must be None, "auto" or an integer'
-            if self.ncluster != 'auto':
-                assert self.ncluster > 0, 'The number of clusters must be larger than or equal to one'
+            assert self.ncluster == "auto" or isinstance(self.ncluster, int), (
+                'ncluster must be None, "auto" or an integer'
+            )
+            if self.ncluster != "auto":
+                assert self.ncluster > 0, "The number of clusters must be larger than or equal to one"
 
         # Validate model order for entropy calculations
         if self.entropy_model_order is not None:
             # Define the required ordering
-            model_types_ord = {'quad': 2, 'tfi': 1, 'lin': 0}
+            model_types_ord = {"quad": 2, "tfi": 1, "lin": 0}
 
             # Reorder the model types based on the factors
-            assert all(str(f.name) in self.entropy_model_order.keys() for f in self._factors), 'All factors must have an entropy model order specified'
+            assert all(str(f.name) in self.entropy_model_order for f in self._factors), (
+                "All factors must have an entropy model order specified"
+            )
             entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in self._factors}
-            
+
             # Assert the ordering
-            assert np.all(np.diff([model_types_ord[typ] for typ in entropy_model_order.values()]) <= 0), 'Model types must be ordered quad > tfi > lin for entropy calculations'
+            assert np.all(np.diff([model_types_ord[typ] for typ in entropy_model_order.values()]) <= 0), (
+                "Model types must be ordered quad > tfi > lin for entropy calculations"
+            )
 
             # TODO: Perform a random validation of the model to make sure it is correct in Y2X
 
     def _topn_selection(self, results, sizes, nterms, topn=4, timeout_sec=180):
         """
         Selects the top n submodels of fixed sizes in the results using
-        the branch-and-bound algorithm. For each size in `sizes`, the 
+        the branch-and-bound algorithm. For each size in `sizes`, the
         `topn` submodels of that size are extracted from the results.
 
         Parameters
@@ -353,7 +389,7 @@ class SamsRegressor(MultiRegressionMixin):
             The maximum time to use for a single iteration of the branch-and-bound
             algorithm. If it runs too long, chances are low that any high
             entropy models are returned.
-    
+
         Returns
         -------
         models : list(np.array(1d))
@@ -367,12 +403,12 @@ class SamsRegressor(MultiRegressionMixin):
         count_idx = 0
 
         # Compute BnB
-        for i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
+        for _i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
             # Compute the result with a timeout
             result = timeout(
-                SamsBnB(size, results, nterms, self.mode, self.dependencies, self.forced_model).top, 
-                topn, 
-                timeout=timeout_sec
+                SamsBnB(size, results, nterms, self.mode, self.dependencies, self.forced_model).top,
+                topn,
+                timeout=timeout_sec,
             )
 
             # Check for a result within the timeout
@@ -387,7 +423,7 @@ class SamsRegressor(MultiRegressionMixin):
                 break
 
         # Compute frequencies
-        frequencies = counts[:len(models)] / len(results)
+        frequencies = counts[: len(models)] / len(results)
 
         return models, frequencies
 
@@ -431,7 +467,7 @@ class SamsRegressor(MultiRegressionMixin):
                 # Add it to the good submodels
                 submodels[j, models[i]] = True
                 j += 1
-                
+
         return keep
 
     def _entropy(self, X, y, submodels, freqs):
@@ -448,25 +484,31 @@ class SamsRegressor(MultiRegressionMixin):
             The list of top submodels for each size.
         freq : np.array(1d)
             The frequencies of these submodels in the raster plot.
-        
+
         Returns
         -------
         entropies : np.array(1d)
             The entropies of these models.
         """
-        if self.entropy_model_order is None or self.mode != 'weak':
+        if self.entropy_model_order is None or self.mode != "weak":
             # Compute approximated entropies
             entropy = entropies_approx(
-                submodels, freqs, self._model_size, self.dependencies, self.mode,
-                self.forced_model, self.entropy_sampling_N, self.entropy_sampler
+                submodels,
+                freqs,
+                self._model_size,
+                self.dependencies,
+                self.mode,
+                self.forced_model,
+                self.entropy_sampling_N,
+                self.entropy_sampler,
             )
 
         else:
             # Compute the number of factors for each
-            model_counts = {e: 0 for e in ('quad', 'tfi', 'lin')}
-            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_):
-                model_counts[mt] += (1 if et == 1 else et - 1)
-            model_counts = [model_counts.get(e, 0) for e in ('quad', 'tfi', 'lin')]
+            model_counts = {e: 0 for e in ("quad", "tfi", "lin")}
+            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_, strict=True):
+                model_counts[mt] += 1 if et == 1 else et - 1
+            model_counts = [model_counts.get(e, 0) for e in ("quad", "tfi", "lin")]
 
             # Compute entropy (based on model order)
             entropy = entropies(submodels, freqs, self._model_size, model_counts)
@@ -485,9 +527,11 @@ class SamsRegressor(MultiRegressionMixin):
             The normalized output variable.
         """
         # Some final validation
-        assert np.all(self.forced_model < self.n_encoded_features_), 'The forced model must have integers smaller than the number of parameters in X'
+        assert np.all(self.forced_model < self.n_encoded_features_), (
+            "The forced model must have integers smaller than the number of parameters in X"
+        )
         if self.mode is not None:
-            assert self.dependencies.shape[0] == X.shape[1], 'Must specify a dependency for each term'
+            assert self.dependencies.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
         # Compute SAMS results
         if len(self._re) == 0:
@@ -495,40 +539,46 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             V = obs_var_from_Zs(self.Zs_, len(X), self._est_ratios)
             self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
-        accept = ExponentialAccept(T0=(X.shape[0])*np.var(y)/10, rho=0.95, kappa=4)
-        if self.nb_models == 'all':
+        accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
+        if self.nb_models == "all":
             self.results_ = simulate_all(self.sams_model_, self._model_size, tqdm=self.tqdm)
         else:
-            self.results_ = simulate_sams(self.sams_model_, self._model_size, accept_fn=accept, nb_models=self.nb_models,
-                                            allow_duplicate=self.allow_duplicate_sample, tqdm=self.tqdm)
+            self.results_ = simulate_sams(
+                self.sams_model_,
+                self._model_size,
+                accept_fn=accept,
+                nb_models=self.nb_models,
+                allow_duplicate=self.allow_duplicate_sample,
+                tqdm=self.tqdm,
+            )
 
         # Sort the results
-        idx = np.argsort(self.results_['metric'])
+        idx = np.argsort(self.results_["metric"])
         results = self.results_[idx]
 
         # Skip bad part of the data
-        if self.skipn == 'auto':
+        if self.skipn == "auto":
             # Compute the difference in derivative
-            slope = np.diff(results['metric'])
-            bkps = rpt.KernelCPD(kernel='linear', min_size=0).fit_predict(slope, pen=np.var(slope)*1000)
+            slope = np.diff(results["metric"])
+            bkps = rpt.KernelCPD(kernel="linear", min_size=0).fit_predict(slope, pen=np.var(slope) * 1000)
 
             # Extract the skip
             if len(bkps) == 1:
                 self._skipn = 0
             else:
                 # Take the last breakpoint
-                self._skipn = bkps[-2] + int(0.01*(len(results) - bkps[-2])) # Add a safety margin for steady state
+                self._skipn = bkps[-2] + int(0.01 * (len(results) - bkps[-2]))  # Add a safety margin for steady state
         elif isinstance(self.skipn, float):
             self._skipn = int(self.skipn * len(results))
         else:
             self._skipn = self.skipn
-        results = results[self._skipn:]
+        results = results[self._skipn :]
 
         # Possibly cluster
         if self.ncluster is None:
             # Perform branch and bound
             submodels, freq = self._topn_selection(
-                results['model'], self._nterms_bnb, self.n_encoded_features_, self.topn_bnb, self.bnb_timeout
+                results["model"], self._nterms_bnb, self.n_encoded_features_, self.topn_bnb, self.bnb_timeout
             )
 
             # Compute entropies
@@ -540,15 +590,15 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             # Expand models to integer cluster (for kmeans)
             results_cluster = np.zeros((len(results), self.n_encoded_features_))
-            np.put_along_axis(results_cluster, results['model'], 1, axis=1)
+            np.put_along_axis(results_cluster, results["model"], 1, axis=1)
 
             # Auto detect the number of clusters
-            if self.ncluster == 'auto':
+            if self.ncluster == "auto":
                 # Fit kmeans
                 kmeans_dists = np.zeros(self.max_cluster)
-                for nc in range(1, self.max_cluster+1):
-                    kmeans = KMeans(n_init='auto', n_clusters=nc).fit(results_cluster)
-                    kmeans_dists[nc-1] = kmeans.inertia_
+                for nc in range(1, self.max_cluster + 1):
+                    kmeans = KMeans(n_init="auto", n_clusters=nc).fit(results_cluster)
+                    kmeans_dists[nc - 1] = kmeans.inertia_
 
                 # Elbow rule for cluster selection
                 kmeans_elbow = np.diff(kmeans_dists, n=2)
@@ -559,7 +609,7 @@ class SamsRegressor(MultiRegressionMixin):
                 kmeans_dists = None
 
             # Fit kmeans on selected number of clusters
-            self.kmeans_ = KMeans(n_init='auto', n_clusters=ncluster).fit(results_cluster)
+            self.kmeans_ = KMeans(n_init="auto", n_clusters=ncluster).fit(results_cluster)
             self.kmeans_.skips = np.zeros(ncluster, dtype=np.int64)
             self.kmeans_.dists = kmeans_dists
 
@@ -567,15 +617,15 @@ class SamsRegressor(MultiRegressionMixin):
             m_, f_, e_ = [], [], []
             for i in range(0, ncluster):
                 # Select cluster i
-                cluster_i = (self.kmeans_.labels_ == i)
+                cluster_i = self.kmeans_.labels_ == i
                 ncluster_i = np.sum(cluster_i)
 
                 # Compute skip
-                skipn = int(0.05*ncluster_i)
+                skipn = int(0.05 * ncluster_i)
                 self.kmeans_.skips[i] = skipn
 
                 # Perform branch and bound
-                results_ = results['model'][cluster_i][skipn:]
+                results_ = results["model"][cluster_i][skipn:]
                 submodels, freq = self._topn_selection(
                     results_, self._nterms_bnb, self.n_encoded_features_, self.topn_bnb, self.bnb_timeout
                 )
@@ -599,13 +649,13 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Take only the unique submodels
         submodels = self._unique_submodels(self.models_, self.n_encoded_features_)
-        self.models_ = [model for accept, model in zip(submodels, self.models_) if accept]
+        self.models_ = [model for accept, model in zip(submodels, self.models_, strict=True) if accept]
         self.frequencies_ = self.frequencies_[submodels]
         self.entropies_ = self.entropies_[submodels]
 
         # Set required parameters
         self.selection_metrics_ = self.entropies_
-        self.metric_name_ = 'Entropy'        
+        self.metric_name_ = "Entropy"
 
         return self
 
@@ -627,60 +677,63 @@ class SamsRegressor(MultiRegressionMixin):
         fig : :py:class:`plotly.graph_objects.Figure`
             The Plotly Figure object of the raster plot.
         """
-        assert self.is_fitted, 'You must fit the regressor before plotting the selection plot'
+        assert self.is_fitted, "You must fit the regressor before plotting the selection plot"
 
         # Create default term labels
         if model is not None:
             terms = model2encnames(model, self.effect_types_)
         else:
-            terms = [f'x{i}' for i in range(self.n_encoded_features_)]
+            terms = [f"x{i}" for i in range(self.n_encoded_features_)]
 
         # Extract top raster terms
         raster_terms = reduce(np.union1d, self.models_[:ntop])
 
         # Check for amount of clusters
         if self.kmeans_ is not None and self.kmeans_.dists is not None:
-
             # Create the plot
             fig = make_subplots(
-                rows=2, cols=2,
+                rows=2,
+                cols=2,
                 specs=[
                     [{"colspan": 2}, None],
                     [{}, {}],
                 ],
-                shared_yaxes=True, column_widths=[0.8, 0.2], row_heights=[0.3, 0.7]
+                shared_yaxes=True,
+                column_widths=[0.8, 0.2],
+                row_heights=[0.3, 0.7],
             )
 
             # Plot the cluster selection
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(1, self.max_cluster+1), 
-                    y=self.kmeans_.dists / self.kmeans_.dists[0], 
-                    showlegend=False
+                    x=np.arange(1, self.max_cluster + 1), y=self.kmeans_.dists / self.kmeans_.dists[0], showlegend=False
                 ),
-                row=1, col=1
+                row=1,
+                col=1,
             )
             elbow = np.diff(self.kmeans_.dists, n=2)
             fig.add_trace(
-                go.Bar(x=np.arange(1+1, self.max_cluster), y=elbow / np.max(elbow), showlegend=False),
-                row=1, col=1
+                go.Bar(x=np.arange(1 + 1, self.max_cluster), y=elbow / np.max(elbow), showlegend=False), row=1, col=1
             )
-            fig.update_xaxes(title='nb clusters', row=1)
-            fig.update_yaxes(title='', row=1)
+            fig.update_xaxes(title="nb clusters", row=1)
+            fig.update_yaxes(title="", row=1)
 
             # Plot the raster
             fig = plot_raster(
-                self.results_, terms,
-                self._skipn, 'r2(adj)', self.forced_model, 
-                raster_terms, self.kmeans_, (fig, (2, 1), (2, 2))
+                self.results_,
+                terms,
+                self._skipn,
+                "r2(adj)",
+                self.forced_model,
+                raster_terms,
+                self.kmeans_,
+                (fig, (2, 1), (2, 2)),
             )
 
         else:
             # Plot simple raster
             fig = plot_raster(
-                self.results_, terms,
-                self._skipn, 'r2(adj)', self.forced_model, 
-                raster_terms, self.kmeans_
+                self.results_, terms, self._skipn, "r2(adj)", self.forced_model, raster_terms, self.kmeans_
             )
 
         return fig

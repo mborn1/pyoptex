@@ -3,8 +3,8 @@ Module for the split^k-plot coordinate-exchange algorithm.
 """
 
 from ...._profile import profile
-from ..validation import validate_state
 from ..utils import State
+from ..validation import validate_state
 from ._optimize_cy import _optimize_cython_impl
 
 

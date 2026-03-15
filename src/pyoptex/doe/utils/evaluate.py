@@ -4,7 +4,6 @@ Module containing all the generic evaluation functions
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 from ...utils.design import encode_design
@@ -44,41 +43,46 @@ def design_heatmap(Y, factors):
     # Create the text labels
     def create_text(y, factor):
         if factor.is_categorical:
-            bkps = np.concatenate(([0], np.flatnonzero(np.diff(y))+1, [len(y)]))
+            bkps = np.concatenate(([0], np.flatnonzero(np.diff(y)) + 1, [len(y)]))
             bkps = np.floor(np.diff(bkps) / 2).astype(int) + bkps[:-1]
 
-            max_len = max(len(l) for l in factor.levels)
-            txt = np.full(len(y), '', dtype=f'U{max_len}')
+            max_len = max(len(lvl) for lvl in factor.levels)
+            txt = np.full(len(y), "", dtype=f"U{max_len}")
             txt[bkps] = factor.denormalize(y[bkps])
         else:
-            txt = np.full(len(y), '')
+            txt = np.full(len(y), "")
         return txt
-    txt = np.stack([create_text(y, f) for y, f in zip(Y.to_numpy().T, factors)], axis=1)
+
+    txt = np.stack([create_text(y, f) for y, f in zip(Y.to_numpy().T, factors, strict=True)], axis=1)
 
     # Normalize categorical factors for same scale
     for f in factors:
         if f.is_categorical:
-                Y[str(f.name)] = Y[str(f.name)] / (len(f.levels) - 1) * 2 - 1
+            Y[str(f.name)] = Y[str(f.name)] / (len(f.levels) - 1) * 2 - 1
 
     # Convert to numpy for plotting
     Y = Y.to_numpy()
 
     # Create the figure
     fig = go.Figure()
-    fig.add_trace(go.Heatmap(
-        z=np.flipud(Y), x=col_names, y=np.arange(len(Y))[::-1].astype(str), text=np.flipud(txt), texttemplate="%{text}",
-        hovertemplate='<b>Factor</b>: %{x}<br><b>Run</b>: %{y}<br><b>Level</b>: %{customdata}<br><b>Normalized level</b>: %{z}',
-        customdata=np.flipud(customdata)
-    ))
-    fig.update_layout(
-        title=f'Design: {len(Y)} runs',
-        title_x=0.5
+    fig.add_trace(
+        go.Heatmap(
+            z=np.flipud(Y),
+            x=col_names,
+            y=np.arange(len(Y))[::-1].astype(str),
+            text=np.flipud(txt),
+            texttemplate="%{text}",
+            hovertemplate="<b>Factor</b>: %{x}<br><b>Run</b>: %{y}<br><b>Level</b>: %{customdata}<br><b>Normalized level</b>: %{z}",
+            customdata=np.flipud(customdata),
+        )
     )
+    fig.update_layout(title=f"Design: {len(Y)} runs", title_x=0.5)
 
     # Top-down plotting
     return fig
 
-def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
+
+def correlation_map(Y, factors, Y2X, model=None, method="pearson"):
     """
     Computes the map of correlations for the provided design.
 
@@ -101,9 +105,9 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     corr : pd.DataFrame
         The dataframe of correlations.
     """
-    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
-    
+
     # Create the design parameters
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     coords = [f.coords_ for f in factors]
@@ -133,7 +137,8 @@ def correlation_map(Y, factors, Y2X, model=None, method='pearson'):
     corr = pd.DataFrame(X, columns=encoded_colnames).corr(method=method)
     return corr
 
-def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nans=True, corr_abs=False):
+
+def plot_correlation_map(Y, factors, Y2X, model=None, method="pearson", drop_nans=True, corr_abs=False):
     """
     Plots the map of correlations for the provided design.
 
@@ -153,10 +158,10 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     drop_nans : bool
         Whether to drop rows and columns that are completely nan.
     corr_abs : bool
-        Whether to drop the sign of the correlation. 
-        If True, the colors in the figure only display magnitudes 
+        Whether to drop the sign of the correlation.
+        If True, the colors in the figure only display magnitudes
         using a sequential colormap ('Cividis').
-        If False, the colors of the figure show the sign, using 
+        If False, the colors of the figure show the sign, using
         a diverging colormap ('RdBu').
 
     Returns
@@ -166,7 +171,7 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     """
     # Compute correlation map
     corr = correlation_map(Y, factors, Y2X, model, method)
-    
+
     # Iteratively drop entire rows and columns of nans
     if drop_nans:
         while True:
@@ -178,22 +183,24 @@ def plot_correlation_map(Y, factors, Y2X, model=None, method='pearson', drop_nan
     # User can specify if they are interested in sign of correlation or just magnitude
     if corr_abs:
         z = np.flipud(corr.abs().to_numpy())
-        zmin, zmax, colorscale, title_suffix = 0, 1, 'Cividis', ' (absolute)'
+        zmin, zmax, colorscale, title_suffix = 0, 1, "Cividis", " (absolute)"
     else:
         z = np.flipud(corr.to_numpy())
-        zmin, zmax, colorscale, title_suffix = -1, 1, 'RdBu', ''
+        zmin, zmax, colorscale, title_suffix = -1, 1, "RdBu", ""
 
     fig = go.Figure()
-    fig.add_trace(go.Heatmap(
-        z=z, x=corr.columns, y=corr.columns[::-1],
-        colorscale=colorscale,
-        text=np.flipud(corr.map(lambda v: f"{v:+.3f}").to_numpy()),
-        hovertemplate='<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{text}<extra></extra>',
-        zmin=zmin, zmax=zmax
-    ))
-    fig.update_layout(
-        title=f'Correlation map{title_suffix}',
-        title_x=0.5
+    fig.add_trace(
+        go.Heatmap(
+            z=z,
+            x=corr.columns,
+            y=corr.columns[::-1],
+            colorscale=colorscale,
+            text=np.flipud(corr.map(lambda v: f"{v:+.3f}").to_numpy()),
+            hovertemplate="<b>Factor 1</b>: %{x}<br><b>Factor 2</b>: %{y}<br><b>Correlation</b>: %{text}<extra></extra>",
+            zmin=zmin,
+            zmax=zmax,
+        )
     )
+    fig.update_layout(title=f"Correlation map{title_suffix}", title_x=0.5)
 
     return fig

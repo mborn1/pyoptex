@@ -1,17 +1,17 @@
-
 from collections import namedtuple
+
 import numpy as np
 import pandas as pd
 
 from .design import create_default_coords, encode_design
 
-__Factor__ = namedtuple('__Factor__', 'name type min max levels coords',
-                        defaults=(None, 'cont', -1, 1, None, None))
+__Factor__ = namedtuple("__Factor__", "name type min max levels coords", defaults=(None, "cont", -1, 1, None, None))
+
 
 class FactorMixin:
     """
     Factor Mixin to be used whenever creating a new factor class.
-    This mixin contains common validation code and functions to normalize 
+    This mixin contains common validation code and functions to normalize
     and denormalize columns based on the factors settings.
 
     Attributes
@@ -27,46 +27,78 @@ class FactorMixin:
         The maximum of the factor. Used for continuous factors.
     levels : list(float) or list(str)
         For continuous factors, this is the list of possible numerical values.
-        For categorical factors, this is a list of strings for the possible 
+        For categorical factors, this is a list of strings for the possible
         categories.
     coords : list(np.array(2d))
         Only possible for categorical factors. The list of encodings of each level.
     """
+
     def validate(self):
         """
         Validation of the settings. To be called in the __new__ constructor.
         """
         # Check for a mixture component
-        if self.type in ('mixt', 'mixture'):
+        if self.type in ("mixt", "mixture"):
             # Alter default minimum and maximum
-            assert (self.min == -1 and self.max == 1), 'Cannot specify a minimum and maximum for mixture components. Use levels parameters to specify minimum and maximum consumption per run'
+            assert self.min == -1 and self.max == 1, (
+                "Cannot specify a minimum and maximum for mixture components. Use levels parameters to specify minimum and maximum consumption per run"
+            )
 
             # Define default coordinates as positive
-            levels = self.levels if self.levels is not None \
-                     else np.array([0, 0.5, 1])
-            
+            levels = self.levels if self.levels is not None else np.array([0, 0.5, 1])
+
             # Transform to a new factor
             params = self._asdict()
-            params['type'] = 'cont_mixture'
-            params['levels'] = levels
+            params["type"] = "cont_mixture"
+            params["levels"] = levels
             return self.__class__.__new__(self.__class__, **params)
 
         # Validate the object creation
-        assert self.type in ['cont', 'continuous', 'cont_mixture', 'cat', 'categorical', 'qual', 'qualitative', 'quan', 'quantitative'], f'The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}'
+        assert self.type in [
+            "cont",
+            "continuous",
+            "cont_mixture",
+            "cat",
+            "categorical",
+            "qual",
+            "qualitative",
+            "quan",
+            "quantitative",
+        ], f"The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}"
         if self.is_continuous:
-            assert isinstance(self.min, (float, int)), f'Factor {self.name} must have an integer or float minimum, but is {self.min}'
-            assert isinstance(self.max, (float, int)), f'Factor {self.name} must have an integer or float maximum, but is {self.max}'        
-            assert self.min < self.max, f'Factor {self.name} must have a lower minimum than maximum, but is {self.min} vs. {self.max}'
-            assert self.coords is None, f'Cannot specify coordinates for continuous factors, but factor {self.name} has {self.coords}. Please specify the levels'
-            assert self.levels is None or len(self.levels) >= 2, f'A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}'
+            assert isinstance(self.min, (float, int)), (
+                f"Factor {self.name} must have an integer or float minimum, but is {self.min}"
+            )
+            assert isinstance(self.max, (float, int)), (
+                f"Factor {self.name} must have an integer or float maximum, but is {self.max}"
+            )
+            assert self.min < self.max, (
+                f"Factor {self.name} must have a lower minimum than maximum, but is {self.min} vs. {self.max}"
+            )
+            assert self.coords is None, (
+                f"Cannot specify coordinates for continuous factors, but factor {self.name} has {self.coords}. Please specify the levels"
+            )
+            assert self.levels is None or len(self.levels) >= 2, (
+                f"A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}"
+            )
         else:
-            assert len(self.levels) >= 2, f'A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}'
+            assert len(self.levels) >= 2, (
+                f"A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}"
+            )
             if self.coords is not None:
                 coords = np.array(self.coords)
-                assert len(coords.shape) == 2, f'Factor {self.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions'
-                assert coords.shape[0] == len(self.levels), f'Factor {self.name} requires one encoding for every level, but has {len(self.levels)} levels and {coords.shape[0]} encodings'
-                assert coords.shape[1] == len(self.levels) - 1, f'Factor {self.name} has N levels and requires N-1 dummy columns, but has {len(self.levels)} levels and {coords.shape[1]} dummy columns'
-                assert np.linalg.matrix_rank(coords) == coords.shape[1], f'Factor {self.name} does not have a valid (full rank) encoding'
+                assert len(coords.shape) == 2, (
+                    f"Factor {self.name} requires a 2d array as coordinates, but has {len(coords.shape)} dimensions"
+                )
+                assert coords.shape[0] == len(self.levels), (
+                    f"Factor {self.name} requires one encoding for every level, but has {len(self.levels)} levels and {coords.shape[0]} encodings"
+                )
+                assert coords.shape[1] == len(self.levels) - 1, (
+                    f"Factor {self.name} has N levels and requires N-1 dummy columns, but has {len(self.levels)} levels and {coords.shape[1]} dummy columns"
+                )
+                assert np.linalg.matrix_rank(coords) == coords.shape[1], (
+                    f"Factor {self.name} does not have a valid (full rank) encoding"
+                )
 
         return self
 
@@ -107,9 +139,9 @@ class FactorMixin:
         is_continuous : bool
             If this factor is continuous (or mixture).
         """
-        return self.type.lower() in ['cont', 'continuous', 'quan', 'quantitative', 'cont_mixture']
+        return self.type.lower() in ["cont", "continuous", "quan", "quantitative", "cont_mixture"]
 
-    @property 
+    @property
     def is_categorical(self):
         """
         Check wether the factor is catgorical.
@@ -120,7 +152,7 @@ class FactorMixin:
             If this factor is categorical.
         """
         return not self.is_continuous
-    
+
     @property
     def is_mixture(self):
         """
@@ -131,7 +163,7 @@ class FactorMixin:
         is_mixture : bool
             If this factor is a mixture component.
         """
-        return self.type.lower() in ['cont_mixture']
+        return self.type.lower() in ["cont_mixture"]
 
     @property
     def coords_(self):
@@ -179,7 +211,7 @@ class FactorMixin:
             requires a float, array of floats or a series of
             floats. A categorical factor requires a string
             or series of strings.
-        
+
         Returns
         -------
         norm_data : float or int or np.array(1d) or pd.Series
@@ -217,7 +249,7 @@ class FactorMixin:
             requires a float, array of floats or a series of
             floats. A categorical factor requires an int
             or series of ints.
-        
+
         Returns
         -------
         denorm_data : float or str or np.array(1d) or pd.Series
@@ -228,7 +260,7 @@ class FactorMixin:
             return data * self.scale + self.mean
         else:
             m = {i: lname for i, lname in enumerate(self.levels)}
-            if isinstance(data, int) or isinstance(data, float):
+            if isinstance(data, (int, float)):
                 x = m[int(data)]
             else:
                 x = pd.Series(data).astype(int).map(m)
@@ -236,12 +268,12 @@ class FactorMixin:
                     x = x.to_numpy()
             return x
 
+
 class Factor(FactorMixin, __Factor__):
     """
     The base factor, also used for the analysis.
     """
-    def __new__(cls, *args, **kwargs):
-        self = super(Factor, cls).__new__(cls, *args, **kwargs)
-        return self.validate()
 
-    
+    def __new__(cls, *args, **kwargs):
+        self = super(Factor, cls).__new__(cls, *args, **kwargs)  # noqa: UP008
+        return self.validate()

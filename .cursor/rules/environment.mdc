@@ -1,0 +1,9 @@
+---
+description: Known environment and dependency caveats
+alwaysApply: true
+---
+
+# Environment caveats
+
+- **kaleido** (plotly static export): can emit harmless dbus errors in headless/Cloud VM; safe to ignore.
+- **numba** (~0.61): pulls in llvmlite; first import may have a short JIT compilation delay.

@@ -1,6 +1,6 @@
-from .estimators.simple_model import SimpleRegressor
+# ruff: noqa: F401
 from .estimators.p_value_drop_model import PValueDropRegressor
 from .estimators.sams.estimator import SamsRegressor
+from .estimators.simple_model import SimpleRegressor
 from .transformers.quantile_outlier_transformer import QuantileOutliersTransformer
-
 from .utils.plot import plot_res_diagnostics

@@ -7,27 +7,37 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 
-from ..utils import Parameters as Parameterso, RandomEffect as RandomEffect
 from ....utils.model import encode_model
+from ..utils import Parameters as Parameterso
+from ..utils import RandomEffect as RandomEffect
 
-Parameters = namedtuple('Parameters', ' '.join(Parameterso._fields) + ' plot_sizes c alphas thetas thetas_inv compute_update')
-Update = namedtuple('Update', 'level grp run_start run_end col_start col_end new_coord old_coord Xi_old old_metric')
+Parameters = namedtuple(  # type: ignore[misc]
+    "Parameters",
+    " ".join(Parameterso._fields) + " plot_sizes c alphas thetas thetas_inv compute_update",
+)
+Update = namedtuple("Update", "level grp run_start run_end col_start col_end new_coord old_coord Xi_old old_metric")
 
-__Plot__ = namedtuple('__Plot__', 'level size ratio', defaults=(0, 1, 1))
+__Plot__ = namedtuple("__Plot__", "level size ratio", defaults=(0, 1, 1))
+
+
 class Plot(__Plot__):
     __slots__ = ()
 
     def __new__(cls, *args, **kwargs):
-        self = super(Plot, cls).__new__(cls, *args, **kwargs)
-        assert self.level >= 0, f'Plot levels must be larger than or equal to zero, but is {self.level}'
-        assert self.size > 0, f'Plot sizes must be larger than zero, but is {self.size}'
-        if isinstance(self.ratio, tuple) or isinstance(self.ratio, list) or isinstance(self.ratio, np.ndarray):
-            assert all(r >= 0 for r in self.ratio), f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
+        self = super(Plot, cls).__new__(cls, *args, **kwargs)  # noqa: UP008
+        assert self.level >= 0, f"Plot levels must be larger than or equal to zero, but is {self.level}"
+        assert self.size > 0, f"Plot sizes must be larger than zero, but is {self.size}"
+        if isinstance(self.ratio, (tuple, list, np.ndarray)):
+            assert all(r >= 0 for r in self.ratio), (
+                f"Variance ratios must be larger than or equal to zero, but is {self.ratio}"
+            )
         else:
-            assert self.ratio >= 0, f'Variance ratios must be larger than or equal to zero, but is {self.ratio}'
+            assert self.ratio >= 0, f"Variance ratios must be larger than or equal to zero, but is {self.ratio}"
         return self
 
+
 ################################################
+
 
 def obs_var_Zs(plot_sizes):
     """
@@ -52,10 +62,11 @@ def obs_var_Zs(plot_sizes):
     Zs = tuple([np.repeat(np.arange(alpha), int(alphas[0] / alpha)) for alpha in alphas[1:]])
     return Zs
 
+
 def obs_var(plot_sizes, ratios=None):
     """
     Directly computes the observation matrix from the design. Is similar to
-    :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>` 
+    :py:func:`obs_var_Zs <pyoptex.doe.fixed_structure.splitk_plot.utils.obs_var_Zs>`
     followed by :py:func:`obs_var_from_Zs <pyoptex.utils.design.obs_var_from_Zs>`.
 
     Parameters
@@ -64,7 +75,7 @@ def obs_var(plot_sizes, ratios=None):
         The sizes of each plot. e.g. [3, 4] is a split-plot design
         with 4 plots and 3 runs per plot.
     ratios : np.array(1d)
-        The variance ratios of the different groups compared to the variance of 
+        The variance ratios of the different groups compared to the variance of
         the random errors.
 
     Returns
@@ -81,12 +92,14 @@ def obs_var(plot_sizes, ratios=None):
     # Compute variance-covariance of observations
     V = np.eye(alphas[0])
     for i in range(ratios.size):
-        Zi = np.kron(np.eye(alphas[i+1]), np.ones((thetas[i+1], 1)))
+        Zi = np.kron(np.eye(alphas[i + 1]), np.ones((thetas[i + 1], 1)))
         V += ratios[i] * Zi @ Zi.T
 
     return V
 
+
 ################################################
+
 
 def level_grps(s0, s1):
     """
@@ -114,7 +127,7 @@ def level_grps(s0, s1):
     for k, i in enumerate(range(s1.size - 2, -1, -1)):
         # Indices from current level
         g0 = np.arange(s0[i], s1[i])
-        for j in range(i+1, s1.size):
+        for j in range(i + 1, s1.size):
             g0 = (np.expand_dims(np.arange(s0[j]) * np.prod(s1[i:j]), 1) + g0).flatten()
 
         # All indices from added runs in higher levels
@@ -123,22 +136,23 @@ def level_grps(s0, s1):
         # Concatenate both and save
         g = np.concatenate((g0, g1))
         grps.append(g)
-    
+
     # Return reverse of groups
     return grps[::-1]
+
 
 def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     """
     Extend an existing design Y with initial plot sizes (`plot_sizes`) to
-    a new design with `new_plot_sizes`. This function only extends the 
-    existing design by adding new runs in the correct positions and forcing 
-    the correct factor levels where necessary. It does not perform any 
+    a new design with `new_plot_sizes`. This function only extends the
+    existing design by adding new runs in the correct positions and forcing
+    the correct factor levels where necessary. It does not perform any
     optimization or initialization of the new runs.
 
     Parameters
     ----------
     Y : np.array(2d)
-        The initial design. If all initial plot sizes are zero, 
+        The initial design. If all initial plot sizes are zero,
         a new design is created with all zeros.
     plot_sizes : np.array(1d)
         The initial plot sizes of the design.
@@ -164,8 +178,8 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     new_runs = list()
     for i in range(new_plot_sizes.size):
         g = np.repeat(
-            np.arange(thetas[i+1], thetas[-1] + thetas[i+1], thetas[i+1]), 
-            np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i]
+            np.arange(thetas[i + 1], thetas[-1] + thetas[i + 1], thetas[i + 1]),
+            np.prod(new_plot_sizes[:i]) * plot_sizes_diff[i],
         )
         new_runs.extend(g)
     Y = np.insert(Y, new_runs, 0, axis=0)
@@ -174,15 +188,16 @@ def extend_design(Y, plot_sizes, new_plot_sizes, effect_levels):
     nthetas = np.cumprod(np.concatenate((np.array([1]), new_plot_sizes)))
     nalphas = np.cumprod(new_plot_sizes[::-1])[::-1]
 
-    # Fix the levels 
+    # Fix the levels
     for col in range(effect_levels.size):
         level = effect_levels[col]
         if level != 0:
             size = nthetas[level]
             for grp in range(nalphas[level]):
-                Y[grp*size:(grp+1)*size, col] = Y[grp*size, col]
-    
+                Y[grp * size : (grp + 1) * size, col] = Y[grp * size, col]
+
     return Y
+
 
 def terms_per_plot_level(factors, model):
     """
@@ -204,7 +219,7 @@ def terms_per_plot_level(factors, model):
         of freedom.
     """
     # Reorder model
-    assert isinstance(model, pd.DataFrame), 'The model must be a dataframe'
+    assert isinstance(model, pd.DataFrame), "The model must be a dataframe"
     col_names = [str(f.name) for f in factors]
     model = model[col_names].to_numpy()
 
@@ -215,7 +230,7 @@ def terms_per_plot_level(factors, model):
     # Initialize
     plot_levels = np.array([x for f in factors for x in [f.re.level] * (len(f.levels) - 1 if f.is_categorical else 1)])
     max_split_level = np.max(plot_levels)
-    split_levels = np.zeros(max_split_level+1, np.int64)
+    split_levels = np.zeros(max_split_level + 1, np.int64)
 
     # Compute amount of terms with only factors higher or equal to current split-level
     for i in range(max_split_level + 1):
@@ -232,6 +247,7 @@ def terms_per_plot_level(factors, model):
 
     return split_levels
 
+
 def min_plot_levels(tppl):
     """
     Computes the required number of degrees of freedom
@@ -242,7 +258,7 @@ def min_plot_levels(tppl):
     ----------
     tppl : np.array(1d)
         The number of terms per plot level. Is the result
-        of calling 
+        of calling
         :py:func:`terms_per_plot_level <pyoptex.doe.fixed_structure.splitk_plot.utils.terms_per_plot_level>`.
 
     Returns
@@ -254,11 +270,12 @@ def min_plot_levels(tppl):
     """
     req = np.zeros_like(tppl)
 
-    req[-1] = (tppl[-1] + 1)
+    req[-1] = tppl[-1] + 1
     for i in range(2, tppl.shape[0] + 1):
-        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(req[-i+1:]) + 1)
+        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(req[-i + 1 :]) + 1)
 
     return req
+
 
 def validate_plot_sizes(factors, model):
     """
@@ -290,10 +307,10 @@ def validate_plot_sizes(factors, model):
 
     # Compute and check the requirements per level
     req = np.zeros_like(tppl)
-    req[-1] = (tppl[-1] + 1)
+    req[-1] = tppl[-1] + 1
     for i in range(2, tppl.shape[0] + 1):
-        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(plot_sizes[-i+1:]) + 1)
+        req[-i] = np.ceil((tppl[-i] + 1) / np.prod(plot_sizes[-i + 1 :]) + 1)
 
     # Validate they are above minimum
     min_levels = min_plot_levels(tppl)
-    assert np.all(plot_sizes >= req), f'The minimum sized split^k-plot design has sizes {min_levels}'
+    assert np.all(plot_sizes >= req), f"The minimum sized split^k-plot design has sizes {min_levels}"

@@ -2,6 +2,7 @@
 Module for all accept functions of the CODEX algorithm
 """
 
+
 def exponential_accept_rel(m0, m1, T):
     """
     Computes the accept probability as an exponential function of the
@@ -32,5 +33,5 @@ def exponential_accept_rel(m0, m1, T):
         return 1
 
     # Compute accept probability
-    d = m1/m0 if m0 > 0 else m0/m1
-    return d ** (1/T)
+    d = m1 / m0 if m0 > 0 else m0 / m1
+    return d ** (1 / T)

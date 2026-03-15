@@ -26,13 +26,13 @@ def evaluate_metrics(Y, params, metrics):
         The simulation parameters.
     metrics : list(:py:class:`Metric <pyoptex.doe.cost_optimal.metric.Metric>`)
         The list of metrics to evaluate.
-    
+
     Returns
     -------
     metrics : list(float)
         The resulting evaluations of the metrics on the design.
     """
-    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
 
     # Normalize Y
@@ -49,10 +49,7 @@ def evaluate_metrics(Y, params, metrics):
     # Define the metric inputs
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
-    Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
-        for ratios in params.ratios
-    ])
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
 
     # Initialize the metrics
@@ -61,6 +58,7 @@ def evaluate_metrics(Y, params, metrics):
 
     # Compute the metrics
     return [metric.call(Y, X, Zs, Vinv, costs) for metric in metrics]
+
 
 def fraction_of_design_space(Y, params, N=10000):
     """
@@ -82,7 +80,7 @@ def fraction_of_design_space(Y, params, N=10000):
         The array of relative prediction variances for each of the a-priori variance
         ratio sets provided.
     """
-    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
 
     # Normalize Y
@@ -99,10 +97,7 @@ def fraction_of_design_space(Y, params, N=10000):
     # Define the metric inputs
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
-    Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
-        for ratios in params.ratios
-    ])
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
 
     # Initialize Iopt
@@ -116,18 +111,13 @@ def fraction_of_design_space(Y, params, N=10000):
 
     # Compute prediction variances
     pred_var = np.sum(
-        iopt.samples.T 
-        * np.linalg.solve(
-            M,
-            np.broadcast_to(
-                iopt.samples.T, 
-                (M.shape[0], *iopt.samples.T.shape)
-            )
-        ), axis=-2
+        iopt.samples.T * np.linalg.solve(M, np.broadcast_to(iopt.samples.T, (M.shape[0], *iopt.samples.T.shape))),
+        axis=-2,
     )
     pred_var = np.sort(pred_var)
 
     return pred_var
+
 
 def plot_fraction_of_design_space(Y, params, N=10000):
     """
@@ -155,32 +145,31 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     fig = go.Figure()
     for i, pv in enumerate(pred_var):
         color = DEFAULT_PLOTLY_COLORS[i]
-        name = ', '.join([
-            f'{str(f.name)}={r:.3f}' 
-            for f, r in zip(params.factors, params.ratios[i]) 
-            if f.grouped
-        ])
-        fig.add_trace(go.Scatter(
-            x=np.linspace(0, 1, len(pv)), y=pv, 
-            marker_color=color, name=name
-        ))
+        name = ", ".join(
+            [f"{f.name!s}={r:.3f}" for f, r in zip(params.factors, params.ratios[i], strict=True) if f.grouped]
+        )
+        fig.add_trace(go.Scatter(x=np.linspace(0, 1, len(pv)), y=pv, marker_color=color, name=name))
         fig.add_hline(
-            y=np.mean(pv), annotation_text=f'{np.mean(pv):.3f}', 
-            annotation_font_color=color, 
-            line_dash='dash', line_width=1, 
-            line_color=color, annotation_position='bottom right'
+            y=np.mean(pv),
+            annotation_text=f"{np.mean(pv):.3f}",
+            annotation_font_color=color,
+            line_dash="dash",
+            line_width=1,
+            line_color=color,
+            annotation_position="bottom right",
         )
 
     # Set axis
     fig.update_layout(
-        xaxis_title='Fraction of design space',
-        yaxis_title='Relative prediction variance',
-        legend_title_text='A-priori variance ratios',
-        title='Fraction of design space plot',
-        title_x=0.5
+        xaxis_title="Fraction of design space",
+        yaxis_title="Relative prediction variance",
+        legend_title_text="A-priori variance ratios",
+        title="Fraction of design space plot",
+        title_x=0.5,
     )
 
     return fig
+
 
 def estimation_variance_matrix(Y, params):
     """
@@ -199,7 +188,7 @@ def estimation_variance_matrix(Y, params):
         The mutiple parameter estimation covariance matrices for each of the
         a-priori variance ratio sets.
     """
-    assert isinstance(Y, pd.DataFrame), 'Y must be a denormalized and decoded dataframe'
+    assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
 
     # Normalize Y
@@ -216,10 +205,7 @@ def estimation_variance_matrix(Y, params):
     # Define the metric inputs
     X = params.fn.Y2X(Y)
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
-    Vinv = np.array([
-        np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) 
-        for ratios in params.ratios
-    ])
+    Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
 
     # Compute information matrix
@@ -231,6 +217,7 @@ def estimation_variance_matrix(Y, params):
     Minv = np.linalg.inv(M)
 
     return Minv
+
 
 def plot_estimation_variance_matrix(Y, params, model=None, abs=False):
     """
@@ -269,28 +256,40 @@ def plot_estimation_variance_matrix(Y, params, model=None, abs=False):
         col_names = [str(f.name) for f in params.factors]
         encoded_colnames = model2encnames(model[col_names], params.effect_types)
         if len(encoded_colnames) < Minv.shape[-1]:
-            encoded_colnames.extend([f'cov_{i}' for i in range(Minv.shape[-1] - len(encoded_colnames))])
+            encoded_colnames.extend([f"cov_{i}" for i in range(Minv.shape[-1] - len(encoded_colnames))])
 
     # Create the figure
-    fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)), 
+    fig = make_subplots(
+        rows=len(Minv),
+        cols=1,
+        row_heights=list(np.ones(len(Minv)) / len(Minv)),
         vertical_spacing=0.07,
         subplot_titles=[
-            'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(params.factors, params.ratios[i]) if f.grouped])
+            "A-priori variance ratios: "
+            + ", ".join(
+                [f"{f.name!s}={r:.3f}" for f, r in zip(params.factors, params.ratios[i], strict=True) if f.grouped]
+            )
             for i in range(len(Minv))
-        ]
+        ],
     )
     for i in range(len(Minv)):
-        fig.add_trace(go.Heatmap(
-            z=np.flipud(Minv[i]), x=encoded_colnames, y=encoded_colnames[::-1], colorbar_len=0.75/len(Minv),
-            colorbar_x=1, colorbar_y=1-(i+0.75/2+0.05*i)/len(Minv)
-        ), row=i+1, col=1)
-    fig.update_layout(
-        title='Estimation covariance plot',
-        title_x=0.5
-    )
+        fig.add_trace(
+            go.Heatmap(
+                z=np.flipud(Minv[i]),
+                x=encoded_colnames,
+                y=encoded_colnames[::-1],
+                colorbar_len=0.75 / len(Minv),
+                colorbar_x=1,
+                colorbar_y=1 - (i + 0.75 / 2 + 0.05 * i) / len(Minv),
+            ),
+            row=i + 1,
+            col=1,
+        )
+    fig.update_layout(title="Estimation covariance plot", title_x=0.5)
 
     # Return the plot
     return fig
+
 
 def estimation_variance(Y, params):
     """

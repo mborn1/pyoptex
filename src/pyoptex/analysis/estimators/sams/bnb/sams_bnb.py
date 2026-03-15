@@ -5,8 +5,9 @@ Module for the SAMS branch-and-bound code.
 import numpy as np
 from scipy import sparse
 
-from .bnb import BnB
 from .....utils.model import permitted_dep_add
+from .bnb import BnB
+
 
 def sparsify(models, nterms):
     """
@@ -26,10 +27,12 @@ def sparsify(models, nterms):
     sparse_matrix : `scipy.sparse.csc_matrix`
         The sparse csc matrix.
     """
-    return sparse.csc_matrix((
-                np.ones(models.size, dtype=np.bool_), 
-                (np.repeat(np.arange(len(models)), models.shape[1]), models.flatten())
-            ), shape=(len(models), nterms), dtype=np.bool_)
+    return sparse.csc_matrix(
+        (np.ones(models.size, dtype=np.bool_), (np.repeat(np.arange(len(models)), models.shape[1]), models.flatten())),
+        shape=(len(models), nterms),
+        dtype=np.bool_,
+    )
+
 
 class SamsBnB(BnB):
     """
@@ -67,10 +70,9 @@ class SamsBnB(BnB):
 
     """
 
-    def __init__(self, model_size, models, nterms, 
-                 mode=None, dependencies=None, forced_model=None):
+    def __init__(self, model_size, models, nterms, mode=None, dependencies=None, forced_model=None):
         """
-        Initializes the branch-and-bound object. 
+        Initializes the branch-and-bound object.
 
         Parameters
         ----------
@@ -97,12 +99,12 @@ class SamsBnB(BnB):
         """
 
         # Input validation
-        assert mode in (None, 'weak', 'strong'), 'The drop-mode must be None, weak or strong'
-        if mode in ('weak', 'strong'):
-            assert dependencies is not None, 'Must specify dependency matrix if using weak or strong heredity'
-            assert len(dependencies.shape) == 2, 'Dependencies must be a 2D array'
-            assert dependencies.shape[0] == dependencies.shape[1], 'Dependency matrix must be square'
-            assert dependencies.shape[0] == nterms, 'Must specify a dependency for each term'
+        assert mode in (None, "weak", "strong"), "The drop-mode must be None, weak or strong"
+        if mode in ("weak", "strong"):
+            assert dependencies is not None, "Must specify dependency matrix if using weak or strong heredity"
+            assert len(dependencies.shape) == 2, "Dependencies must be a 2D array"
+            assert dependencies.shape[0] == dependencies.shape[1], "Dependency matrix must be square"
+            assert dependencies.shape[0] == nterms, "Must specify a dependency for each term"
 
         # Default values
         if forced_model is None:
@@ -119,7 +121,7 @@ class SamsBnB(BnB):
 
         # State
         self.spm = sparsify(models, self.nterms)
-         
+
     def initialize(self, nfit):
         """
         Initializes the results using a greedy search.
@@ -160,22 +162,22 @@ class SamsBnB(BnB):
 
                 # Remove from frequencies
                 freq[~permitted] = 0
-                    
+
                 # Get the most frequent term
                 term = np.argmax(freq)
                 top_models[j, i] = term
 
                 # Only keep the samples with this term
                 keep = models_with_submodel[:, term].toarray().flatten().astype(np.bool_)
-                models_with_submodel = models_with_submodel[keep]    
+                models_with_submodel = models_with_submodel[keep]
 
             # Drop all results with this model sequence
-            models_with_sequence = (models[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1])
+            models_with_sequence = models[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1]
             models = models[~models_with_sequence]
 
             # Compute the frequency of this model
             top_frequencies[j] = np.sum(self.spm[:, top_models[j]].sum(axis=1).A1 == top_models.shape[1])
-            
+
             # Stop if no models are left
             if models.shape[0] == 0:
                 break
@@ -185,9 +187,9 @@ class SamsBnB(BnB):
 
         # Create nodes
         top_models = [(model, self.model_size) for model in top_models]
-        
+
         return top_models, top_frequencies
-    
+
     def init_queue(self, top_results, top_scores):
         """
         Initializes the branches queue, starting from the forced model and
@@ -215,11 +217,11 @@ class SamsBnB(BnB):
         for i in options:
             # Create a node
             node = np.zeros(self.model_size, dtype=np.int64)
-            node[:self.forced_model.size] = self.forced_model
+            node[: self.forced_model.size] = self.forced_model
             node[self.forced_model.size] = i
-            node[self.forced_model.size + 1:] = -1
-            yield (node, self.forced_model.size+1)
-    
+            node[self.forced_model.size + 1 :] = -1
+            yield (node, self.forced_model.size + 1)
+
     def upperbound(self, node):
         """
         Compute the upperbound on the amount of times this submodel
@@ -241,7 +243,7 @@ class SamsBnB(BnB):
 
         # Compute frequency of submodel
         freq = np.sum(self.spm[:, sized_model].sum(axis=1).A1 == size)
-        
+
         return freq
 
     def leaf(self, node):
@@ -255,7 +257,7 @@ class SamsBnB(BnB):
 
         Returns
         -------
-        is_leaf : bool 
+        is_leaf : bool
             Whether the node is a leaf.
         """
         # Check if a full model
@@ -284,17 +286,17 @@ class SamsBnB(BnB):
         permitted = np.ones(self.nterms, dtype=np.bool_)
         permitted[self.forced_model] = False
         permitted[self.kill] = False
-        permitted[:sized_model[-1]+1] = False # Only allow new terms to the right, otherwise the same model is checked multiple times
-        permitted[permitted] = permitted_dep_add(
-            sized_model, self.mode, self.dependencies, subset=permitted
+        permitted[: sized_model[-1] + 1] = (
+            False  # Only allow new terms to the right, otherwise the same model is checked multiple times
         )
+        permitted[permitted] = permitted_dep_add(sized_model, self.mode, self.dependencies, subset=permitted)
 
         # Add the permitted combinations to the queue
         for i in np.flatnonzero(permitted):
             n = node.copy()
             n[size] = i
-            yield (n, size+1)
-        
+            yield (n, size + 1)
+
     def node_in_results(self, node, results):
         """
         Check whether the model is already in the results.
@@ -305,14 +307,14 @@ class SamsBnB(BnB):
             The node to check.
         results : list(node)
             The list of current optimal nodes.
-        
+
         Returns
         -------
-        in_results : bool 
+        in_results : bool
             Whether the node is in the results or not.
         """
         return any(np.all(results[i][0] == node[0]) for i in range(len(results)))
-    
+
     def preloop(self, top_results, top_scores):
         """
         Kills any terms which do not occur frequently enough.
@@ -336,7 +338,7 @@ class SamsBnB(BnB):
         # Set kill sequence, any term which does not occur frequently enough
         self.kill = self.spm.sum(axis=0).A1 < top_scores[0]
         return top_results, top_scores
-    
+
     def postnew(self, old, new, top):
         """
         Kills any terms which do not occur frequently enough.
