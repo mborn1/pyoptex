@@ -318,7 +318,7 @@ def sample_model_dep_mcmc(dep, size, n_samples=1, forced=None, mode=None, skip=1
     samples = np.zeros((n_samples, size), dtype=np.int64)
 
     # Warmup phase
-    for i in range(n_warmup):
+    for _i in range(n_warmup):
         m.mutate(model)
 
     # Main sampling loop

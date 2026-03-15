@@ -11,10 +11,9 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 
-def find_python_scripts(directory: Path) -> List[Path]:
+def find_python_scripts(directory: Path) -> list[Path]:
     """
     Recursively find all Python scripts in the given directory.
 
@@ -37,7 +36,7 @@ def find_python_scripts(directory: Path) -> List[Path]:
     return sorted(scripts)
 
 
-def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]:
+def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]:
     """
     Run a single Python script and capture its output.
 
@@ -77,7 +76,7 @@ def run_script(script_path: Path, timeout: int = 300) -> Tuple[bool, str, float]
         return False, f"Script timed out after {timeout} seconds", execution_time
     except Exception as e:
         execution_time = time.time() - start_time
-        return False, f"Error running script: {str(e)}\n{traceback.format_exc()}", execution_time
+        return False, f"Error running script: {e!s}\n{traceback.format_exc()}", execution_time
 
 
 def main():
@@ -101,7 +100,7 @@ def main():
     print()
 
     # Run each script
-    results: Dict[Path, Tuple[bool, str, float]] = {}
+    results: dict[Path, tuple[bool, str, float]] = {}
 
     for i, script in enumerate(scripts, 1):
         relative_path = script.relative_to(examples_dir)
@@ -142,7 +141,7 @@ def main():
 
     if failed > 0:
         print("\n❌ Failed scripts:")
-        for script, (success, output, execution_time) in results.items():
+        for script, (success, _output, execution_time) in results.items():
             if not success:
                 relative_path = script.relative_to(examples_dir)
                 print(f"   - {relative_path} ({execution_time:.2f}s)")

@@ -90,7 +90,7 @@ class BaseMixin:
         assert all(c in X.columns for c in self.features_names_in_), 'X does not have the correct features'
         for f in self._factors:
             if f.is_categorical:
-                assert all(l in f.levels for l in X[str(f.name)].unique()), 'X contains a categorical level not specified in the factor, unable to encode'
+                assert all(lvl in f.levels for lvl in X[str(f.name)].unique()), 'X contains a categorical level not specified in the factor, unable to encode'
 
     def _preprocess_X(self, X):
         """

@@ -304,9 +304,8 @@ class SamsRegressor(MultiRegressionMixin):
         if self.est_ratios is not None:
             assert len(self.est_ratios) == len(self._re), 'Every random effect must have an estimated ratio when specified, in the same order'
         assert self.topn_bnb > 0, 'Must select at least one submodel for each fixed size, topn_bnb must be larger than 0'
-        if self.nterms_bnb is not None:
-            if isinstance(self.nterms_bnb, int):
-                assert self.nterms_bnb > 0, 'When an integer is specified for nterms_bnb, it must be larger than zero'
+        if self.nterms_bnb is not None and isinstance(self.nterms_bnb, int):
+            assert self.nterms_bnb > 0, 'When an integer is specified for nterms_bnb, it must be larger than zero'
         assert self.bnb_timeout > 0, 'Must specify a strictly positive number of seconds for the branch-and-bound to run'
         if self.forced_model is not None:
             assert isinstance(self.forced_model, np.ndarray), 'The forced model must be an integer array'
@@ -323,7 +322,7 @@ class SamsRegressor(MultiRegressionMixin):
             model_types_ord = {'quad': 2, 'tfi': 1, 'lin': 0}
 
             # Reorder the model types based on the factors
-            assert all(str(f.name) in self.entropy_model_order.keys() for f in self._factors), 'All factors must have an entropy model order specified'
+            assert all(str(f.name) in self.entropy_model_order for f in self._factors), 'All factors must have an entropy model order specified'
             entropy_model_order = {str(f.name): self.entropy_model_order[str(f.name)] for f in self._factors}
 
             # Assert the ordering
@@ -368,7 +367,7 @@ class SamsRegressor(MultiRegressionMixin):
         count_idx = 0
 
         # Compute BnB
-        for i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
+        for _i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
             # Compute the result with a timeout
             result = timeout(
                 SamsBnB(size, results, nterms, self.mode, self.dependencies, self.forced_model).top,

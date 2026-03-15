@@ -106,5 +106,5 @@ def linkcode_resolve(domain, info):
     anchor = '' if start_line is None else f'#L{start_line}-L{end_line}'
 
     # Link to github
-    result = "https://github.com/mborn1/pyoptex/blob/v%s/src/%s.py%s" % (release, filename, anchor)
+    result = f"https://github.com/mborn1/pyoptex/blob/v{release}/src/{filename}.py{anchor}"
     return result

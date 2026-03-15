@@ -46,7 +46,7 @@ def design_heatmap(Y, factors):
             bkps = np.concatenate(([0], np.flatnonzero(np.diff(y))+1, [len(y)]))
             bkps = np.floor(np.diff(bkps) / 2).astype(int) + bkps[:-1]
 
-            max_len = max(len(l) for l in factor.levels)
+            max_len = max(len(lvl) for lvl in factor.levels)
             txt = np.full(len(y), '', dtype=f'U{max_len}')
             txt[bkps] = factor.denormalize(y[bkps])
         else:

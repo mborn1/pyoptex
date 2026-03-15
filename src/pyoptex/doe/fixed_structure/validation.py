@@ -28,7 +28,7 @@ def validate_state(state, params, eps=1e-6):
     if (metric == 0 and state.metric == 0) \
         or (np.isnan(metric) and np.isnan(state.metric))\
         or (np.isinf(metric) and np.isinf(state.metric)):
-        warnings.warn(f'Metric is {state.metric}')
+        warnings.warn(f'Metric is {state.metric}', stacklevel=2)
     else:
         assert np.abs((state.metric - metric) / metric) < eps, f'(validation) The metric does not match: {state.metric}, {metric}'
 

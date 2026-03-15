@@ -156,7 +156,7 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     for i, pv in enumerate(pred_var):
         color = DEFAULT_PLOTLY_COLORS[i]
         name = ', '.join([
-            f'{str(f.name)}={r:.3f}'
+            f'{f.name!s}={r:.3f}'
             for f, r in zip(params.factors, params.ratios[i], strict=True)
             if f.grouped
         ])
@@ -275,7 +275,7 @@ def plot_estimation_variance_matrix(Y, params, model=None, abs=False):
     fig = make_subplots(rows=len(Minv), cols=1, row_heights=list(np.ones(len(Minv))/len(Minv)),
         vertical_spacing=0.07,
         subplot_titles=[
-            'A-priori variance ratios: ' + ', '.join([f'{str(f.name)}={r:.3f}' for f, r in zip(params.factors, params.ratios[i], strict=True) if f.grouped])
+            'A-priori variance ratios: ' + ', '.join([f'{f.name!s}={r:.3f}' for f, r in zip(params.factors, params.ratios[i], strict=True) if f.grouped])
             for i in range(len(Minv))
         ]
     )

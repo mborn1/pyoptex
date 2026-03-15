@@ -287,7 +287,7 @@ class Dopt(SplitkPlotMetricMixin, Dopto):
         try:
             self.Minv -= inv_update_UD(self.U, self.D, self.Minv, self.P)
         except np.linalg.LinAlgError as e:
-            warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning)
+            warnings.warn('Update formulas are very unstable for this problem, try rerunning without update formulas', RuntimeWarning, stacklevel=2)
             raise e
 
 class Aopt(SplitkPlotMetricMixin, Aopto):
@@ -382,7 +382,7 @@ class Aopt(SplitkPlotMetricMixin, Aopto):
         # Compute update to Minv
         try:
             self.Mup = inv_update_UD_no_P(U, D, self.Minv)
-        except np.linalg.LinAlgError as e:
+        except np.linalg.LinAlgError:
             # Infeasible design
             return -np.inf
 
@@ -518,7 +518,7 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         # Compute update to Minv
         try:
             self.Mup = inv_update_UD_no_P(U, D, self.Minv)
-        except np.linalg.LinAlgError as e:
+        except np.linalg.LinAlgError:
             # Infeasible design
             return -np.inf
 

@@ -8,7 +8,7 @@ import setuptools
 from Cython.Build import cythonize
 from setuptools import Extension
 
-with open("src/pyoptex/__init__.py", "r", encoding="utf-8") as f:
+with open("src/pyoptex/__init__.py", encoding="utf-8") as f:
     version = re.search(r'__version__ = [\'"](.*)[\'"]', f.read()).group(1)
 
 # Check if windows

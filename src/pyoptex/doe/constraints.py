@@ -228,7 +228,7 @@ class Col:
             A function which returns True when the constraints are violated
             for that run. Y is a decoded design, but normalized design matrix.
         """
-        return ConstraintsFunc(f'lambda Y__: {str(self)}')
+        return ConstraintsFunc(f'lambda Y__: {self!s}')
 
     def _encode(self):
         """
@@ -376,7 +376,7 @@ class UnaryCol(Col):
         self.prefix = prefix
         self.suffix = suffix
     def __str__(self):
-        return f'{self.prefix}{str(self.col)}{self.suffix}'
+        return f'{self.prefix}{self.col!s}{self.suffix}'
     def _encode(self):
         return f'{self.prefix}{self.col._encode()}{self.suffix}'
 
@@ -388,7 +388,7 @@ class BinaryCol(Col):
         self.sep = sep
 
     def __str__(self):
-        return f'({str(self.col)} {self.sep} {str(self.col2)})'
+        return f'({self.col!s} {self.sep} {self.col2!s})'
 
     def _encode(self):
         return f'({self.col._encode()} {self.sep} {self.col2._encode()})'
@@ -400,7 +400,7 @@ class CompCol(BinaryCol):
         if not col1.pre_normalized_:
             col2.col_normalized_ = col1.factor.levels.index(col2.col)
             col1.pre_normalized_ = True
-        return f'({str(col1)} {self.sep} {str(col2)})'
+        return f'({col1!s} {self.sep} {col2!s})'
 
     def __str__(self):
         if self.col.is_categorical:
@@ -408,7 +408,7 @@ class CompCol(BinaryCol):
         elif self.col2.is_categorical:
             return self._str(self.col2, self.col)
         else:
-            return f'({str(self.col)} {self.sep} {str(self.col2)})'
+            return f'({self.col!s} {self.sep} {self.col2!s})'
 
     def __encode__(self, col1, col2):
         assert col1.is_categorical and col2.is_constant, 'Can only compare constant and categorical column'
