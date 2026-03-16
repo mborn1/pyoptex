@@ -45,6 +45,7 @@ EXAMPLE_MAP = {
     "doe/fixed_structure/example_approx_omars.py": "doe_fixed_structure/approx_omars",
     "doe/fixed_structure/example_mixture.py": "doe_fixed_structure/mixture",
     "doe/fixed_structure/example_strip_plot.py": "doe_fixed_structure/strip_plot",
+    "doe/fixed_structure/example_strip_plot_augment.py": "doe_fixed_structure/strip_plot_augment",
     "doe/fixed_structure/splitk_plot/example_splitk_augment.py": "doe_fixed_structure/splitk_augment",
     "doe/fixed_structure/splitk_plot/example_splitk_augment_split.py": "doe_fixed_structure/splitk_augment_split",
     "doe/fixed_structure/splitk_plot/example_splitk_fixed_factor.py": "doe_fixed_structure/splitk_fixed_factor",
