@@ -150,8 +150,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     )
 
     # Compute Zs and Vinv
-    # TODO: Zi ascending is wrong! Can have discontinuous groups! Should only ensure numbers from 0 to ngrps-1
     if len(re) > 0:
+        # Zs = np.array([np.unique(np.array(r.Z, dtype=np.int64), return_inverse=True)[1] for r in re])
         Zs = np.array([np.array(r.Z, dtype=np.int64) for r in re])
         V = np.array([obs_var_from_Zs(Zs, N=nruns, ratios=r) for r in ratios], dtype=np.float64)
     else:
@@ -160,6 +160,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
     # Augment V with the random blocking effects
     if len(block_effects) > 0:
+        # beZs = np.array([np.unique(np.array(be.Z, dtype=np.int64), return_inverse=True)[1] for be in block_effects])
         beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
         V += np.array(
             [obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) for r in be_ratios], dtype=np.float64
