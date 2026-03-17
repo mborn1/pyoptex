@@ -32,7 +32,7 @@ n_old = 15
 nruns = 20
 nplots = 5
 
-# Z: first 15 runs = plots 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4; then runs 15-19 = one new run per plot
+# Z: first 15 runs = plots 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4; runs 15-18 augment plots 0-3, run 19 is in new plot 5
 Z = np.concatenate([np.repeat(np.arange(nplots), 3), np.arange(nplots)]).astype(np.int64)
 Z[-1] = 5
 re = RandomEffect(Z)
