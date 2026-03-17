@@ -448,8 +448,38 @@ Designs can be augmented in many ways by specifying a prior design.
 Fixed structure design
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. warning::
-  This is yet to be implemented for generic, fixed structure designs.
+Augmentations to fixed structure designs are performed at the end. In other words, the prior
+specifies the first runs of the design. For example, assume we have a prior design with 4 runs.
+We can augment this to a design with 6 runs. In this case, 2 additional runs will be added 
+and since the two last runs are not in the same group
+as the first four runs, they can be completely optimized (runs 5 and 6 can be either L1 or L2). 
+
+>>> re = RandomEffect(Z=[0, 0, 1, 1, 2, 2])
+>>> factors = [
+>>>     Factor(name='A', type='categorical', levels=['L1', 'L2'], re=re)
+>>>     Factor(name='B', type='continuous'),
+>>>     Factor(name='C', type='continuous')
+>>> ]
+
+>>> prior = pd.DataFrame([
+>>>     ['L1', 0, 2],
+>>>     ['L1', 1, 5],
+>>>     ['L2', -1, 3.5],
+>>>     ['L2', 0, 2]
+>>> ], columns=['A', 'B', 'C'])
+
+If, however, the random effect would be specified as 
+
+>>> re = RandomEffect(Z=[0, 0, 1, 1, 0, 0])
+
+then, the two additional runs will be in the same group as the first two runs, and thus,
+are set to L1.
+
+Finally, it is also possible to fix for instance the htc factors and only optimize the etc.
+Take the prior from above, by specifying the groups to optimize, we can ensure that factor A
+is left untouched by the algorithm.
+
+>>> grps = [np.array([]), np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3])] 
 
 Split\ :sup:`k`\ -plot design
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
