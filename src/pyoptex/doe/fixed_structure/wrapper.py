@@ -221,7 +221,6 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         prior = np.concatenate((prior, np.zeros((nruns - len(prior), len(factors)), dtype=np.float64)), axis=0)
 
         # Propagate HTC values to new runs that share a Z-group with prior runs
-        print(re_vals)
         if len(re) > 0:
             for i in range(len(factors)):
                 # Retrieve the random effect values for this factor
