@@ -39,7 +39,7 @@ class RandomEffect(__RandomEffect__):
         if len(Z) == max_Z + 1 and len(np.unique(Z)) == len(Z):
             raise ValueError(
                 "Z must not assign a distinct random level to every run (e.g. np.arange(n)), because that "
-                "duplicates the observation-level random error already included in the fixed_structure "
+                "duplicates the observation-level random error already included in the "
                 "covariance. Use a coarser grouping or omit this random effect."
             )
 
