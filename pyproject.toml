@@ -13,12 +13,22 @@ dynamic = ["version"]
 authors = [
   { name="Mathias Born", email="mathiasborn2@gmail.com" },
 ]
-description = "Flexible and accessible design of experiments in Python. Provides industry with an easy package to create designs based with limited expert knowledge. Provides researchers with the ability to easily create new criteria and design structures."
+description = "Flexible and accessible design of experiments in Python. Provides industry with an easy package to create designs with limited expert knowledge. Provides researchers with the ability to easily create new criteria and design structures."
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Manufacturing",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Cython",
     "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License",
 ]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
@@ -80,3 +90,4 @@ Homepage = "https://github.com/mborn1/pyoptex"
 Documentation = "https://pyoptex.readthedocs.io/en/latest/"
 Repository = "https://github.com/mborn1/pyoptex"
 Issues = "https://github.com/mborn1/pyoptex/issues"
+Changelog = "https://github.com/mborn1/pyoptex/blob/main/CHANGELOG.md"
