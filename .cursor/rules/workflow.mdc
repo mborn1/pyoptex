@@ -8,11 +8,12 @@ alwaysApply: true
 ## Verification (run before committing)
 
 ```bash
-make lint       # ruff
-make format     # ruff format
-make typecheck  # mypy
-make test       # pytest
-make all        # lint + typecheck + test
+make lint            # ruff
+make format          # ruff format
+make typecheck       # mypy
+make test            # pytest
+make check-citation  # CITATION.cff version matches __init__.py
+make all             # lint + typecheck + test
 ```
 
 ## Rules of engagement
@@ -20,6 +21,7 @@ make all        # lint + typecheck + test
 - Run the verification checklist after every substantive change.
 - Do not change `setup.py` extension definitions without ensuring the CI wheel build still works (`python-publish.yml`, cibuildwheel).
 - Modify `.pyx` files only if you understand Cython (see `cython.mdc`).
-- Version lives only in `src/pyoptex/__init__.py`.
+- Version lives only in `src/pyoptex/__init__.py`. `CITATION.cff` is auto-synced via pre-commit hook.
 - Add tests in `tests/` for new public API; run `venv/bin/python examples/run_all.py` to validate examples.
+- Changelog is kept in GitHub Releases, not in a file.
 - Never commit `.env`, tokens, or credentials.
