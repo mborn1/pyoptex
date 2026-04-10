@@ -15,7 +15,7 @@ TEST_ENV := \
 	NPY_DISABLE_CPU_FEATURES=X86_V4,AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR \
 	OPENBLAS_CORETYPE=HASWELL
 
-.PHONY: lint format typecheck test test-cov build docs pre-commit all help
+.PHONY: lint format typecheck test test-cov build docs pre-commit all help sync-citation check-citation
 
 help:
 	@echo "Available targets:"
@@ -27,6 +27,7 @@ help:
 	@echo "  build       Build distribution wheels"
 	@echo "  docs        Build Sphinx HTML docs"
 	@echo "  pre-commit  Run all pre-commit hooks on all files"
+	@echo "  sync-citation Sync CITATION.cff version from __init__.py"
 	@echo "  all         Run lint, typecheck, and test"
 
 lint:
@@ -55,5 +56,11 @@ docs:
 
 pre-commit:
 	$(PRECOMMIT) run --all-files
+
+sync-citation:
+	$(PYTHON) scripts/sync_citation_version.py
+
+check-citation:
+	$(PYTHON) scripts/sync_citation_version.py --check
 
 all: lint typecheck test

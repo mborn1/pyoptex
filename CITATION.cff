@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "PyOptEx: Flexible and Accessible Design of Experiments in Python"
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+authors:
+  - given-names: Mathias
+    family-names: Born
+    email: mathiasborn2@gmail.com
+repository-code: "https://github.com/mborn1/pyoptex"
+url: "https://pyoptex.readthedocs.io/en/latest/"
+license: BSD-3-Clause
+keywords:
+  - design-of-experiments
+  - optimal-design
+  - cost-optimal
+  - split-plot
+  - coordinate-exchange
+  - CODEX
+  - Python
+version: "1.2.0"
+date-released: "2026-04-10"
+references:
+  - type: article
+    title: "Optimal splitk-plot designs"
+    authors:
+      - given-names: Mathias
+        family-names: Born
+      - given-names: Peter
+        family-names: Goos
+    journal: "Computational Statistics & Data Analysis"
+    year: 2025
+    doi: "10.1016/j.csda.2024.108074"
+    url: "https://www.sciencedirect.com/science/article/pii/S0167947324001129"

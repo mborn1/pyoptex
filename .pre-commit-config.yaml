@@ -11,3 +11,11 @@ repos:
       - id: mypy
         args: [--ignore-missing-imports, src/pyoptex, tests]
         pass_filenames: false
+  - repo: local
+    hooks:
+      - id: sync-citation
+        name: citation version check
+        entry: make check-citation
+        language: system
+        files: (^src/pyoptex/__init__\.py$|^CITATION\.cff$)
+        pass_filenames: false
