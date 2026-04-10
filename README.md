@@ -11,10 +11,6 @@ PyOptEx (or Python Optimal Experiments) is a package designed to create optimal 
 The package is designed for both engineers, and design of experiment researchers. Engineers can use the precreated functions to generate designs for their problems,
 especially the cost-optimal algorithms. Researchers can easily develop new metrics (criteria) and test them.
 
-<p align="center">
-  <img src="docs/source/assets/img/pyoptex_overview.svg" alt="PyOptEx package overview" width="500">
-</p>
-
 To generate experimental designs, there are two main options:
 
 * **Fixed structure**: These designs have a fixed number of runs and fixed randomization
