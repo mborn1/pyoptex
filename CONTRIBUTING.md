@@ -99,7 +99,7 @@ understand Cython. Key rules:
 
 - One logical change per PR.
 - Follow the [PR template](.github/pull_request_template.md) checklist.
-- If your change is user-facing, add an entry to `CHANGELOG.md`.
+- If your change is user-facing, note it for the GitHub release notes.
 
 ## License
 

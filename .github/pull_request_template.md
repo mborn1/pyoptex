@@ -14,5 +14,5 @@
 - [ ] Linter and formatter pass (`make lint`, `make format`)
 - [ ] Type checker passes (`make typecheck`)
 - [ ] Documentation updated (if applicable)
-- [ ] CHANGELOG.md updated (for user-facing changes)
+- [ ] GitHub release notes drafted (for user-facing changes)
 - [ ] CITATION.cff version synced (`make check-citation`)
