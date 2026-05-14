@@ -34,6 +34,15 @@ class RandomEffect(__RandomEffect__):
             "The Z array must contain all integers in the interval [0, np.max(Z)]"
         )
 
+        # One distinct random level per run (e.g. Z = np.arange(n)) expands to the identity in obs_var_from_Zs,
+        # which is collinear with the observation-level error term already included as I in V.
+        if len(Z) == max_Z + 1 and len(np.unique(Z)) == len(Z):
+            raise ValueError(
+                "Z must not assign a distinct random level to every run (e.g. np.arange(n)), because that "
+                "duplicates the observation-level random error already included in the "
+                "covariance. Use a coarser grouping or omit this random effect."
+            )
+
         # Assert ratios
         if isinstance(self.ratio, (tuple, list, np.ndarray)):
             assert all(r >= 0 for r in self.ratio), (
