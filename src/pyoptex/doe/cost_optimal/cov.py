@@ -38,7 +38,7 @@ def _update_woodbury(Vinv, new_Zs, new_ratios):
     assert len(new_Zs) == new_ratios.shape[1], "Every grouping requires a ratio"
 
     # Convert to expanded format
-    new_Zs = [np.eye(Zi[-1] + 1, dtype=np.bool_)[Zi] for Zi in new_Zs]
+    new_Zs = [np.eye(np.max(Zi) + 1, dtype=np.bool_)[Zi] for Zi in new_Zs]
 
     # Apply each Zs sequentially
     for i in range(len(new_Zs)):

@@ -62,7 +62,9 @@ def obs_var_from_Zs(Zs, N, ratios=None, include_error=True):
 
     return V + sum(
         r * (Zi_expanded @ Zi_expanded.T)
-        for r, Zi_expanded in ((r, np.eye(Zi[-1] + 1)[Zi]) for r, Zi in zip(ratios, Zs, strict=True) if Zi is not None)
+        for r, Zi_expanded in (
+            (r, np.eye(np.max(Zi) + 1)[Zi]) for r, Zi in zip(ratios, Zs, strict=True) if Zi is not None
+        )
     )
 
 
