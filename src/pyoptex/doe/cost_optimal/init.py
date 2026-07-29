@@ -1,10 +1,13 @@
 """
 Module for all init functions of the cost optimal designs
 """
+import warnings
+from itertools import combinations
 
 import numpy as np
 from tqdm import tqdm
 
+from ...utils.design import encode_design
 from ..utils.init import full_factorial, init_single_unconstrained
 
 
@@ -340,3 +343,88 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
             )
 
     return Y
+
+def init_warm_feasible(df, group_col=None, n_keep=None, max_tries=5000):
+    """
+    Seed the optimizer from an existing design by keeping a random subset of intact groups.
+
+    Sampling by group (rather than by individual rows) can ensure that hard-to-change factor
+    settings remain together. However, because feasibility and estimability are not guaranteed
+    by a random draw, the function resamples until the retained subset yields a full-rank 
+    model matrix and satisfies all cost constraints. If the maximum number of attempts is 
+    reached without finding a fully feasible set, it returns the closest rank-sufficient 
+    attempt, letting the caller decide how to proceed.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The design DataFrame containing the denormalized factor levels, 
+        optionally with a grouping column
+    group_col : str, optional
+        The column name to group rows by (e.g., a batch or day identifier). If None, 
+        defaults to the run index.
+    n_keep : int, optional
+        The number of groups to retain in the warm start subset. If None, defaults 
+        to half of the unique groups.
+    max_tries : int, default=5000
+        The maximum number of random draws to attempt before yielding the best 
+        infeasible (but full-rank) subset.
+    """
+    def _init_warm_feasible(params):
+        
+        Ydf = df.copy()
+        for f in params.factors:
+            Ydf[f.name] = f.normalize(Ydf[f.name])
+        factor_names = [f.name for f in params.factors]
+        Ydec = Ydf[factor_names].to_numpy()
+        Yenc = encode_design(Ydec, params.effect_types, coords=params.coords)
+
+        if group_col is None:
+            group = list(Ydf.index)
+        else:
+            group = Ydf[group_col].to_numpy()
+
+        groups = np.unique(group)
+        k = n_keep if n_keep is not None else max(1, len(groups) // 2)
+        if k >= len(groups):
+            return Yenc                            # nothing to subsample
+
+        pick = list(combinations(groups, n_keep))
+        pick = np.random.permutation(pick)
+
+        tries = min(max_tries, pick.shape[0])
+
+        best, best_cost = None, None
+        for i in tqdm(range(tries)):
+            mask = np.isin(group, pick[i])
+            Yk = Yenc[mask]
+
+            costs = params.fn.cost(Yk, params)
+            cost_Yk = np.array([np.sum(c) for c, _, _ in costs])
+            max_cost = np.array([m for _, m, _ in costs])
+
+            Xk = params.fn.Y2X(Yk)
+            rank = np.linalg.matrix_rank(Xk)
+            feasible = (rank >= Xk.shape[1]) \
+                    and (np.all(cost_Yk <= max_cost))
+
+            if feasible:
+                return Yk                            # estimable: done
+            
+            elif rank >= Xk.shape[1] and (best is None or np.all(cost_Yk[cost_Yk > max_cost] < best_cost)):
+                best, best_cost = Yk, cost_Yk[cost_Yk > max_cost]
+
+
+        # FINAL CHECKS
+        if best is None:
+            raise ValueError(
+                f"No {k}-group subset achieved full rank in {max_tries} draws "
+                f"(need {Xk.shape[1]} params). Cannot warm start. Try a larger n_keep."
+            )
+        
+        warnings.warn(
+            f"no {k}-group subset reached full rank in {max_tries} draws "
+            f"(need {Xk.shape[1]} params); returning largest attempt ({best.shape[0]} runs). "
+            f"Try a larger n_keep.")
+        return best
+    return _init_warm_feasible
