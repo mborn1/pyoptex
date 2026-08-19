@@ -113,5 +113,6 @@ class MixedLMModel(OlsModel):
             self.X = sqrtV_inverted @ self.X
 
             # Compute the intercept variance
-            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))  # noqa: F841
-            self.ss_intercept = np.var(self.y) * len(self.y)
+            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))
+            P = intercept @ np.linalg.inv(intercept.T @ intercept) @ intercept.T
+            self.ss_intercept = float(self.y.T @ ((np.eye(len(self.y)) - P) @ self.y))
