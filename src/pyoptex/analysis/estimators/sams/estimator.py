@@ -2,6 +2,7 @@
 Module for the SAMS regressor.
 """
 
+import warnings
 from functools import reduce
 
 import numpy as np
@@ -245,6 +246,14 @@ class SamsRegressor(MultiRegressionMixin):
         # Store variables
         self.dependencies = dependencies
         self.mode = mode
+        if model_size is not None:
+            warnings.warn(
+                "model_size currently refers to the oversized good-model-set size, "
+                "not the maximum identified model size (s_max). "
+                "A future version will redefine model_size as s_max. "
+                "See https://github.com/mborn1/pyoptex/issues/50.",
+                FutureWarning,
+            )
         self.model_size = model_size
         self.nb_models = nb_models
         self.skipn = skipn
