@@ -6,6 +6,7 @@ from collections import namedtuple
 from itertools import combinations
 
 import numpy as np
+from scipy.sparse.csgraph import connected_components
 
 from .....utils.model import permitted_dep_add
 
@@ -43,17 +44,25 @@ class Model:
         Parameters
         ----------
         X : np.array(2d)
-            The encoded, normalized model matrix of the data
+            The encoded, normalized model matrix of the data.
         y : np.array(1d)
             The output variable.
         forced : np.array(1d)
-            Any terms that must be included in the model.
+            Column indices of X that must be included in the model.
+            Internally converted to term group indices; forcing any
+            column of a group forces the whole group.
         mode : None or 'weak' or 'strong'
             The heredity model during sampling.
         dep : np.array(2d)
-            The dependency matrix of size (N, N) with N the number
-            of terms in the encoded model (output from Y2X). Term i depends on term j
-            if dep(i, j) = true.
+            The dependency matrix of size (N, N) with N the number of
+            columns in X. Term i depends on term j if dep(i, j) = true.
+            Codependent terms in this matrix (e.g. i depends on j and j
+            depends on i) are marked as a single term group that is
+            always sampled together. Hierarchical dependencies are not
+            included in this, codependency never arises from heredity
+            alone; they are used for the dummy columns of a multi-level
+            categorical factor, and can be specified manually for nested
+            or otherwise codependent terms.
         """
         # Validate the inputs
         assert len(X) == len(y), "Must have the same number of runs for the data as the output variable"
@@ -67,16 +76,40 @@ class Model:
             assert dep.shape[0] == dep.shape[1], "Dependency matrix must be square"
             assert dep.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
-        # Create default forced
+        # Create default forced (in column indices)
         if forced is None:
             forced = np.array([], dtype=np.int64)
+
+        if dep is None:
+            # No structure: every column is its own group
+            self.term_groups = [np.array([i]) for i in range(X.shape[1])]
+            self.n_term_groups = X.shape[1]
+            self.dep = None
+            self.forced = forced
+        else:
+            # Strongly connected components = terms that must travel together
+            n_groups, labels = connected_components(dep, directed=True, connection='strong')
+            self.term_groups = [np.flatnonzero(labels == g) for g in range(n_groups)]
+            self.n_term_groups_ = n_groups
+
+            # Collapse dep to group level (within-group edges dropped)
+            dep_g = np.zeros((n_groups, n_groups), dtype=np.bool_)
+            src, dst = np.nonzero(dep)
+            mask = labels[src] != labels[dst]
+            dep_g[labels[src[mask]], labels[dst[mask]]] = True
+            self.dep = dep_g
+
+            # Map forced from column indices to group indices
+            self.forced = np.unique(labels[forced])
 
         # Store
         self.X = X
         self.y = y
-        self.forced = forced
         self.mode = mode
-        self.dep = dep
+
+    def _expand(self, model):
+        """Expand group indices to column indices for fitting."""
+        return np.concatenate([self.term_groups[g] for g in model])
 
     def _sort(self, model):
         """
@@ -249,7 +282,7 @@ class Model:
             The list of all feasible models.
         """
         models = []
-        for model in combinations(range(len(self.dep)), model_size):
+        for model in combinations(range(len(self.term_groups)), model_size):
             model = np.array(model)
             if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(
                 np.isin(self.forced, model, assume_unique=True)

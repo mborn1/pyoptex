@@ -112,7 +112,7 @@ class OlsModel(Model):
             metric and the estimated coefficients.
         """
         # Create the exog matrix
-        X = self.X[:, model]
+        X = self.X[:, self._expand(model)]
 
         # Drop rows with nan values
         complete = ~np.any(np.isnan(X), axis=1)

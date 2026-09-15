@@ -92,20 +92,16 @@ def plot_raster(results, terms, skipn=0, metric_name="metric", forced=None, rast
         skips = [skipn] if skipn > 0 else []
 
     # Create the raster
-    raster = np.zeros((len(results), len(terms)))
     if forced is not None:
         # Force uniqueness for speedup
         forced = np.unique(forced)
 
         # Set the coefficients
-        for i, res in enumerate(results):
-            model = res["model"]
-            non_forced_terms = np.isin(model, forced, assume_unique=True, invert=True)
-            raster[i, model[non_forced_terms]] = res["coeff"][non_forced_terms]
+        raster = np.nan_to_num(results['coeff'], nan=0.0)
+        raster[:, forced] = 0.0
     else:
         # Set the coefficients
-        for i, res in enumerate(results):
-            raster[i, res["model"]] = res["coeff"]
+        raster = np.nan_to_num(results['coeff'], nan=0.0)
 
     # Normalize the coefficients based on absolute value
     raster /= np.expand_dims(np.max(np.abs(raster), 1), 1)
