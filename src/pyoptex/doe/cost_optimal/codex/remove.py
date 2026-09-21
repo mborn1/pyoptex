@@ -138,6 +138,11 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(
                 state.Y
             ) - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
+
+            if mt <= 0:
+                keep[k] = True
+                continue
+            
             metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
