@@ -8,7 +8,7 @@ import pandas as pd
 from ....utils.design import decode_design, encode_design
 from ...constraints import mixture_constraints, no_constraints
 from ..init import init_feasible
-from ..utils import Factor, Parameters
+from ..utils import Factor, Parameters, _within_budget
 from .accept import exponential_accept_rel
 from .insert import insert_optimal
 from .optimization import CEOptimizer, CEStructOptimizer
@@ -215,7 +215,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
         costs = params.fn.cost(params.prior, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        assert np.all(cost_Y <= max_cost), "Prior exceeds maximum cost"
+        assert _within_budget(cost_Y, max_cost), "Prior exceeds maximum cost"
 
     return params
 

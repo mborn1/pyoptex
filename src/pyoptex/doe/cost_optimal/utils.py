@@ -10,6 +10,9 @@ from ...utils.factor import FactorMixin
 from ..constraints import no_constraints
 from ._utils_cy import obs_var_cy
 
+BUDGET_RTOL = 1e-9
+BUDGET_ATOL = 1e-12
+
 FunctionSet = namedtuple("FunctionSet", "Y2X init cost metric constraints", defaults=(None,) * 4 + (no_constraints,))  # type: ignore[misc]
 Parameters = namedtuple(
     "Parameters", "fn factors colstart coords ratios effect_types grouped_cols prior stats use_formulas"
@@ -39,6 +42,33 @@ class Factor(FactorMixin, __Factor__):
             )
 
         return self
+
+
+def _within_budget(cost_Y, max_cost, rtol=BUDGET_RTOL, atol=BUDGET_ATOL):
+    """
+    Whether every cost is at most its budget, allowing for
+    floating point round-off in the accumulated costs.
+
+    Parameters
+    ----------
+    cost_Y : np.array(1d)
+        The total cost of the design for each cost function.
+    max_cost : np.array(1d)
+        The budget for each cost function.
+    rtol : float
+        Relative tolerance, scaled by the budget.
+    atol : float
+        Absolute tolerance.
+
+    Returns
+    -------
+    within : bool
+        Whether all costs are within their budget.
+    """
+    return all(
+        c <= m + atol + rtol * abs(m)
+        for c, m in zip(cost_Y.tolist(), max_cost.tolist())
+    )
 
 
 def obs_var_Zs(Yenc, colstart, grouped_cols=None):
