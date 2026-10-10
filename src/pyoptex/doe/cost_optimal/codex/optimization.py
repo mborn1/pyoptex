@@ -385,7 +385,7 @@ def ce_struct_optimizer(state, params):
                         new_cost = np.array([np.sum(c) for c, _, _ in new_costs])
                         max_cost = np.array([m for _, m, _ in new_costs])
 
-                        if np.all(new_cost <= max_cost):
+                        if _within_budget(new_cost, max_cost):
                             # Update Zsn, Vinv
                             b = adapt_group(
                                 state.Zs[col],
@@ -525,7 +525,7 @@ def pe_optimizer(state, params):
                     max_cost = np.array([m for _, m, _ in new_costs])
 
                     # Check constraints
-                    if np.all(new_cost <= max_cost):
+                    if _within_budget(new_cost, max_cost):
                         # Check if using update formulas
                         if params.use_formulas:
                             # Update Zsn, Vinv
