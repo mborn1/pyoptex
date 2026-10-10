@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 
 from ...utils.design import obs_var_from_Zs
-from .utils import obs_var_Zs
+from .utils import _within_budget, obs_var_Zs
 
 
 def validate_state(state, params, eps=1e-6):
@@ -80,7 +80,7 @@ def validate_state(state, params, eps=1e-6):
         (metric == 0 and state.metric == 0)
         or (np.isnan(metric) and np.isnan(state.metric))
         or (np.isinf(metric) and np.isinf(state.metric))
-        or (np.any(cost_Y > max_cost) and np.isinf(state.metric))
+        or (not _within_budget(cost_Y, max_cost) and np.isinf(state.metric))
     ):
         warnings.warn(f"Metric is {state.metric}", stacklevel=2)
     else:
