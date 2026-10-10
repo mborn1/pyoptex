@@ -306,7 +306,7 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
                     costs = params.fn.cost(Y[keep], params)
                     cost_Y = np.array([np.sum(c) for c, _, _ in costs])
                     max_cost = np.array([m for _, m, _ in costs])
-                    if np.all(cost_Y <= max_cost):
+                    if _within_budget(cost_Y, max_cost):
                         break
             Y = Y[keep]
 
