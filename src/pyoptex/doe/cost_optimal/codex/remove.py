@@ -170,7 +170,12 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
                 # removing it (undoing the move) before giving up.
                 prevent_insert = False
                 continue
-            break                    # no candidate reduces cost at all
+            raise RuntimeError(
+                "No run removal reduces the total normalized cost, so the design "
+                "cannot be brought back within budget. This indicates a cost "
+                "function where removing runs can make a design more expensive "
+                "overall, which this removal function does not support."
+            )
         state = best_state
         if best_k == insert_loc:
             params.stats["removed_insert"][params.stats["it"]] = True
