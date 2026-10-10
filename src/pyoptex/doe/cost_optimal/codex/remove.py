@@ -66,6 +66,13 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     are selected and removed one-by-one for minimal metric loss and
     maximal cost reduction.
 
+    Assumes that for any over-budget design, at least one run's removal
+    reduces the total normalized cost. This holds when adding runs never
+    makes a design cheaper overall, even if individual removals may
+    increase cost through redistribution across shared resources. If no
+    such removal exists, the function returns the design before the insert,
+    even if prevent_insert is True.
+
     Parameters
     ----------
     state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -157,6 +164,13 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             keep[k] = True
 
         # Drop the run
+        if best_k < 0:
+            if prevent_insert and insert_loc >= 0:
+                # Nothing else reduces cost: the insert caused this, so allow
+                # removing it (undoing the move) before giving up.
+                prevent_insert = False
+                continue
+            break                    # no candidate reduces cost at all
         state = best_state
         if best_k == insert_loc:
             params.stats["removed_insert"][params.stats["it"]] = True
