@@ -70,8 +70,10 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     reduces the total normalized cost. This holds when adding runs never
     makes a design cheaper overall, even if individual removals may
     increase cost through redistribution across shared resources. If no
-    such removal exists, the function returns the design before the insert,
-    even if prevent_insert is True.
+    such removal exists, the function tries removing the insert if was
+    not already able to due prevent_insert being set to True. If still
+    no removal would lead to a valid design, a RuntimeError is raised,
+    warning the user of the infinite loop.
 
     Parameters
     ----------
