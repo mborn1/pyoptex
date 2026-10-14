@@ -137,12 +137,16 @@ class TestCentralCompositeBlocking:
             (4, "full", 3, 30, 2.0000),
             (5, "full", 5, 54, 2.3664),
             (5, "half", 2, 33, 2.0000),
+            (6, "full", 9, 90, 2.8284),
             (6, "half", 3, 54, 2.3664),
+            (7, "full", 17, 169, 3.3333),
             (7, "half", 9, 90, 2.8284),
         ],
     )
     def test_tabulated_orthogonal_blocking(self, k, cube, n_blocks, n_runs, alpha):
-        """The rotatable CCDs that block orthogonally (Box & Hunter, 1957): runs, alpha and orthogonal blocks."""
+        """The rotatable CCDs that block orthogonally (Box & Hunter, 1957, Table 4): runs, alpha and
+        orthogonal blocks. For 7 factors with a full cube the printed alphas are swapped and for 7 factors
+        with a half cube the printed total is 80 instead of 90; the values here are the corrected ones."""
         factors = _factors(k)
         Y = central_composite(factors, alpha="orthogonal", cube=cube, n_blocks=n_blocks)
         assert len(Y) == n_runs

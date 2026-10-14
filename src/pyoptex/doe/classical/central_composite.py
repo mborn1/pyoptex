@@ -9,9 +9,10 @@ from .fractional_factorial import fractional_factorial
 from .utils import BLOCK_COLUMN, _to_dataframe, _validate_factors
 
 # Number of center points for uniform precision of a rotatable CCD, keyed by
-# (number of factors, number of cube runs). Box & Hunter (1957), "Multi-factor
-# experimental designs for exploring response surfaces", Ann. Math. Statist.
-# 28(1); tabulated in Montgomery, "Design and Analysis of Experiments".
+# (number of factors, number of cube runs). Box, G. E. P. and Hunter, J. S. (1957),
+# "Multi-factor experimental designs for exploring response surfaces", Annals of
+# Mathematical Statistics 28(1), pp. 195-241; tabulated in Montgomery, "Design and
+# Analysis of Experiments".
 _CCD_CENTER = {
     (2, 4): 5,
     (3, 8): 6,
@@ -26,15 +27,24 @@ _CCD_CENTER = {
 
 # Rotatable CCDs that block orthogonally, keyed by (number of factors, number of
 # cube runs): (number of cube blocks, center points per cube block, center points
-# in the axial block). Box & Hunter (1957); tabulated in Montgomery, "Design and
-# Analysis of Experiments".
+# in the axial block). Box & Hunter (1957), Table 4, p. 233.
+#
+# The printed table has two misprints, which do not affect these counts but are
+# noted here so the derived values are not "corrected" back to the print:
+# * 7 factors, full cube: the two alpha values are swapped. The orthogonal-blocking
+#   alpha is 3.3333 (from these center points) and the rotatable alpha is
+#   128^(1/4) = 3.3636, not the other way around.
+# * 7 factors, half cube: the printed total of 80 runs should be 90
+#   (8 x (8 + 1) cube runs plus 14 + 4 axial runs).
 _CCD_BLOCKED = {
     (2, 4): (1, 3, 3),
     (3, 8): (2, 2, 2),
     (4, 16): (2, 2, 2),
     (5, 32): (4, 2, 4),
     (5, 16): (1, 6, 1),
+    (6, 64): (8, 1, 6),
     (6, 32): (2, 4, 2),
+    (7, 128): (16, 1, 11),
     (7, 64): (8, 1, 4),
 }
 
@@ -114,11 +124,12 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_
         blocking, as in
         :py:func:`fractional_factorial <pyoptex.doe.classical.fractional_factorial>`.
         The design gets a ``'Block'`` column numbered from 1.  The
-        tabulated designs of Box & Hunter (1957), with default center
-        points, have 2 blocks for 2 factors, 3 for 3 and 4 factors, 5
-        for 5 factors, 2 for 5 factors with a half cube, 3 for 6 factors
-        and 9 for 7 factors with a half cube.  Use ``alpha='orthogonal'``
-        to make the blocks orthogonal.
+        tabulated designs of Box & Hunter (1957, Table 4), with default
+        center points, have 2 blocks for 2 factors, 3 for 3 and 4
+        factors, 5 for 5 factors, 9 for 6 factors, 17 for 7 factors, and
+        with a half cube 2 for 5 factors, 3 for 6 factors and 9 for 7
+        factors.  Use ``alpha='orthogonal'`` to make the blocks
+        orthogonal.
 
     Returns
     -------

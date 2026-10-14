@@ -19,9 +19,9 @@ The designs are published results:
 
 The selection of the minimum aberration design per size (the first entry per
 size) was taken from the design catalogue of the R package FrF2 by Ulrike
-Groemping: Groemping (2014), "R package FrF2 for creating and analyzing
-fractional factorial 2-level designs", Journal of Statistical Software 56(1),
-pp. 1-56, doi:10.18637/jss.v056.i01.
+Grömping: Grömping, U. (2014), "R Package FrF2 for Creating and Analyzing
+Fractional Factorial 2-Level Designs", Journal of Statistical Software 56(1),
+pp. 1-56, https://doi.org/10.18637/jss.v056.i01.
 """
 
 # fmt: off
