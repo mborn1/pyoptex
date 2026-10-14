@@ -13,7 +13,7 @@ try:
 except ImportError:
     log_checkpoint = lambda *args, **kwargs: None
 
-from pyoptex.doe.classical import fractional_factorial
+from pyoptex.doe.classical import fractional_factorial, min_aberration_generators
 from pyoptex.utils import Factor
 
 factors = [
@@ -48,3 +48,14 @@ print(f"Runs: {len(Y_l9)}")
 print(Y_l9)
 
 log_checkpoint("fractional_l9_shape", list(Y_l9.shape))
+
+# Generators from the catalogue of minimum aberration designs: the smallest
+# design of resolution IV for 7 factors (16 runs: E = ABC, F = ABD, G = ACD)
+factors_7 = [Factor(name) for name in "ABCDEFG"]
+generators = min_aberration_generators(factors_7, resolution=4)
+Y_ma = fractional_factorial(factors_7, generators=generators)
+print("=== Minimum aberration 2^(7-3), resolution IV ===")
+print(f"Generators: {generators}")
+print(f"Runs: {len(Y_ma)}")
+
+log_checkpoint("fractional_min_aberration_shape", list(Y_ma.shape))

@@ -6,7 +6,7 @@ import numpy as np
 
 from ...utils.factor import Factor
 from .fractional_factorial import fractional_factorial
-from .utils import _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _to_dataframe, _validate_factors
 
 # Number of center points for uniform precision of a rotatable CCD, keyed by
 # (number of factors, number of cube runs). Box & Hunter (1957), "Multi-factor
@@ -24,30 +24,39 @@ _CCD_CENTER = {
     (7, 64): 14,
 }
 
+# Rotatable CCDs that block orthogonally, keyed by (number of factors, number of
+# cube runs): (number of cube blocks, center points per cube block, center points
+# in the axial block). Box & Hunter (1957); tabulated in Montgomery, "Design and
+# Analysis of Experiments".
+_CCD_BLOCKED = {
+    (2, 4): (1, 3, 3),
+    (3, 8): (2, 2, 2),
+    (4, 16): (2, 2, 2),
+    (5, 32): (4, 2, 4),
+    (5, 16): (1, 6, 1),
+    (6, 32): (2, 4, 2),
+    (7, 64): (8, 1, 4),
+}
 
-def _cube_points(factors, cube):
-    """Coded +/-1 factorial (cube) portion of the CCD."""
+
+def _cube_generators(factors, cube):
+    """Generators of the factorial (cube) portion of the CCD."""
     k = len(factors)
-    if isinstance(cube, str):
-        if cube == "full":
-            generators = {}
-        elif cube == "half":
-            assert k >= 5, (
-                f"A half-fraction cube needs at least 5 factors (got {k}); with fewer factors it has "
-                f"resolution below V and aliases two-factor interactions"
-            )
-            names = [str(f.name) for f in factors]
-            generators = {names[-1]: names[:-1]}
-        else:
-            raise ValueError(f"Unknown cube type '{cube}'. Use 'full', 'half', or a dict of generators.")
-    else:
-        generators = cube
-
-    coded = [Factor(str(f.name)) for f in factors]
-    return fractional_factorial(coded, generators).to_numpy(dtype=np.float64)
+    if not isinstance(cube, str):
+        return cube
+    if cube == "full":
+        return {}
+    if cube == "half":
+        assert k >= 5, (
+            f"A half-fraction cube needs at least 5 factors (got {k}); with fewer factors it has "
+            f"resolution below V and aliases two-factor interactions"
+        )
+        names = [str(f.name) for f in factors]
+        return {names[-1]: names[:-1]}
+    raise ValueError(f"Unknown cube type '{cube}'. Use 'full', 'half', or a dict of generators.")
 
 
-def central_composite(factors, alpha="rotatable", n_center=None, cube="full"):
+def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_blocks=1):
     """
     Generate a Central Composite Design (CCD).
 
@@ -69,13 +78,23 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full"):
         * ``'inscribed'`` -- rotatable alpha, with design scaled so that
           axial points lie at +/-1 (factor extremes) and factorial points
           are pulled inward.
+        * ``'orthogonal'`` -- for blocked designs, the alpha for which
+          the blocks are orthogonal to the full quadratic model:
+          ``alpha^2 = n_cube (2k + n_a) / (2 (n_cube + n_c))`` with
+          ``n_c`` the center points in all cube blocks and ``n_a`` those
+          in the axial block.  For the tabulated designs (see
+          *n_blocks*) this is also (nearly) rotatable.
         * *float* -- use the given value directly.
-    n_center : int or None
+    n_center : int, tuple(int, int) or None
         Number of center points.  ``None`` (default) uses the textbook
-        value for uniform precision of Box & Hunter (1957): 5, 6, 7, 10,
-        15 and 21 for a full cube with 2 to 7 factors, and 6, 9 and 14
-        for a half-fraction cube with 5 to 7 factors.  Other designs
-        have no tabulated default and require an explicit *n_center*.
+        values of Box & Hunter (1957).  Without blocks, the values for
+        uniform precision: 5, 6, 7, 10, 15 and 21 for a full cube with 2
+        to 7 factors, and 6, 9 and 14 for a half-fraction cube with 5 to
+        7 factors.  With blocks, the values of the tabulated orthogonally
+        blocked designs (see *n_blocks*).  Other designs have no
+        tabulated default and require an explicit *n_center*.  In a
+        blocked design an int gives the center points per block, and a
+        tuple ``(per cube block, axial block)`` sets them separately.
     cube : str or dict
         Factorial portion.
 
@@ -88,6 +107,18 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full"):
           :py:func:`fractional_factorial <pyoptex.doe.classical.fractional_factorial>`.
           The fraction should have resolution V or higher to estimate
           the full quadratic model.
+    n_blocks : int
+        Number of blocks.  Default 1 (no blocks).  Otherwise the axial
+        points form the last block and the cube is split into
+        ``n_blocks - 1`` blocks (a power of 2) by minimum aberration
+        blocking, as in
+        :py:func:`fractional_factorial <pyoptex.doe.classical.fractional_factorial>`.
+        The design gets a ``'Block'`` column numbered from 1.  The
+        tabulated designs of Box & Hunter (1957), with default center
+        points, have 2 blocks for 2 factors, 3 for 3 and 4 factors, 5
+        for 5 factors, 2 for 5 factors with a half cube, 3 for 6 factors
+        and 9 for 7 factors with a half cube.  Use ``alpha='orthogonal'``
+        to make the blocks orthogonal.
 
     Returns
     -------
@@ -98,49 +129,83 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full"):
     _validate_factors(factors)
     k = len(factors)
     assert k >= 2, f"Central Composite Design requires at least 2 factors (got {k})"
+    assert n_blocks >= 1, f"n_blocks must be at least 1 (got {n_blocks})"
 
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a CCD"
 
-    factorial = _cube_points(factors, cube)
+    # Cube portion, in n_blocks - 1 blocks when blocked
+    coded = [Factor(str(f.name)) for f in factors]
+    n_cube_blocks = max(n_blocks - 1, 1)
+    cube_df = fractional_factorial(coded, _cube_generators(factors, cube), n_blocks=n_cube_blocks)
+    names = [str(f.name) for f in factors]
+    factorial = cube_df[names].to_numpy(dtype=np.float64)
+    cube_labels = cube_df[BLOCK_COLUMN].to_numpy() - 1 if n_cube_blocks > 1 else np.zeros(len(factorial), dtype=int)
     nf = len(factorial)
-    inscribed = False
+
+    # Center points: per cube block and in the axial block
+    if n_center is None:
+        if n_blocks == 1:
+            assert (k, nf) in _CCD_CENTER, (
+                f"No tabulated default number of center points for a CCD with {k} factors and {nf} cube runs; "
+                f"specify n_center explicitly"
+            )
+            n_center = _CCD_CENTER[(k, nf)]
+        else:
+            assert _CCD_BLOCKED.get((k, nf), (None,))[0] == n_cube_blocks, (
+                f"No tabulated default number of center points for a blocked CCD with {k} factors, {nf} cube "
+                f"runs and {n_blocks} blocks; specify n_center explicitly"
+            )
+            n_center = _CCD_BLOCKED[(k, nf)][1:]
+    n_cube_center, n_axial_center = n_center if isinstance(n_center, tuple) else (n_center, n_center)
+    assert n_cube_center >= 0 and n_axial_center >= 0, f"n_center must be non-negative (got {n_center})"
+    assert n_blocks > 1 or n_cube_center == n_axial_center, "Separate center points require a blocked design"
 
     if isinstance(alpha, str):
-        if alpha == "rotatable":
+        inscribed = alpha == "inscribed"
+        if alpha in ("rotatable", "inscribed"):
             alpha_val = nf**0.25
         elif alpha == "face-centered":
             alpha_val = 1.0
-        elif alpha == "inscribed":
-            alpha_val = nf**0.25
-            inscribed = True
+        elif alpha == "orthogonal":
+            assert n_blocks > 1, "alpha='orthogonal' requires a blocked design (n_blocks > 1)"
+            n_c = n_cube_center * n_cube_blocks
+            alpha_val = np.sqrt(nf * (2 * k + n_axial_center) / (2 * (nf + n_c)))
         else:
             raise ValueError(
-                f"Unknown alpha type '{alpha}'. Use 'rotatable', 'face-centered', 'inscribed', or a float."
+                f"Unknown alpha type '{alpha}'. Use 'rotatable', 'face-centered', 'inscribed', 'orthogonal', "
+                f"or a float."
             )
     else:
+        inscribed = False
         alpha_val = float(alpha)
 
     assert alpha_val > 0, f"alpha must be strictly positive (got {alpha_val})"
-
-    if n_center is None:
-        assert (k, nf) in _CCD_CENTER, (
-            f"No tabulated default number of center points for a CCD with {k} factors and {nf} cube runs; "
-            f"specify n_center explicitly"
-        )
-        n_center = _CCD_CENTER[(k, nf)]
-    assert n_center >= 0, f"n_center must be non-negative (got {n_center})"
 
     axial = np.zeros((2 * k, k), dtype=np.float64)
     for i in range(k):
         axial[2 * i, i] = alpha_val
         axial[2 * i + 1, i] = -alpha_val
 
-    center = np.zeros((n_center, k), dtype=np.float64)
-
-    design = np.vstack([factorial, axial, center])
+    if n_blocks == 1:
+        design = np.vstack([factorial, axial, np.zeros((n_cube_center, k), dtype=np.float64)])
+        blocks = None
+    else:
+        parts, blocks = [], []
+        for b in range(n_cube_blocks):
+            runs = np.vstack([factorial[cube_labels == b], np.zeros((n_cube_center, k), dtype=np.float64)])
+            parts.append(runs)
+            blocks += [b + 1] * len(runs)
+        parts.append(np.vstack([axial, np.zeros((n_axial_center, k), dtype=np.float64)]))
+        blocks += [n_blocks] * (2 * k + n_axial_center)
+        design = np.vstack(parts)
 
     if inscribed:
         design /= alpha_val
 
-    return _to_dataframe(design, factors)
+    Y = _to_dataframe(design, factors)
+    if blocks is not None:
+        Y[BLOCK_COLUMN] = np.array(blocks, dtype=np.int64)
+        if n_cube_blocks > 1:
+            Y.attrs["confounded_with_blocks"] = cube_df.attrs["confounded_with_blocks"]
+    return Y

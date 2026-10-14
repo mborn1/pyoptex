@@ -3,6 +3,8 @@ import pandas as pd
 import pytest
 
 from pyoptex.doe.classical import Factor, box_behnken
+from pyoptex.doe.classical.evaluate import estimation_variance
+from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 
 class TestBoxBehnken:
@@ -31,6 +33,44 @@ class TestBoxBehnken:
         """Default center points follow the tabulated designs of Box & Behnken (1960)."""
         factors = [Factor(f"X{i}") for i in range(k)]
         assert len(box_behnken(factors)) == expected
+
+    @pytest.mark.parametrize(
+        "k, expected",
+        [(3, 15), (4, 27), (5, 46), (6, 54), (7, 62), (9, 130), (10, 170), (11, 188), (12, 204), (16, 396)],
+    )
+    def test_paper_run_counts(self, k, expected):
+        """Total runs N of the designs in Table 4 of Box & Behnken (1960), center points included."""
+        assert len(box_behnken([Factor(f"X{i}") for i in range(k)])) == expected
+
+    @pytest.mark.parametrize("k", [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16])
+    def test_balanced_and_quadratic_estimable(self, k):
+        """Every factor is varied equally often, every pair of factors is varied together,
+        and the full quadratic model is estimable."""
+        factors = [Factor(f"X{i}") for i in range(k)]
+        Y = box_behnken(factors, n_center=3)
+        X = Y.to_numpy(dtype=np.float64)
+        assert set(np.unique(X)) == {-1.0, 0.0, 1.0}
+
+        nonzero = X != 0
+        assert len(set(nonzero.sum(axis=0))) == 1
+        together = nonzero.T.astype(int) @ nonzero.astype(int)
+        assert np.all(together[~np.eye(k, dtype=bool)] > 0)
+
+        Y2X = model2Y2X(partial_rsm_names({str(f.name): "quad" for f in factors}), factors)
+        assert np.all(np.isfinite(estimation_variance(Y, factors, Y2X)))
+
+    def test_six_factors_uses_blocks_of_three(self):
+        """The textbook 6-factor design has 48 non-center runs, not the 60 of all pairs."""
+        X = box_behnken([Factor(f"X{i}") for i in range(6)], n_center=0).to_numpy()
+        assert X.shape == (48, 6)
+        np.testing.assert_array_equal(np.sum(X != 0, axis=1), 3)
+
+    def test_eleven_factors_half_fractions(self):
+        """For 11 factors every block is the half fraction of a 2^5 with x1 x2 x3 x4 x5 = +1."""
+        X = box_behnken([Factor(f"X{i}") for i in range(11)], n_center=0).to_numpy()
+        assert X.shape == (11 * 16, 11)
+        np.testing.assert_array_equal(np.sum(X != 0, axis=1), 5)
+        np.testing.assert_array_equal(np.prod(np.where(X != 0, X, 1), axis=1), 1.0)
 
     def test_no_tabulated_default_raises(self):
         factors = [Factor(f"X{i}") for i in range(8)]

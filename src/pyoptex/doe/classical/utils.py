@@ -2,12 +2,16 @@
 Shared helpers for classical design generation.
 """
 
-from itertools import product
+from itertools import combinations, product
+from math import comb
 
 import numpy as np
 import pandas as pd
 
 from ...utils.factor import FactorMixin
+
+# Name of the column with the block number (1, 2, ...) in blocked designs
+BLOCK_COLUMN = "Block"
 
 
 def _validate_factors(factors):
@@ -208,7 +212,136 @@ def _space_filling_dataframe(unit, factors):
     return _to_dataframe(2.0 * unit - 1.0, factors)
 
 
-def randomize(Y):
+def _gf2_subspace_bases(p, q):
+    """
+    Every q-dimensional subspace of GF(2)^p exactly once, as a basis of q
+    bitmasks in reduced row echelon form (the pivot is the lowest set bit,
+    and no other basis vector has that bit set).
+    """
+    for pivots in combinations(range(p), q):
+        free = [[j for j in range(pivots[i] + 1, p) if j not in pivots] for i in range(q)]
+        n_free = sum(len(fr) for fr in free)
+        for fill in range(2**n_free):
+            basis, bit = [], 0
+            for i in range(q):
+                word = 1 << pivots[i]
+                for j in free[i]:
+                    if fill >> bit & 1:
+                        word |= 1 << j
+                    bit += 1
+                basis.append(word)
+            yield basis
+
+
+def _shortest_effects(X, max_effects=200000):
+    """
+    Map every column that is a product of at most j_max columns of the +/-1
+    coded design X (up to sign) to the shortest such product, where j_max is
+    the largest order with at most *max_effects* effects in total.
+
+    Returns the lookup ``{column bytes: factor indices}`` and j_max.
+    """
+    k = X.shape[1]
+    lookup = {}
+    total, j_max = 0, 0
+    for j in range(1, k + 1):
+        if j > 1 and total + comb(k, j) > max_effects:
+            break
+        total += comb(k, j)
+        j_max = j
+        for effect in combinations(range(k), j):
+            col = np.prod(X[:, effect], axis=1)
+            lookup.setdefault((col * col[0]).astype(np.int8).tobytes(), effect)
+    return lookup, j_max
+
+
+def _block_scheme(X, base, n_blocks):
+    """
+    Minimum aberration blocking of a two-level design.
+
+    The blocks are defined by q = log2(n_blocks) independent products of
+    base columns; all 2^q - 1 products of these are confounded with blocks.
+    Every such product is identified with the shortest effect it is aliased
+    with, and the scheme minimizes the number of confounded main effects
+    (which must be zero), then two-factor interactions, then three-factor
+    interactions, and so on, by exhaustive search over all schemes.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        The +/-1 coded two-level design (nruns x nfactors).
+    base : list(int)
+        Indices of the base factors: every column of X is a product of
+        base columns.
+    n_blocks : int
+        Number of blocks, a power of 2.
+
+    Returns
+    -------
+    labels : np.ndarray
+        Block index (0 to n_blocks - 1) of every run.
+    confounded : list(tuple(int))
+        The effects confounded with blocks, as factor indices, shortest first.
+    """
+    q = int(round(np.log2(n_blocks)))
+    assert n_blocks >= 2 and 2**q == n_blocks, f"n_blocks must be a power of 2 (got {n_blocks})"
+    p = len(base)
+    assert q < p, f"{n_blocks} blocks of {X.shape[0] // n_blocks} runs are too small for {X.shape[1]} factors"
+
+    lookup, j_max = _shortest_effects(X)
+
+    # Shortest aliased effect and its order for every nonzero product of base columns
+    words = np.arange(2**p)
+    cols = np.ones((2**p, X.shape[0]), dtype=np.int8)
+    for i in range(p):
+        cols[(words >> i & 1) == 1] *= X[:, base[i]].astype(np.int8)
+    effects = [()] + [
+        lookup.get((cols[w] * cols[w][0]).tobytes(), tuple(base[i] for i in range(p) if w >> i & 1))
+        for w in range(1, 2**p)
+    ]
+    orders = np.array([len(e) if len(e) <= j_max else j_max + 1 for e in effects])
+
+    best = None
+    for basis in _gf2_subspace_bases(p, q):
+        span = [0]
+        for b in basis:
+            span += [s ^ b for s in span]
+        counts = tuple(np.bincount(orders[span[1:]], minlength=j_max + 2)[1:])
+        if best is None or counts < best[0]:
+            best = (counts, basis, span[1:])
+
+    counts, basis, span = best
+    assert counts[0] == 0, (
+        f"{n_blocks} blocks would confound a main effect with blocks; use fewer blocks or more runs"
+    )
+    labels = sum((cols[b][:] > 0).astype(np.int64) << i for i, b in enumerate(basis))
+    confounded = sorted((effects[w] for w in span), key=lambda e: (len(e), e))
+    return np.asarray(labels), confounded
+
+
+def _blocked_dataframe(design, labels, center, factors, confounded=None):
+    """
+    Denormalized design with a block column: the runs grouped by block (in
+    their original order within a block), each block followed by the same
+    *center* runs. The effects confounded with blocks, if given, are stored
+    as lists of factor names in ``Y.attrs['confounded_with_blocks']``.
+    """
+    assert all(str(f.name) != BLOCK_COLUMN for f in factors), (
+        f"A factor cannot be named '{BLOCK_COLUMN}' in a blocked design"
+    )
+    parts, blocks = [], []
+    for b in range(int(labels.max()) + 1):
+        runs = np.vstack([design[labels == b], center])
+        parts.append(runs)
+        blocks.append(np.full(len(runs), b + 1, dtype=np.int64))
+    Y = _to_dataframe(np.vstack(parts), factors)
+    Y[BLOCK_COLUMN] = np.concatenate(blocks)
+    if confounded is not None:
+        Y.attrs["confounded_with_blocks"] = [[str(factors[i].name) for i in e] for e in confounded]
+    return Y
+
+
+def randomize(Y, block_column=BLOCK_COLUMN):
     """
     Randomize the run order of a design.
 
@@ -217,10 +350,18 @@ def randomize(Y):
     random generator, so :py:func:`set_seed <pyoptex._seed.set_seed>`
     makes the order reproducible.
 
+    In a blocked design (with a *block_column*), the runs are shuffled
+    within each block and the blocks keep their order, since all runs of
+    a block must be done under the same conditions (e.g. on the same day).
+
     Parameters
     ----------
     Y : pd.DataFrame
         The design.
+    block_column : str or None
+        Name of the block column (``'Block'`` for blocked classical
+        designs). Ignored when the design has no such column; ``None``
+        shuffles all runs regardless of blocks.
 
     Returns
     -------
@@ -229,4 +370,9 @@ def randomize(Y):
         gives the standard order of each run.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a DataFrame"
-    return Y.iloc[np.random.permutation(len(Y))]
+    if block_column is None or block_column not in Y.columns:
+        return Y.iloc[np.random.permutation(len(Y))]
+
+    blocks = Y[block_column].to_numpy()
+    order = [np.random.permutation(np.flatnonzero(blocks == b)) for b in pd.unique(blocks)]
+    return Y.iloc[np.concatenate(order)]
