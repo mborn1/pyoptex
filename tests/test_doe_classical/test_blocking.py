@@ -52,7 +52,9 @@ class TestFactorialBlocking:
         Y = full_factorial(factors, n_blocks=2)
         assert Y.attrs["confounded_with_blocks"] == [["A", "B", "C"]]
         assert Y["Block"].tolist() == [1] * 4 + [2] * 4
-        np.testing.assert_array_equal(Y.groupby("Block").apply(lambda d: (d.A * d.B * d.C).iloc[0]).abs(), 1)
+        abc = Y["A"] * Y["B"] * Y["C"]
+        assert abc.groupby(Y["Block"]).nunique().tolist() == [1, 1]  # ABC is constant within each block
+        assert abc.groupby(Y["Block"]).first().tolist() in ([-1.0, 1.0], [1.0, -1.0])
         assert _non_orthogonal_terms(Y, factors, quadratic=False) == []
 
     @pytest.mark.parametrize(
@@ -154,6 +156,13 @@ class TestCentralCompositeBlocking:
         np.testing.assert_allclose(Y["X0"].max(), alpha, atol=5e-5)
         assert _non_orthogonal_terms(Y, factors, quadratic=True) == []
 
+    def test_default_alpha_is_orthogonal_when_blocked(self):
+        factors = _factors(3)
+        pd.testing.assert_frame_equal(
+            central_composite(factors, n_blocks=3), central_composite(factors, alpha="orthogonal", n_blocks=3)
+        )
+        assert _non_orthogonal_terms(central_composite(factors, n_blocks=3), factors, quadratic=True) == []
+
     def test_axial_points_in_last_block(self):
         Y = central_composite(_factors(3), alpha="orthogonal", n_blocks=3)
         axial = Y[Y["Block"] == 3][["X0", "X1", "X2"]].to_numpy()
@@ -176,12 +185,16 @@ class TestCentralCompositeBlocking:
 
 
 class TestBoxBehnkenBlocking:
-    @pytest.mark.parametrize("k, n_blocks", [(4, 3), (5, 2), (9, 5), (16, 6)])
-    def test_orthogonal_blocks_of_the_paper(self, k, n_blocks):
+    @pytest.mark.parametrize(
+        "k, n_blocks, block_size",
+        [(4, 3, 9), (5, 2, 23), (6, 2, 27), (7, 2, 31), (9, 5, 26), (9, 10, 13), (10, 2, 85), (12, 2, 102),
+         (16, 6, 66), (16, 12, 33)],
+    )  # fmt: skip
+    def test_orthogonal_blocks_of_the_paper(self, k, n_blocks, block_size):
+        """Every blocking of Box & Behnken (1960), with the block sizes stated in the paper."""
         factors = _factors(k)
         Y = box_behnken(factors, n_blocks=n_blocks)
-        sizes = np.bincount(Y["Block"])[1:]
-        assert len(sizes) == n_blocks and len(set(sizes)) == 1
+        assert np.bincount(Y["Block"])[1:].tolist() == [block_size] * n_blocks
         assert len(Y) == len(box_behnken(factors))  # center points divided over the blocks
         assert _non_orthogonal_terms(Y, factors, quadratic=True) == []
 
@@ -192,7 +205,9 @@ class TestBoxBehnkenBlocking:
     def test_invalid_number_of_blocks_raises(self):
         with pytest.raises(AssertionError, match="1 or 3 blocks"):
             box_behnken(_factors(4), n_blocks=2)
-        with pytest.raises(AssertionError, match="1 block"):
+        with pytest.raises(AssertionError, match="1 or 5 or 10 blocks"):
+            box_behnken(_factors(9), n_blocks=2)
+        with pytest.raises(AssertionError, match="only be run in 1 block "):
             box_behnken(_factors(3), n_blocks=2)
 
 

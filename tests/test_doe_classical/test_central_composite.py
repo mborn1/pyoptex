@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pyoptex.doe.classical import Factor, central_composite
+from pyoptex.doe.classical import Factor, central_composite, min_aberration_generators
 
 
 class TestCentralComposite:
@@ -47,7 +47,7 @@ class TestCentralComposite:
         assert Y["B"].min() >= 0.0
         assert Y["B"].max() <= 5.0
 
-    @pytest.mark.parametrize("k, expected_center", [(2, 5), (3, 6), (4, 7), (5, 10)])
+    @pytest.mark.parametrize("k, expected_center", [(2, 5), (3, 6), (4, 7), (5, 10), (6, 15), (7, 21)])
     def test_default_center_points_full_cube(self, k, expected_center):
         """Default center points follow the Box & Hunter (1957) uniform-precision table."""
         factors = [Factor(f"X{i}") for i in range(k)]
@@ -65,10 +65,19 @@ class TestCentralComposite:
         assert len(Y) == 4 + 4 + 2
 
     def test_no_tabulated_default_raises(self):
-        factors = [Factor(f"X{i}") for i in range(8)]
+        factors = [Factor(f"X{i}") for i in range(9)]
         with pytest.raises(AssertionError, match="specify n_center explicitly"):
             central_composite(factors)
-        assert len(central_composite(factors, n_center=4)) == 256 + 16 + 4
+        assert len(central_composite(factors, n_center=4)) == 512 + 18 + 4
+
+    @pytest.mark.parametrize("cube, n_runs, expected_center", [("full", 256, 28), ("half", 128, 20), (64, 64, 13)])
+    def test_default_center_points_eight_factors(self, cube, n_runs, expected_center):
+        """Box & Hunter (1957), Table 3: full, half and quarter (resolution V) cube for 8 factors."""
+        factors = [Factor(f"X{i}") for i in range(8)]
+        if not isinstance(cube, str):
+            cube = min_aberration_generators(factors, n_runs=cube)
+        Y = central_composite(factors, cube=cube)
+        assert len(Y) == n_runs + 16 + expected_center
 
     def test_half_cube_five_factors(self):
         """k = 5 with E = ABCD: 16 cube + 10 axial + center runs, rotatable alpha = 16^(1/4) = 2."""

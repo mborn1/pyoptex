@@ -7,11 +7,22 @@ import pytest
 from pyoptex.doe.classical import Factor, taguchi
 from pyoptex.doe.classical.taguchi import _ARRAYS
 
-# Printed tables (levels 1, 2, 3) for row-by-row comparison
+# Printed tables (levels 1, 2, 3) for row-by-row comparison: L4, L8 and L9 as in
+# Taguchi's standard tables, L12, L18 and L27 from the University of York tables.
+# fmt: off
 _PRINTED = {
     "L4": ["111", "122", "212", "221"],
     "L8": ["1111111", "1112222", "1221122", "1222211", "2121212", "2122121", "2211221", "2212112"],
     "L9": ["1111", "1222", "1333", "2123", "2231", "2312", "3132", "3213", "3321"],
+    "L12": [
+        "11111111111", "11111222222", "11222111222", "12122122112", "12212212121", "12221221211",
+        "21221122121", "21212221112", "21122212211", "22211112212", "22121211122", "22112121221",
+    ],
+    "L18": [
+        "11111111", "11222222", "11333333", "12112233", "12223311", "12331122",
+        "13121323", "13232131", "13313212", "21133221", "21211332", "21322113",
+        "22123132", "22231213", "22312321", "23132312", "23213123", "23321231",
+    ],
     "L27": [
         "1111111111111", "1111222222222", "1111333333333", "1222111222333", "1222222333111", "1222333111222",
         "1333111333222", "1333222111333", "1333333222111", "2123123123123", "2123231231231", "2123312312312",
@@ -24,6 +35,7 @@ _PRINTED = {
 _SHAPES = {
     "L4": (4, 3), "L8": (8, 7), "L9": (9, 4), "L12": (12, 11), "L16": (16, 15), "L18": (18, 8), "L27": (27, 13),
 }
+# fmt: on
 
 
 def _array(name):
@@ -72,14 +84,6 @@ def test_l18_interaction_of_first_two_columns():
     for j in range(2, 8):
         pairs, counts = np.unique(np.column_stack([merged, A[:, j]]), axis=0, return_counts=True)
         assert len(pairs) == 18 and np.all(counts == 1)
-
-
-def test_l18_spot_rows():
-    """Spot-check rows against the printed L18."""
-    A = _array("L18")
-    np.testing.assert_array_equal(A[0], [1, 1, 1, 1, 1, 1, 1, 1])
-    np.testing.assert_array_equal(A[6], [1, 3, 1, 2, 1, 3, 2, 3])
-    np.testing.assert_array_equal(A[17], [2, 3, 3, 2, 1, 2, 3, 1])
 
 
 class TestTaguchi:
