@@ -2,9 +2,9 @@
 Module containing evaluation functions for classical designs.
 
 These functions compute standard design quality metrics (D-, A-,
-G-efficiency, average prediction variance, estimation variance, alias
-matrix) for designs that have no random-effect / covariance structure —
-only the simple X'X information matrix is needed.
+G-efficiency, average prediction variance, estimation variance, variance
+inflation, power, alias matrix) for designs that have no random-effect /
+covariance structure — only the simple X'X information matrix is needed.
 
 The metrics use the same definitions as the optimal-design metrics in
 :py:mod:`pyoptex.doe.fixed_structure.metric` without random effects
@@ -20,6 +20,7 @@ import pandas as pd
 
 from ...utils.design import encode_design
 from ..utils.init import init_single_unconstrained
+from ..utils.power import t_test_power
 from .utils import _factor_encoding_params
 
 
@@ -192,6 +193,90 @@ def estimation_variance(Y, factors, Y2X):
         estimable, all variances are infinite.
     """
     return _estimation_variance(_prepare_X(Y, factors, Y2X))
+
+
+def variance_inflation(Y, factors, Y2X):
+    """
+    Compute the variance inflation factor (VIF) of each model parameter.
+
+    ``VIF_j = 1 / (1 - R_j^2)``, where ``R_j^2`` is the coefficient of
+    determination of model column *j* regressed on the other columns.  It
+    is the factor by which correlation with the other model terms inflates
+    the variance of the estimate: 1 for a term orthogonal to all others,
+    and infinite for a term fully aliased with other model terms.  Values
+    above 5 to 10 are commonly considered problematic.
+
+    Computed as ``(X'X)^{-1}_jj * sum_i (x_ij - mean_j)^2``, which equals
+    the definition above for a model with an intercept.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(Factor)
+        The factor definitions.
+    Y2X : callable
+        Function converting the encoded design matrix to the model matrix.
+
+    Returns
+    -------
+    vif : np.ndarray
+        1-D array with the VIF of every model column; ``np.nan`` for
+        constant columns (the intercept). If the model is not estimable,
+        all non-constant columns are infinite.
+    """
+    X = _prepare_X(Y, factors, Y2X)
+    ss = np.sum((X - X.mean(axis=0)) ** 2, axis=0)
+    constant = ss <= 1e-12 * X.shape[0]
+    with np.errstate(invalid="ignore"):  # inf * 0 for constant columns of a rank-deficient model
+        vif = _estimation_variance(X) * ss
+    vif[constant] = np.nan
+    return vif
+
+
+def power(Y, factors, Y2X, effect_size=1.0, alpha=0.05):
+    """
+    Compute the power of the t-test of each model parameter.
+
+    The probability that the two-sided t-test at level *alpha* finds
+    parameter *j* significant when its true coefficient is *effect_size*
+    times the error standard deviation (all other coefficients
+    arbitrary).  The test statistic follows a noncentral t distribution
+    with ``n - p`` degrees of freedom and noncentrality
+    ``effect_size / sqrt((X'X)^{-1}_jj)``.
+
+    The coefficients refer to the normalized factors (continuous factors
+    from -1 at ``min`` to +1 at ``max``), so for a main effect an
+    *effect_size* of 1 means the response changes by 2 standard
+    deviations from ``min`` to ``max``.  This is the convention of e.g.
+    JMP's design evaluation (anticipated coefficient 1, RMSE 1).
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    factors : list(Factor)
+        The factor definitions.
+    Y2X : callable
+        Function converting the encoded design matrix to the model matrix.
+    effect_size : float or np.ndarray
+        Anticipated coefficient divided by the error standard deviation,
+        one value for all parameters or one per model column.
+    alpha : float
+        Significance level of the test.
+
+    Returns
+    -------
+    power : np.ndarray
+        1-D array with the power for every model column. ``np.nan`` when
+        there are no degrees of freedom left for the error (``n <= p``),
+        zero for parameters that are not estimable.
+    """
+    X = _prepare_X(Y, factors, Y2X)
+    n, p = X.shape
+    if n <= p:
+        return np.full(p, np.nan)
+    return t_test_power(_estimation_variance(X), n - p, effect_size, alpha)
 
 
 def g_efficiency(Y, factors, Y2X, n_samples=10000):

@@ -2,6 +2,7 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from pyoptex._seed import set_seed
 from pyoptex.doe import fixed_structure
@@ -14,6 +15,8 @@ from pyoptex.doe.classical.evaluate import (
     design_info,
     estimation_variance,
     g_efficiency,
+    power,
+    variance_inflation,
 )
 from pyoptex.doe.fixed_structure.evaluate import evaluate_metrics
 from pyoptex.doe.fixed_structure.metric import Dopt, Iopt
@@ -153,6 +156,60 @@ class TestAveragePredictionVariance:
     def test_rank_deficient_is_infinite(self):
         Y, factors, Y2X = _make_rank_deficient_design()
         assert average_prediction_variance(Y, factors, Y2X, n_samples=100) == np.inf
+
+
+class TestVarianceInflation:
+    def test_orthogonal_design_is_one(self):
+        Y, factors, Y2X = _make_simple_design()
+        vif = variance_inflation(Y, factors, Y2X)
+        assert np.isnan(vif[0])  # intercept
+        np.testing.assert_allclose(vif[1:], 1.0, rtol=1e-10)
+
+    def test_correlated_columns(self):
+        """Two main effects with correlation r have VIF 1 / (1 - r^2)."""
+        factors = [Factor("A"), Factor("B")]
+        Y = pd.DataFrame({"A": [-1, -1, 1, 1, 1, -1], "B": [-1, -1, 1, 1, -1, 1]}, dtype=float)
+        Y2X = model2Y2X(partial_rsm_names({"A": "lin", "B": "lin"}), factors)
+        r = np.corrcoef(Y["A"], Y["B"])[0, 1]
+        np.testing.assert_allclose(variance_inflation(Y, factors, Y2X)[1:], 1 / (1 - r**2), rtol=1e-10)
+
+    def test_rank_deficient_is_infinite(self):
+        factors = [Factor("A"), Factor("B")]
+        Y = pd.DataFrame({"A": [-1, 1, -1, 1], "B": [-1, 1, -1, 1]}, dtype=float)
+        Y2X = model2Y2X(partial_rsm_names({"A": "lin", "B": "lin"}), factors)
+        assert np.all(np.isinf(variance_inflation(Y, factors, Y2X)[1:]))
+
+
+class TestPower:
+    def test_matches_noncentral_f(self):
+        """For one parameter, the two-sided t-test power equals the noncentral F(1, n - p) power."""
+        Y, factors, Y2X = _make_simple_design()
+        pw = power(Y, factors, Y2X, effect_size=1.0, alpha=0.05)
+        lam = 1.0 / (1 / 8)  # effect^2 / var, var = 1/8
+        expected = stats.ncf.sf(stats.f.ppf(0.95, 1, 4), 1, 4, lam)
+        np.testing.assert_allclose(pw, expected, rtol=1e-8)
+
+    def test_zero_effect_gives_alpha(self):
+        Y, factors, Y2X = _make_simple_design()
+        np.testing.assert_allclose(power(Y, factors, Y2X, effect_size=0.0, alpha=0.1), 0.1, rtol=1e-8)
+
+    def test_increases_with_effect_size(self):
+        Y, factors, Y2X = _make_simple_design()
+        small = power(Y, factors, Y2X, effect_size=0.5)
+        large = power(Y, factors, Y2X, effect_size=2.0)
+        assert np.all(large > small)
+
+    def test_per_parameter_effect_size(self):
+        Y, factors, Y2X = _make_simple_design()
+        pw = power(Y, factors, Y2X, effect_size=np.array([0.0, 1.0, 1.0, 2.0]))
+        assert pw[0] < pw[1] == pw[2] < pw[3]
+
+    def test_saturated_design_is_nan(self):
+        """Without degrees of freedom for the error there is no test."""
+        factors = [Factor("A"), Factor("B")]
+        Y = full_factorial(factors)
+        Y2X = model2Y2X(partial_rsm_names({"A": "tfi", "B": "tfi"}), factors)  # 4 parameters, 4 runs
+        assert np.all(np.isnan(power(Y, factors, Y2X)))
 
 
 def _fixed_structure_metrics(Y, names, model, n_samples):
