@@ -41,17 +41,19 @@ print(f"Runs per block: {Y['Block'].value_counts().sort_index().tolist()}")
 print(f"Confounded with blocks: {[''.join(e) for e in Y.attrs['confounded_with_blocks']]}")
 
 # Central composite design in 3 orthogonal blocks: 2 cube blocks and 1 axial block.
-# With alpha > 1 the axial runs lie outside the factor ranges (here even a negative
-# Time), so choose min and max such that alpha times the half-range is still feasible.
+# A blocked CCD uses the alpha for orthogonal blocking by default. For a CCD with
+# alpha > 1, min and max define the cube, not the outer limits: the axial runs lie
+# alpha half-ranges from the center, so the ranges are chosen such that those runs
+# are still feasible (here Pressure 1.37 to 4.63 and Time 18.7 to 51.3).
 factors = [
-    Factor("Temperature", min=150, max=200),
-    Factor("Pressure", min=1, max=5),
-    Factor("Time", min=10, max=60),
+    Factor("Temperature", min=160, max=190),
+    Factor("Pressure", min=2, max=4),
+    Factor("Time", min=25, max=45),
 ]
-Y_ccd = central_composite(factors, alpha="orthogonal", n_blocks=3)
+Y_ccd = central_composite(factors, n_blocks=3)
 print("\n=== CCD in 3 orthogonal blocks ===")
 print(f"Runs per block: {Y_ccd['Block'].value_counts().sort_index().tolist()}")
-print(f"Coded alpha for orthogonal blocking: {(Y_ccd['Pressure'].max() - 3) / 2:.4f}")
+print(f"Coded alpha for orthogonal blocking: {factors[1].normalize(Y_ccd['Pressure'].max()):.4f}")
 print(randomize(Y_ccd).round(2))
 
 log_checkpoint("blocked_ccd_shape", list(Y_ccd.shape))
