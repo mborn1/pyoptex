@@ -3,9 +3,10 @@ Module for definitive screening design (DSD) generation.
 
 Design from Jones & Nachtsheim (2011), "A class of three-level designs for
 definitive screening in the presence of second-order effects", Journal of
-Quality Technology 43(1), pp. 1-15, with the fake factors of Jones &
-Nachtsheim (2013), "Definitive screening designs with added two-level
-categorical factors", Journal of Quality Technology 45(2), pp. 121-129.
+Quality Technology 43(1), pp. 1-15, with the fake factors (extra runs)
+recommended by Jones, B. & Nachtsheim, C. J. (2017), "Effective design-based
+model selection for definitive screening designs", Technometrics 59(3),
+pp. 319-329, doi:10.1080/00401706.2016.1234979.
 """
 
 import numpy as np
@@ -102,9 +103,12 @@ def definitive_screening(factors, n_fake=0, n_center=1):
         Continuous factors (at least 3).
     n_fake : int
         Number of fake factors: the design is built for ``k + n_fake``
-        factors and the extra columns are dropped.  Jones & Nachtsheim
-        (2013) recommend this to add runs, which increases the power to
-        detect second-order effects.  Default 0, the original design.
+        factors and the extra columns are dropped, which adds runs.
+        Jones & Nachtsheim (2017) recommend using 2 fake factors
+        routinely (4 extra runs, e.g. 17 instead of 13 runs for 6
+        factors), which improves model selection for the second-order
+        effects.  Default 0, the original design of Jones & Nachtsheim
+        (2011).
     n_center : int
         Number of center runs (default 1, the single center run of the
         original design).

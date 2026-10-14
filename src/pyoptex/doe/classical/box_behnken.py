@@ -46,10 +46,23 @@ _BBD_CENTER = {3: 3, 4: 3, 5: 6, 6: 6, 7: 6, 9: 10, 10: 10, 11: 12, 12: 12, 16: 
 # Number of factors whose tabulated blocks run a half fraction (x1 ... xm = +1).
 _BBD_HALF_FRACTION = {11}
 
-# Orthogonal blocking of the tabulated designs: the rows of _BBD_BLOCKS split
-# into this many consecutive groups of equal size (the dashed sections of
-# Table 4), with the center points divided equally over the groups.
-_BBD_GROUPS = {4: 3, 5: 2, 9: 5, 16: 6}
+# Orthogonal blockings of the tabulated designs, {n_factors: {n_blocks: (n_groups, split)}}.
+# The rows of _BBD_BLOCKS are split into n_groups consecutive groups of equal size
+# (the dashed sections of Table 4). With split, each group is split further into
+# the runs where the product of the nonzero coded values is +1 and those where it
+# is -1. The center points are divided equally over the blocks.
+# fmt: off
+_BBD_BLOCKINGS = {
+    4: {3: (3, False)},
+    5: {2: (2, False)},
+    6: {2: (1, True)},
+    7: {2: (1, True)},
+    9: {5: (5, False), 10: (5, True)},
+    10: {2: (1, True)},
+    12: {2: (1, True)},
+    16: {6: (6, False), 12: (6, True)},
+}
+# fmt: on
 
 
 def _block_runs(k, block, half_fraction):
@@ -95,9 +108,10 @@ def box_behnken(factors, n_center=None, n_blocks=1):
         numbers of factors require an explicit *n_center*.
     n_blocks : int
         Number of blocks.  Default 1 (no blocks).  The tabulated designs
-        for 4, 5, 9 and 16 factors can be run in 3, 2, 5 and 6
-        orthogonal blocks respectively, as given in the paper.  The
-        design then gets a ``'Block'`` column numbered from 1.
+        can be run in the orthogonal blocks given in the paper: 3 blocks
+        for 4 factors, 2 for 5, 6, 7, 10 and 12 factors, 5 or 10 for 9
+        factors, and 6 or 12 for 16 factors.  The design then gets a
+        ``'Block'`` column numbered from 1.
 
     Returns
     -------
@@ -111,9 +125,10 @@ def box_behnken(factors, n_center=None, n_blocks=1):
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a Box-Behnken design"
 
-    assert n_blocks == 1 or _BBD_GROUPS.get(k) == n_blocks, (
+    options = _BBD_BLOCKINGS.get(k, {})
+    assert n_blocks == 1 or n_blocks in options, (
         f"A Box-Behnken design with {k} factors can only be run in "
-        + (f"1 or {_BBD_GROUPS[k]} blocks" if k in _BBD_GROUPS else "1 block")
+        + (" or ".join(str(nb) for nb in [1, *options]) + " blocks" if options else "1 block")
         + f" (got {n_blocks})"
     )
 
@@ -133,13 +148,21 @@ def box_behnken(factors, n_center=None, n_blocks=1):
         design = np.vstack([_block_runs(k, row, half_fraction) for row in rows] + [center])
         return _to_dataframe(design, factors)
 
-    per_group = len(rows) // n_blocks
+    n_groups, split = options[n_blocks]
+    per_group = len(rows) // n_groups
+    groups = []
+    for g in range(n_groups):
+        runs = np.vstack([_block_runs(k, row, half_fraction) for row in rows[g * per_group : (g + 1) * per_group]])
+        if split:
+            sign = np.prod(np.where(runs != 0, runs, 1), axis=1)
+            groups += [runs[sign > 0], runs[sign < 0]]
+        else:
+            groups.append(runs)
+
     parts, blocks = [], []
-    for b in range(n_blocks):
-        group = rows[b * per_group : (b + 1) * per_group]
-        runs = np.vstack([_block_runs(k, row, half_fraction) for row in group] + [center])
-        parts.append(runs)
-        blocks.append(np.full(len(runs), b + 1, dtype=np.int64))
+    for b, runs in enumerate(groups):
+        parts.append(np.vstack([runs, center]))
+        blocks.append(np.full(len(runs) + len(center), b + 1, dtype=np.int64))
     Y = _to_dataframe(np.vstack(parts), factors)
     Y[BLOCK_COLUMN] = np.concatenate(blocks)
     return Y

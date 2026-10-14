@@ -11,8 +11,7 @@ from .utils import BLOCK_COLUMN, _to_dataframe, _validate_factors
 # Number of center points for uniform precision of a rotatable CCD, keyed by
 # (number of factors, number of cube runs). Box, G. E. P. and Hunter, J. S. (1957),
 # "Multi-factor experimental designs for exploring response surfaces", Annals of
-# Mathematical Statistics 28(1), pp. 195-241; tabulated in Montgomery, "Design and
-# Analysis of Experiments".
+# Mathematical Statistics 28(1), pp. 195-241, Table 3, p. 227.
 _CCD_CENTER = {
     (2, 4): 5,
     (3, 8): 6,
@@ -23,6 +22,9 @@ _CCD_CENTER = {
     (6, 32): 9,
     (7, 128): 21,
     (7, 64): 14,
+    (8, 256): 28,
+    (8, 128): 20,
+    (8, 64): 13,
 }
 
 # Rotatable CCDs that block orthogonally, keyed by (number of factors, number of
@@ -66,7 +68,7 @@ def _cube_generators(factors, cube):
     raise ValueError(f"Unknown cube type '{cube}'. Use 'full', 'half', or a dict of generators.")
 
 
-def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_blocks=1):
+def central_composite(factors, alpha=None, n_center=None, cube="full", n_blocks=1):
     """
     Generate a Central Composite Design (CCD).
 
@@ -79,8 +81,9 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_
     ----------
     factors : list(Factor)
         Continuous factors.
-    alpha : str or float
-        Axial distance.
+    alpha : str, float or None
+        Axial distance.  ``None`` (default) uses ``'rotatable'`` for an
+        unblocked design and ``'orthogonal'`` for a blocked one.
 
         * ``'rotatable'`` -- alpha = (n_cube)^(1/4) for rotatability,
           where n_cube is the number of cube runs.
@@ -98,9 +101,10 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_
     n_center : int, tuple(int, int) or None
         Number of center points.  ``None`` (default) uses the textbook
         values of Box & Hunter (1957).  Without blocks, the values for
-        uniform precision: 5, 6, 7, 10, 15 and 21 for a full cube with 2
-        to 7 factors, and 6, 9 and 14 for a half-fraction cube with 5 to
-        7 factors.  With blocks, the values of the tabulated orthogonally
+        uniform precision (Table 3): 5, 6, 7, 10, 15, 21 and 28 for a full
+        cube with 2 to 8 factors, 6, 9, 14 and 20 for a half-fraction
+        cube with 5 to 8 factors, and 13 for a quarter-fraction cube
+        with 8 factors.  With blocks, the values of the tabulated orthogonally
         blocked designs (see *n_blocks*).  Other designs have no
         tabulated default and require an explicit *n_center*.  In a
         blocked design an int gives the center points per block, and a
@@ -128,8 +132,8 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_
         center points, have 2 blocks for 2 factors, 3 for 3 and 4
         factors, 5 for 5 factors, 9 for 6 factors, 17 for 7 factors, and
         with a half cube 2 for 5 factors, 3 for 6 factors and 9 for 7
-        factors.  Use ``alpha='orthogonal'`` to make the blocks
-        orthogonal.
+        factors.  The default ``alpha='orthogonal'`` makes the blocks
+        orthogonal to the full quadratic model.
 
     Returns
     -------
@@ -172,6 +176,8 @@ def central_composite(factors, alpha="rotatable", n_center=None, cube="full", n_
     assert n_cube_center >= 0 and n_axial_center >= 0, f"n_center must be non-negative (got {n_center})"
     assert n_blocks > 1 or n_cube_center == n_axial_center, "Separate center points require a blocked design"
 
+    if alpha is None:
+        alpha = "orthogonal" if n_blocks > 1 else "rotatable"
     if isinstance(alpha, str):
         inscribed = alpha == "inscribed"
         if alpha in ("rotatable", "inscribed"):
