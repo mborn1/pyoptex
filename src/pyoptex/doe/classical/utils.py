@@ -2,6 +2,8 @@
 Shared helpers for classical design generation.
 """
 
+from itertools import product
+
 import numpy as np
 import pandas as pd
 
@@ -98,14 +100,133 @@ def _two_level_normalized(design, factors):
     """
     normalized = np.empty_like(design, dtype=np.float64)
     for j, f in enumerate(factors):
-        col = design[:, j]
-        if f.is_continuous:
-            if f.levels is not None:
-                lo = float(f.normalize(np.array([f.levels[0]], dtype=np.float64))[0])
-                hi = float(f.normalize(np.array([f.levels[1]], dtype=np.float64))[0])
-            else:
-                lo, hi = -1.0, 1.0
-            normalized[:, j] = np.where(col < 0, lo, hi)
-        else:
-            normalized[:, j] = (col + 1) / 2
+        normalized[:, j] = _levels(f, 2)[(design[:, j] > 0).astype(np.int64)]
     return normalized
+
+
+def _levels(f, n_levels):
+    """
+    Normalized level set of a factor for a classical design.
+
+    * Categorical factors use their level indices ``0, ..., L - 1``.
+    * Continuous factors with explicit ``levels`` use those levels
+      (normalized), regardless of *n_levels*.
+    * Other continuous factors use *n_levels* equally spaced points
+      in ``[-1, 1]``, the design's own default.
+
+    Classical designs use this instead of ``Factor.coords_``, whose
+    three-level default is the candidate set for coordinate exchange.
+
+    Parameters
+    ----------
+    f : Factor
+        The factor.
+    n_levels : int
+        Default number of levels for continuous factors without
+        explicit ``levels``.
+
+    Returns
+    -------
+    levels : np.ndarray
+        1-D array of normalized levels.
+    """
+    if not f.is_continuous:
+        return np.arange(len(f.levels), dtype=np.float64)
+    if f.levels is not None:
+        return f.normalize(np.array(f.levels, dtype=np.float64))
+    return np.linspace(-1, 1, n_levels)
+
+
+def _center_points(factors, n_levels, n_center):
+    """
+    Normalized center runs for a factorial-type design.
+
+    Continuous factors are set to the middle of their level range.
+    The *n_center* center runs are repeated for every combination of
+    categorical levels, so a 3-level categorical factor with
+    ``n_center=2`` gives 6 center runs.
+
+    Parameters
+    ----------
+    factors : list(Factor)
+        The factors.
+    n_levels : int
+        Default number of levels for continuous factors, see :py:func:`_levels`.
+    n_center : int
+        Number of center runs per categorical level combination.
+
+    Returns
+    -------
+    center : np.ndarray
+        Normalized center runs (n_center * prod(categorical levels) x nfactors).
+    """
+    assert n_center >= 0, f"n_center must be non-negative (got {n_center})"
+    if n_center == 0:
+        return np.empty((0, len(factors)), dtype=np.float64)
+    assert any(f.is_continuous for f in factors), "Center points require at least one continuous factor"
+
+    grid = []
+    for f in factors:
+        lv = _levels(f, n_levels)
+        grid.append([(lv.min() + lv.max()) / 2] if f.is_continuous else lv)
+    grid = np.array(list(product(*grid)), dtype=np.float64)
+    return np.repeat(grid, n_center, axis=0)
+
+
+def _assert_no_categorical_center(factors, n_center, design_name):
+    """Center points with categorical factors are only defined for full factorials."""
+    if n_center > 0:
+        for f in factors:
+            assert f.is_continuous, (
+                f"Center points are not defined for categorical factor {f.name} in a {design_name}; "
+                f"use n_center=0 and add center runs manually"
+            )
+
+
+def _validate_space_filling_factors(factors, design_name):
+    """Space-filling designs require continuous, non-mixture factors."""
+    _validate_factors(factors)
+    for f in factors:
+        assert f.is_continuous and not f.is_mixture, f"Factor {f.name} must be continuous for {design_name}"
+
+
+def _qmc_engine(engine, d, **kwargs):
+    """
+    Create a :py:mod:`scipy.stats.qmc` engine seeded from numpy's global
+    random generator, so :py:func:`set_seed <pyoptex._seed.set_seed>` applies.
+    """
+    seed = np.random.randint(2**31 - 1)
+    try:
+        return engine(d, rng=seed, **kwargs)
+    except TypeError:
+        # scipy < 1.15 names the argument seed
+        return engine(d, seed=seed, **kwargs)
+
+
+def _space_filling_dataframe(unit, factors):
+    """Scale a design in [0, 1]^k to each factor's [min, max] range."""
+    return _to_dataframe(2.0 * unit - 1.0, factors)
+
+
+def randomize(Y):
+    """
+    Randomize the run order of a design.
+
+    Classical designs are returned in standard order; experiments should
+    be run in a random order. The rows are shuffled with numpy's global
+    random generator, so :py:func:`set_seed <pyoptex._seed.set_seed>`
+    makes the order reproducible.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The design.
+
+    Returns
+    -------
+    Y : pd.DataFrame
+        The same runs in random order. The index is kept, so it still
+        gives the standard order of each run.
+    """
+    assert isinstance(Y, pd.DataFrame), "Y must be a DataFrame"
+    return Y.iloc[np.random.permutation(len(Y))]

@@ -77,14 +77,19 @@ class TestPlackettBurman:
     @pytest.mark.parametrize(
         "k, expected_N",
         [
+            (3, 4),
+            (7, 8),
             (11, 12),
+            (15, 16),
             (19, 20),
             (23, 24),
             (27, 28),
+            (31, 32),
             (35, 36),
             (39, 40),
             (43, 44),
             (47, 48),
+            (63, 64),
         ],
     )
     def test_orthogonality(self, k, expected_N):
@@ -112,3 +117,26 @@ class TestPlackettBurman:
         factors = [Factor(f"X{i}") for i in range(33)]
         Y = plackett_burman(factors)
         assert len(Y) == 36
+
+    def test_no_center_points_by_default(self):
+        Y = plackett_burman([Factor(f"X{i}") for i in range(7)])
+        assert len(Y) == 8
+
+    def test_center_points(self):
+        factors = [Factor(f"X{i}", levels=[10, 20]) for i in range(5)] + [Factor("Y", min=0, max=4)]
+        Y = plackett_burman(factors, n_center=3)
+        assert len(Y) == 8 + 3
+        centers = Y.iloc[8:]
+        np.testing.assert_allclose(centers[[f"X{i}" for i in range(5)]].values, 15.0)
+        np.testing.assert_allclose(centers["Y"].values, 2.0)
+
+    def test_center_points_with_categorical_raise(self):
+        factors = [Factor("A"), Factor("B", type="categorical", levels=["Lo", "Hi"])]
+        with pytest.raises(AssertionError, match="Center points are not defined for categorical"):
+            plackett_burman(factors, n_center=1)
+
+    def test_48_factors_jumps_to_64(self):
+        """Sizes 52, 56 and 60 are not implemented, so 48 factors land on PB64."""
+        factors = [Factor(f"X{i}") for i in range(48)]
+        Y = plackett_burman(factors)
+        assert len(Y) == 64

@@ -1,20 +1,27 @@
+from itertools import product
+
 import numpy as np
 import pandas as pd
 
 from pyoptex._seed import set_seed
-from pyoptex.doe.classical import Factor, fractional_factorial, full_factorial
+from pyoptex.doe import fixed_structure
+from pyoptex.doe.classical import Factor, central_composite, fractional_factorial, full_factorial, plackett_burman
 from pyoptex.doe.classical.evaluate import (
     a_efficiency,
     alias_matrix,
+    average_prediction_variance,
     d_efficiency,
     design_info,
     estimation_variance,
+    g_efficiency,
 )
+from pyoptex.doe.fixed_structure.evaluate import evaluate_metrics
+from pyoptex.doe.fixed_structure.metric import Dopt, Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 
 def _make_simple_design():
-    """Full factorial with main-effects model."""
+    """2^3 full factorial with main-effects model."""
     factors = [Factor("A"), Factor("B"), Factor("C")]
     Y = full_factorial(factors)
     model = partial_rsm_names({"A": "lin", "B": "lin", "C": "lin"})
@@ -31,12 +38,21 @@ def _make_rank_deficient_design():
     return Y, factors, Y2X
 
 
+def _make_three_level_design():
+    """3^2 full factorial with main-effects model: X'X = diag(9, 6, 6)."""
+    factors = [Factor("A"), Factor("B")]
+    Y = full_factorial(factors, n_levels=3)
+    model = partial_rsm_names({"A": "lin", "B": "lin"})
+    Y2X = model2Y2X(model, factors)
+    return Y, factors, Y2X
+
+
 class TestDEfficiency:
     def test_orthogonal_design(self):
-        """A 2^3 with main-effects model should have high D-efficiency."""
+        """A 2^3 with main-effects model is exactly 100% D-efficient."""
         Y, factors, Y2X = _make_simple_design()
         d_eff = d_efficiency(Y, factors, Y2X)
-        assert d_eff > 0
+        np.testing.assert_allclose(d_eff, 100.0, rtol=1e-10)
 
     def test_orthogonal_two_level_is_100(self):
         """An orthogonal +/-1 2^3 design with a main-effects model is exactly 100% D-efficient."""
@@ -47,25 +63,128 @@ class TestDEfficiency:
         d_eff = d_efficiency(Y, factors, Y2X)
         np.testing.assert_allclose(d_eff, 100.0, rtol=1e-10)
 
-    def test_positive(self):
-        factors = [Factor("A"), Factor("B")]
-        Y = full_factorial(factors)
-        model = partial_rsm_names({"A": "lin", "B": "lin"})
-        Y2X = model2Y2X(model, factors)
+    def test_three_level_known_value(self):
+        """3^2 main-effects design: D-eff = 100 * det(diag(9, 6, 6))^(1/3) / 9."""
+        Y, factors, Y2X = _make_three_level_design()
         d_eff = d_efficiency(Y, factors, Y2X)
-        assert d_eff > 0
+        np.testing.assert_allclose(d_eff, 100.0 * (9 * 6 * 6) ** (1 / 3) / 9, rtol=1e-10)
+
+    def test_large_plackett_burman_is_100(self):
+        """PB48 with 47 main effects: orthogonal, so exactly 100%."""
+        factors = [Factor(f"X{i}") for i in range(47)]
+        Y = plackett_burman(factors)
+        model = partial_rsm_names({str(f.name): "lin" for f in factors})
+        Y2X = model2Y2X(model, factors)
+        np.testing.assert_allclose(d_efficiency(Y, factors, Y2X), 100.0, rtol=1e-10)
+
+    def test_no_overflow_for_large_model(self):
+        """Saturated 2^8 with all interactions: det(X'X) = 256^256 overflows, the log-determinant does not."""
+        names = [f"X{i}" for i in range(8)]
+        factors = [Factor(n) for n in names]
+        Y = full_factorial(factors)
+        model = pd.DataFrame(list(product([0, 1], repeat=8)), columns=names)
+        Y2X = model2Y2X(model, factors)
+        np.testing.assert_allclose(d_efficiency(Y, factors, Y2X), 100.0, rtol=1e-10)
 
 
 class TestAEfficiency:
     def test_orthogonal_design(self):
+        """A 2^3 with main-effects model is exactly 100% A-efficient."""
         Y, factors, Y2X = _make_simple_design()
         a_eff = a_efficiency(Y, factors, Y2X)
-        assert a_eff > 0
+        np.testing.assert_allclose(a_eff, 100.0, rtol=1e-10)
+
+    def test_three_level_known_value(self):
+        """3^2 main-effects design: A-eff = 100 * p / (n * trace(diag(1/9, 1/6, 1/6))) = 75%."""
+        Y, factors, Y2X = _make_three_level_design()
+        a_eff = a_efficiency(Y, factors, Y2X)
+        np.testing.assert_allclose(a_eff, 75.0, rtol=1e-10)
 
     def test_returns_float(self):
         Y, factors, Y2X = _make_simple_design()
         result = a_efficiency(Y, factors, Y2X)
         assert isinstance(result, float)
+
+
+class TestGEfficiency:
+    def test_two_level_main_effects_is_100(self):
+        """For a 2^3 with main-effects model the max prediction variance p/n sits at the corners (design points)."""
+        set_seed(42)
+        Y, factors, Y2X = _make_simple_design()
+        np.testing.assert_allclose(g_efficiency(Y, factors, Y2X, n_samples=1000), 100.0, rtol=1e-10)
+
+    def test_three_level_known_value(self):
+        """3^2 main-effects design: max d(x) = 1/9 + 1/6 + 1/6 at the corners, so G = 3 / (9 * 4/9) = 75%."""
+        set_seed(42)
+        Y, factors, Y2X = _make_three_level_design()
+        np.testing.assert_allclose(g_efficiency(Y, factors, Y2X, n_samples=1000), 75.0, rtol=1e-10)
+
+    def test_at_most_100(self):
+        set_seed(42)
+        factors = [Factor(n) for n in "ABC"]
+        Y = central_composite(factors, alpha="face-centered")
+        Y2X = model2Y2X(partial_rsm_names({n: "quad" for n in "ABC"}), factors)
+        g_eff = g_efficiency(Y, factors, Y2X, n_samples=2000)
+        assert 0 < g_eff <= 100.0
+
+    def test_deterministic_with_set_seed(self):
+        factors = [Factor(n) for n in "ABC"]
+        Y = central_composite(factors, alpha="face-centered")
+        Y2X = model2Y2X(partial_rsm_names({n: "quad" for n in "ABC"}), factors)
+        set_seed(1)
+        g1 = g_efficiency(Y, factors, Y2X, n_samples=500)
+        set_seed(1)
+        g2 = g_efficiency(Y, factors, Y2X, n_samples=500)
+        assert g1 == g2
+
+    def test_rank_deficient_is_zero(self):
+        Y, factors, Y2X = _make_rank_deficient_design()
+        assert g_efficiency(Y, factors, Y2X, n_samples=100) == 0.0
+
+
+class TestAveragePredictionVariance:
+    def test_two_level_main_effects_known_value(self):
+        """d(x) = (1 + x1^2 + x2^2 + x3^2) / 8 averages to (1 + 3 * 1/3) / 8 = 0.25 over the cube."""
+        set_seed(42)
+        Y, factors, Y2X = _make_simple_design()
+        apv = average_prediction_variance(Y, factors, Y2X, n_samples=20000)
+        np.testing.assert_allclose(apv, 0.25, rtol=0.02)
+
+    def test_rank_deficient_is_infinite(self):
+        Y, factors, Y2X = _make_rank_deficient_design()
+        assert average_prediction_variance(Y, factors, Y2X, n_samples=100) == np.inf
+
+
+def _fixed_structure_metrics(Y, names, model, n_samples):
+    """Dopt and Iopt from the optimal-design module, without random effects."""
+    fs_factors = [fixed_structure.Factor(n) for n in names]
+    Y2X = model2Y2X(model, fs_factors)
+    params = fixed_structure.create_parameters(fs_factors, fixed_structure.default_fn(fs_factors, Dopt(), Y2X), len(Y))
+    set_seed(42)
+    return evaluate_metrics(Y, params, [Dopt(), Iopt(n=n_samples)])
+
+
+class TestConsistencyWithOptimalDesignMetrics:
+    """The classical metrics must give the same numbers as the optimizer's metrics on the same design."""
+
+    def test_d_efficiency_matches_dopt(self):
+        names = ["A", "B", "C"]
+        factors = [Factor(n) for n in names]
+        model = partial_rsm_names({n: "quad" for n in names})
+        Y = central_composite(factors, alpha="face-centered")
+        dopt, _ = _fixed_structure_metrics(Y, names, model, n_samples=100)
+        d_eff = d_efficiency(Y, factors, model2Y2X(model, factors))
+        np.testing.assert_allclose(d_eff, 100 * dopt / len(Y), rtol=1e-10)
+
+    def test_average_prediction_variance_matches_iopt(self):
+        names = ["A", "B", "C"]
+        factors = [Factor(n) for n in names]
+        model = partial_rsm_names({n: "quad" for n in names})
+        Y = central_composite(factors, alpha="face-centered")
+        _, iopt = _fixed_structure_metrics(Y, names, model, n_samples=2000)
+        set_seed(42)
+        apv = average_prediction_variance(Y, factors, model2Y2X(model, factors), n_samples=2000)
+        np.testing.assert_allclose(apv, -iopt, rtol=1e-10)
 
 
 class TestEstimationVariance:
@@ -74,10 +193,11 @@ class TestEstimationVariance:
         var = estimation_variance(Y, factors, Y2X)
         assert var.ndim == 1
 
-    def test_positive_diagonal(self):
+    def test_known_values(self):
+        """For a 2^3 with main-effects model X'X = 8I, so every variance is 1/8."""
         Y, factors, Y2X = _make_simple_design()
         var = estimation_variance(Y, factors, Y2X)
-        assert np.all(var > 0)
+        np.testing.assert_allclose(var, np.full(4, 1 / 8), rtol=1e-10)
 
     def test_orthogonal_equal_variance(self):
         """For an orthogonal 2^k with main-effects model, all main-effect variances should be equal."""
@@ -149,7 +269,25 @@ class TestDesignInfo:
         assert "d_efficiency" in info
         assert "a_efficiency" in info
         assert "estimation_variance" in info
-        assert info["n_runs"] == 27  # 3^3 default full factorial
+        assert info["n_runs"] == 8  # 2^3 default full factorial
+        assert info["n_params"] == 4
+        np.testing.assert_allclose(info["d_efficiency"], 100.0, rtol=1e-10)
+        np.testing.assert_allclose(info["a_efficiency"], 100.0, rtol=1e-10)
+        np.testing.assert_allclose(info["estimation_variance"], np.full(4, 1 / 8), rtol=1e-10)
+        np.testing.assert_allclose(info["g_efficiency"], 100.0, rtol=1e-10)
+        np.testing.assert_allclose(info["average_prediction_variance"], 0.25, rtol=0.05)
+
+    def test_matches_individual_metrics(self):
+        Y, factors, Y2X = _make_three_level_design()
+        set_seed(42)
+        info = design_info(Y, factors, Y2X, n_samples=100)
+        assert info["d_efficiency"] == d_efficiency(Y, factors, Y2X)
+        assert info["a_efficiency"] == a_efficiency(Y, factors, Y2X)
+        np.testing.assert_array_equal(info["estimation_variance"], estimation_variance(Y, factors, Y2X))
+        set_seed(42)
+        assert info["g_efficiency"] == g_efficiency(Y, factors, Y2X, n_samples=100)
+        set_seed(42)
+        assert info["average_prediction_variance"] == average_prediction_variance(Y, factors, Y2X, n_samples=100)
 
     def test_rank_deficient_design_reports_zero_efficiency_and_infinite_variance(self):
         set_seed(42)
@@ -159,4 +297,6 @@ class TestDesignInfo:
         assert info["n_params"] == 2
         assert info["d_efficiency"] == 0.0
         assert info["a_efficiency"] == 0.0
+        assert info["g_efficiency"] == 0.0
+        assert info["average_prediction_variance"] == np.inf
         np.testing.assert_array_equal(info["estimation_variance"], np.full(2, np.inf))

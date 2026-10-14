@@ -23,7 +23,8 @@ factors = [
     Factor("Depth", min=0.5, max=2.0),
 ]
 
-Y = box_behnken(factors, n_center=3)
+# Default center points follow the Box & Behnken (1960) table: 3 for 3 factors
+Y = box_behnken(factors)
 print("=== Box-Behnken (3 factors) ===")
 print(f"Runs: {len(Y)}")
 print(Y)

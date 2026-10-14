@@ -19,6 +19,25 @@ class TestBoxBehnken:
         # 6 pairs * 4 + 1 center = 25
         assert len(Y) == 25
 
+    @pytest.mark.parametrize("k, expected", [(3, 12), (4, 24), (5, 40)])
+    def test_textbook_run_counts(self, k, expected):
+        """For 3, 4 and 5 factors the design matches the tabulated BBD sizes (excluding center points)."""
+        factors = [Factor(f"X{i}") for i in range(k)]
+        Y = box_behnken(factors, n_center=0)
+        assert len(Y) == expected
+
+    @pytest.mark.parametrize("k, expected", [(3, 15), (4, 27), (5, 46)])
+    def test_default_center_points(self, k, expected):
+        """Default center points follow the tabulated designs of Box & Behnken (1960)."""
+        factors = [Factor(f"X{i}") for i in range(k)]
+        assert len(box_behnken(factors)) == expected
+
+    def test_no_tabulated_default_raises(self):
+        factors = [Factor(f"X{i}") for i in range(8)]
+        with pytest.raises(AssertionError, match="specify n_center explicitly"):
+            box_behnken(factors)
+        assert len(box_behnken(factors, n_center=2)) == 28 * 4 + 2
+
     def test_three_levels_only(self):
         factors = [Factor("A"), Factor("B"), Factor("C")]
         Y = box_behnken(factors)

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from scipy.stats import qmc
 
 from pyoptex._seed import set_seed
 from pyoptex.doe.classical import Factor, latin_hypercube
@@ -49,6 +50,36 @@ class TestLatinHypercube:
         factors = [Factor("A", type="categorical", levels=["X", "Y"])]
         with pytest.raises(AssertionError, match="must be continuous"):
             latin_hypercube(factors, n=5)
+
+    @pytest.mark.parametrize("method", ["maximin", "discrepancy"])
+    def test_stratification_both_methods(self, method):
+        set_seed(42)
+        n = 12
+        Y = latin_hypercube([Factor("A", min=0, max=1), Factor("B", min=0, max=1)], n=n, method=method)
+        for col in ["A", "B"]:
+            strata = np.clip(np.floor(Y[col].values * n).astype(int), 0, n - 1)
+            assert len(np.unique(strata)) == n, "Not all strata are covered"
+
+    def test_discrepancy_method_deterministic_with_seed(self):
+        factors = [Factor("A"), Factor("B")]
+        set_seed(42)
+        Y1 = latin_hypercube(factors, n=10, method="discrepancy")
+        set_seed(42)
+        Y2 = latin_hypercube(factors, n=10, method="discrepancy")
+        pd.testing.assert_frame_equal(Y1, Y2)
+
+    def test_discrepancy_method_lower_discrepancy(self):
+        """The optimized method spreads points more uniformly than the maximin random search."""
+        factors = [Factor("A", min=0, max=1), Factor("B", min=0, max=1), Factor("C", min=0, max=1)]
+        set_seed(42)
+        maximin = latin_hypercube(factors, n=30, method="maximin").to_numpy()
+        set_seed(42)
+        optimized = latin_hypercube(factors, n=30, method="discrepancy").to_numpy()
+        assert qmc.discrepancy(optimized) < qmc.discrepancy(maximin)
+
+    def test_unknown_method_raises(self):
+        with pytest.raises(ValueError, match="Unknown method"):
+            latin_hypercube([Factor("A")], n=5, method="bogus")
 
     def test_invalid_iterations_raises(self):
         factors = [Factor("A"), Factor("B")]

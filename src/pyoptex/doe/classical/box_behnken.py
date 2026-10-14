@@ -8,14 +8,21 @@ import numpy as np
 
 from .utils import _to_dataframe, _validate_factors
 
+# Number of center points of the tabulated designs in Box & Behnken (1960),
+# "Some new three level designs for the study of quantitative variables",
+# Technometrics 2(4), keyed by the number of factors.
+_BBD_CENTER = {3: 3, 4: 3, 5: 6, 6: 6, 7: 6}
 
-def box_behnken(factors, n_center=3):
+
+def box_behnken(factors, n_center=None):
     """
     Generate a Box-Behnken response surface design.
 
     Each pair of continuous factors is varied at +/-1 (a full 2^2 block)
     while the remaining factors are held at their center (0).  Center
     points are appended.  Requires at least 3 continuous factors.
+    Every factor takes the fixed levels ``min``, mid-range and ``max``;
+    explicit factor ``levels`` are not used.
 
     This all-pairs construction coincides with the classical (tabulated)
     Box-Behnken design for 3, 4 and 5 factors.  For 6 or more factors it
@@ -27,8 +34,11 @@ def box_behnken(factors, n_center=3):
     ----------
     factors : list(Factor)
         Continuous factors (at least 3).
-    n_center : int
-        Number of center points.
+    n_center : int or None
+        Number of center points.  ``None`` (default) uses the value of
+        the tabulated design in Box & Behnken (1960): 3 for 3 or 4
+        factors and 6 for 5 to 7 factors.  Other numbers of factors
+        require an explicit *n_center*.
 
     Returns
     -------
@@ -41,6 +51,14 @@ def box_behnken(factors, n_center=3):
 
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a Box-Behnken design"
+
+    if n_center is None:
+        assert k in _BBD_CENTER, (
+            f"No tabulated default number of center points for a Box-Behnken design with {k} factors; "
+            f"specify n_center explicitly"
+        )
+        n_center = _BBD_CENTER[k]
+    assert n_center >= 0, f"n_center must be non-negative (got {n_center})"
 
     rows = []
     for i, j in combinations(range(k), 2):

@@ -7,7 +7,14 @@ Optimum Multifactorial Experiments", Biometrika 33(4), pp. 305-25.
 
 import numpy as np
 
-from .utils import _to_dataframe, _two_level_normalized, _validate_factors
+from .utils import (
+    _assert_no_categorical_center,
+    _center_points,
+    _levels,
+    _to_dataframe,
+    _two_level_normalized,
+    _validate_factors,
+)
 
 # fmt: off
 _PB_GENERATORS = {
@@ -133,22 +140,30 @@ def _pb_matrix(N):
     )
 
 
-def plackett_burman(factors):
+def plackett_burman(factors, n_center=0):
     """
     Generate a Plackett-Burman screening design.
 
-    All factors must be two-level (continuous with default or two explicit
-    levels, or categorical with exactly two levels).  The design size N is
-    the smallest multiple of 4 that is >= k + 1, where k is the number of
-    factors.
+    All factors must be two-level (continuous without explicit levels,
+    which default to 2 levels at ``min``/``max``, continuous with two
+    explicit levels, or categorical with exactly two levels).  The design
+    size N is the smallest supported size that is >= k + 1, where k is
+    the number of factors.
 
-    Supported design sizes: powers of 2 (4, 8, 16, 32, ...) and
-    12, 20, 24, 28, 36, 40, 44, 48.
+    Supported design sizes: powers of 2 (4, 8, ..., 512) and
+    12, 20, 24, 28, 36, 40, 44, 48.  Up to 47 factors this is the
+    smallest multiple of 4 that is >= k + 1.  Sizes 52, 56 and 60 are
+    not implemented, so 48 to 63 factors jump to N = 64.
 
     Parameters
     ----------
     factors : list(Factor)
         Two-level factors.
+    n_center : int
+        Number of center points to append (default 0, as for a
+        screening design), with each factor at the middle of its two
+        levels.  Not allowed with categorical factors; add such center
+        runs manually.
 
     Returns
     -------
@@ -156,10 +171,11 @@ def plackett_burman(factors):
         The Plackett-Burman design (denormalized).
     """
     _validate_factors(factors)
+    _assert_no_categorical_center(factors, n_center, "Plackett-Burman design")
     k = len(factors)
 
     for f in factors:
-        nlev = (2 if f.levels is None else len(f.levels)) if f.is_continuous else len(f.levels)
+        nlev = len(_levels(f, 2))
         assert nlev == 2, f"Factor {f.name} must have exactly 2 levels for a Plackett-Burman design (has {nlev})"
 
     special = {28, 40}
@@ -172,4 +188,5 @@ def plackett_burman(factors):
     design = mat[:, :k]
 
     normalized = _two_level_normalized(design, factors)
+    normalized = np.vstack([normalized, _center_points(factors, 2, n_center)])
     return _to_dataframe(normalized, factors)
