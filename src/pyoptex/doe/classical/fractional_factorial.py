@@ -71,13 +71,13 @@ def min_aberration_generators(factors, n_runs=None, resolution=None):
     """
     Generators of the minimum aberration two-level fractional factorial.
 
-    Looks up the design in a catalogue of minimum aberration designs
-    (Chen, Sun & Wu, 1993, up to 64 runs; Xu, 2009, and Block & Mee,
-    2005, for 128 runs) with 4 to 128 runs and up to 31 factors.  Among
-    designs with the same number of runs, minimum aberration is the
-    standard criterion: it has the highest resolution and, within that,
-    aliases the fewest short words (e.g. ``E = ABCD`` for 5 factors in
-    16 runs).
+    Looks up the design in the tables of minimum aberration designs of
+    Mee (2009), "A Comprehensive Guide to Factorial Two-Level
+    Experimentation", Appendix G, for 8 to 128 runs and up to 31 factors
+    (plus the 4-run half fraction C = AB).  Among designs with the same
+    number of runs, minimum aberration is the standard criterion: it has
+    the highest resolution and, within that, aliases the fewest short
+    words (e.g. ``E = ABCD`` for 5 factors in 16 runs).
 
     Specify either the number of runs, or the minimum resolution, in
     which case the smallest design with at least that resolution is
