@@ -6,7 +6,7 @@ Paley, R. E. A. C. (1933), "On orthogonal matrices", Journal of Mathematics
 and Physics 12, pp. 311-320.
 """
 
-from functools import lru_cache
+from functools import cache
 from itertools import product
 
 import numpy as np
@@ -42,7 +42,7 @@ def _poly_mulmod(a, b, low, p):
     return tuple(c % p for c in prod[:e])
 
 
-@lru_cache(maxsize=None)
+@cache
 def _galois_field(p, e):
     """
     Elements and multiplication of GF(p^e).
