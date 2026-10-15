@@ -5,9 +5,10 @@ import pandas as pd
 import pytest
 
 from pyoptex.doe.classical import Factor, definitive_screening
+from pyoptex.doe.classical._paley import _galois_field
 
 # Even numbers of factors with an implemented conference matrix of that order
-_SUPPORTED = [4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 26, 30, 32]
+_SUPPORTED = [4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 26, 28, 30, 32]
 
 
 def _coded(k, **kwargs):
@@ -55,13 +56,30 @@ class TestDefinitiveScreening:
         assert X.shape == (2 * (k + 1) + 1, k)
         np.testing.assert_allclose(X.T @ X, 2 * k * np.eye(k), atol=1e-10)
 
+    def test_order_28_from_gf27(self):
+        """Order 28 uses the Paley construction over GF(27), a field with 3^3 elements."""
+        X = _coded(28)
+        assert X.shape == (57, 28)
+        np.testing.assert_allclose(X.T @ X, 2 * 27 * np.eye(28), atol=1e-10)
+
+    @pytest.mark.parametrize("p, e", [(3, 2), (3, 3), (5, 2)])
+    def test_galois_field(self, p, e):
+        """GF(p^e): every nonzero element has a multiplicative inverse; GF(27) uses x^3 + 2x + 1."""
+        elems, mul = _galois_field(p, e)
+        one = (1,) + (0,) * (e - 1)
+        assert len(elems) == p**e
+        assert all(any(mul(a, b) == one for b in elems[1:]) for a in elems[1:])
+        if (p, e) == (3, 3):
+            x = (0, 1, 0)
+            assert mul(mul(x, x), x) == (2, 1, 0)  # x^3 = -2x - 1 = x + 2
+
     def test_fake_factors_add_runs(self):
         X = _coded(6, n_fake=2)
         assert X.shape == (17, 6)  # built for 8 factors
 
-    @pytest.mark.parametrize("k, expected_order", [(21, 24), (22, 24), (28, 30)])
+    @pytest.mark.parametrize("k, expected_order", [(21, 24), (22, 24), (35, 38), (36, 38)])
     def test_missing_order_uses_next_available(self, k, expected_order):
-        """No conference matrix of order 22 exists and order 28 is not implemented."""
+        """No conference matrix of order 22 exists and order 36 is not implemented."""
         X = _coded(k)
         assert X.shape == (2 * expected_order + 1, k)
         np.testing.assert_allclose(X.T @ X, 2 * (expected_order - 1) * np.eye(k), atol=1e-10)

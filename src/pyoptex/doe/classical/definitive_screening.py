@@ -11,48 +11,8 @@ pp. 319-329, doi:10.1080/00401706.2016.1234979.
 
 import numpy as np
 
+from ._paley import _paley_conference, _prime_power
 from .utils import _to_dataframe, _validate_factors
-
-
-def _prime_power(q):
-    """Return (p, e) with q = p^e for an odd prime p and e in (1, 2), or None."""
-    for e in (1, 2):
-        p = round(q ** (1 / e))
-        if p**e == q and p > 2 and all(p % d for d in range(2, int(p**0.5) + 1)):
-            return p, e
-    return None
-
-
-def _paley_conference(q):
-    """
-    Paley conference matrix of order q + 1 over GF(q), for q an odd prime or
-    the square of one. Symmetric when q = 1 (mod 4), antisymmetric when
-    q = 3 (mod 4).
-
-    GF(p^2) is represented as pairs (a, b) = a + b*t with t^2 = r, for r a
-    quadratic non-residue modulo p.
-    """
-    p, e = _prime_power(q)
-    if e == 1:
-        r = 0
-        elems = [(a, 0) for a in range(p)]
-    else:
-        r = next(x for x in range(2, p) if pow(x, (p - 1) // 2, p) == p - 1)
-        elems = [(a, b) for a in range(p) for b in range(p)]
-
-    squares = {((a * a + r * b * b) % p, (2 * a * b) % p) for a, b in elems if (a, b) != (0, 0)}
-
-    def chi(x):
-        """Quadratic character of x in GF(q)."""
-        if x == (0, 0):
-            return 0
-        return 1 if x in squares else -1
-
-    C = np.zeros((q + 1, q + 1), dtype=np.float64)
-    C[0, 1:] = 1
-    C[1:, 0] = 1 if q % 4 == 1 else -1
-    C[1:, 1:] = [[chi(((x[0] - y[0]) % p, (x[1] - y[1]) % p)) for y in elems] for x in elems]
-    return C
 
 
 def _conference(n):
@@ -60,9 +20,9 @@ def _conference(n):
     Conference matrix C of order n (zero diagonal, +/-1 elsewhere,
     C'C = (n - 1) I), or None when no construction is implemented.
 
-    Uses the Paley construction when n - 1 is an odd prime or the square of
-    one, and otherwise doubles an antisymmetric conference matrix S of order
-    n / 2 to ``[[S, S + I], [S - I, -S]]``, which is again antisymmetric.
+    Uses the Paley construction when n - 1 is a power of an odd prime, and
+    otherwise doubles an antisymmetric conference matrix S of order n / 2 to
+    ``[[S, S + I], [S - I, -S]]``, which is again antisymmetric.
     """
     if n >= 4 and _prime_power(n - 1) is not None:
         return _paley_conference(n - 1)
@@ -88,11 +48,11 @@ def definitive_screening(factors, n_fake=0, n_center=1):
 
     With an even number of factors k the order is m = k, with an odd
     number m = k + 1 and the last column is dropped.  Conference
-    matrices are built from the Paley construction (m - 1 an odd prime
-    or the square of one) or by doubling a smaller antisymmetric one,
-    which covers every order up to 50 except 22 and 34 (no conference
-    matrix exists) and 28, 36 and 46 (not implemented).  For those the
-    next available order is used, which adds runs.
+    matrices are built from the Paley construction (m - 1 a power of an
+    odd prime, e.g. 27 for order 28) or by doubling a smaller
+    antisymmetric one, which covers every order up to 50 except 22 and
+    34 (no conference matrix exists) and 36 and 46 (not implemented).
+    For those the next available order is used, which adds runs.
 
     Every factor takes the fixed levels ``min``, mid-range and ``max``;
     explicit factor ``levels`` are not used.
