@@ -111,6 +111,7 @@ def test_word_length_pattern_matches_enumeration():
         X = fractional_factorial(factors, min_aberration_generators(factors, n_runs=n_runs)).to_numpy(dtype=np.int64)
         assert _word_length_pattern(X, (3, 4, 5)) == expected, f"({k}, {n_runs})"
 
+
 def test_textbook_five_factors_sixteen_runs():
     assert min_aberration_generators(_factors(5), n_runs=16) == {"X4": ["X0", "X1", "X2", "X3"]}
 

@@ -5,8 +5,6 @@ Construction from Lin (1993), "A new class of supersaturated designs",
 Technometrics 35(1), pp. 28-31.
 """
 
-import numpy as np
-
 from .plackett_burman import _pb_matrix
 from .utils import _levels, _to_dataframe, _two_level_normalized, _validate_factors
 

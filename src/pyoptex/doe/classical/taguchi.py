@@ -132,7 +132,7 @@ def taguchi(name, factors, columns=None):
         assert 1 <= c <= n_cols, f"The {name} has columns 1 to {n_cols} (got {c})"
 
     design = np.zeros((array.shape[0], len(factors)), dtype=np.float64)
-    for j, (f, c) in enumerate(zip(factors, columns)):
+    for j, (f, c) in enumerate(zip(factors, columns, strict=True)):
         col = array[:, c - 1]
         n_levels = int(col.max()) + 1
         lv = _levels(f, n_levels)

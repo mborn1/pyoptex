@@ -283,7 +283,7 @@ def _block_scheme(X, base, n_blocks):
     confounded : list(tuple(int))
         The effects confounded with blocks, as factor indices, shortest first.
     """
-    q = int(round(np.log2(n_blocks)))
+    q = int(n_blocks).bit_length() - 1
     assert n_blocks >= 2 and 2**q == n_blocks, f"n_blocks must be a power of 2 (got {n_blocks})"
     p = len(base)
     assert q < p, f"{n_blocks} blocks of {X.shape[0] // n_blocks} runs are too small for {X.shape[1]} factors"
@@ -311,9 +311,7 @@ def _block_scheme(X, base, n_blocks):
             best = (counts, basis, span[1:])
 
     counts, basis, span = best
-    assert counts[0] == 0, (
-        f"{n_blocks} blocks would confound a main effect with blocks; use fewer blocks or more runs"
-    )
+    assert counts[0] == 0, f"{n_blocks} blocks would confound a main effect with blocks; use fewer blocks or more runs"
     labels = sum((cols[b][:] > 0).astype(np.int64) << i for i, b in enumerate(basis))
     confounded = sorted((effects[w] for w in span), key=lambda e: (len(e), e))
     return np.asarray(labels), confounded

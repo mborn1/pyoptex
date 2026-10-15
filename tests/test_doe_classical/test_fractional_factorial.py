@@ -154,7 +154,7 @@ class TestFractionalFactorial:
         Y = fractional_factorial(factors, generators={"C": ["A", "B"], "D": {"A": 1, "B": 2}}, n_levels=3)
         assert len(Y) == 9
         for a, b in combinations("ABCD", 2):
-            pairs = set(zip(Y[a], Y[b]))
+            pairs = set(zip(Y[a], Y[b], strict=True))
             assert len(pairs) == 9, f"Columns {a} and {b} do not form a full 3x3 grid"
 
     def test_coefficients_three_level(self):

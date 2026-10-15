@@ -56,7 +56,7 @@ def full_factorial(factors, n_levels=2, n_center=0, n_blocks=1):
     if n_blocks == 1:
         return _to_dataframe(np.vstack([design, center]), factors)
 
-    for f, lv in zip(factors, levels):
+    for f, lv in zip(factors, levels, strict=True):
         assert len(lv) == 2, f"Blocking requires two-level factors, but factor {f.name} has {len(lv)} levels"
     coded = np.array(list(product([-1, 1], repeat=len(factors))), dtype=np.int8)
     labels, confounded = _block_scheme(coded, list(range(len(factors))), n_blocks)

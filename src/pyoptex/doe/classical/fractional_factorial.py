@@ -131,8 +131,7 @@ def min_aberration_generators(factors, n_runs=None, resolution=None):
         assert resolution >= 3, f"resolution must be at least 3 (got {resolution})"
         match = [d for d in available if d[1] >= resolution]
         assert len(match) > 0, (
-            f"No catalogued fractional factorial for {k} factors with resolution {resolution} "
-            f"in at most 128 runs"
+            f"No catalogued fractional factorial for {k} factors with resolution {resolution} in at most 128 runs"
         )
 
     n, _, gens = match[0]
@@ -289,7 +288,7 @@ def fractional_factorial(factors, generators, n_levels=2, n_center=0, n_blocks=1
     if n_blocks == 1:
         return _to_dataframe(np.vstack([design, center]), factors)
 
-    for f, nlev in zip(factors, nlevels):
+    for f, nlev in zip(factors, nlevels, strict=True):
         assert nlev == 2, f"Blocking requires two-level factors, but factor {f.name} has {nlev} levels"
     coded = (2 * design_idx - 1).astype(np.int8)
     labels, confounded = _block_scheme(coded, [name2idx[b] for b in base_names], n_blocks)

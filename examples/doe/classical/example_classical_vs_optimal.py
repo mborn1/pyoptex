@@ -58,7 +58,9 @@ term_type = np.select(
 
 # Omitted third-order terms: ABC and the six A^2B-type terms. Pure cubic terms
 # are left out: in any three-level design A^3 equals A, so they cannot be separated.
-third_order = [[1, 1, 1]] + [[2 if i == a else 1 if i == b else 0 for i in range(3)] for a, b in permutations(range(3), 2)]
+third_order = [[1, 1, 1]] + [
+    [2 if i == a else 1 if i == b else 0 for i in range(3)] for a, b in permutations(range(3), 2)
+]
 Y2X_third = model2Y2X(pd.DataFrame(third_order, columns=names), factors)
 
 # Classical: face-centered CCD with the textbook 6 center points (20 runs)

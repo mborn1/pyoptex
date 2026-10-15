@@ -55,7 +55,7 @@ def _region_samples(factors, Y2X, n_samples):
     """
     assert n_samples >= 1, f"n_samples must be at least 1 (got {n_samples})"
     effect_types, coords, colstart = _factor_encoding_params(factors)
-    coords = [None if f.is_continuous else c for f, c in zip(factors, coords)]
+    coords = [None if f.is_continuous else c for f, c in zip(factors, coords, strict=True)]
     run = np.zeros((n_samples, colstart[-1]), dtype=np.float64)
     run = init_single_unconstrained(colstart, coords, run, effect_types)
     return Y2X(run)
