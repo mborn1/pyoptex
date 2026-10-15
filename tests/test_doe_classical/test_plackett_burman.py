@@ -66,6 +66,9 @@ class TestPlackettBurman:
             (39, 40),
             (43, 44),
             (47, 48),
+            (51, 52),
+            (55, 56),
+            (59, 60),
         ],
     )
     def test_saturated_size(self, k, expected_N):
@@ -89,6 +92,9 @@ class TestPlackettBurman:
             (39, 40),
             (43, 44),
             (47, 48),
+            (51, 52),
+            (55, 56),
+            (59, 60),
             (63, 64),
         ],
     )
@@ -135,8 +141,13 @@ class TestPlackettBurman:
         with pytest.raises(AssertionError, match="Center points are not defined for categorical"):
             plackett_burman(factors, n_center=1)
 
-    def test_48_factors_jumps_to_64(self):
-        """Sizes 52, 56 and 60 are not implemented, so 48 factors land on PB64."""
-        factors = [Factor(f"X{i}") for i in range(48)]
-        Y = plackett_burman(factors)
-        assert len(Y) == 64
+    @pytest.mark.parametrize("k, expected_N", [(48, 52), (52, 56), (56, 60), (60, 64)])
+    def test_every_multiple_of_four_up_to_64(self, k, expected_N):
+        """Up to 63 factors N is the smallest multiple of 4 that is >= k + 1."""
+        factors = [Factor(f"X{i}") for i in range(k)]
+        assert len(plackett_burman(factors)) == expected_N
+
+    def test_64_factors_jumps_to_128(self):
+        """Sizes 68 to 124 are not implemented, so 64 factors land on PB128."""
+        factors = [Factor(f"X{i}") for i in range(64)]
+        assert len(plackett_burman(factors)) == 128
