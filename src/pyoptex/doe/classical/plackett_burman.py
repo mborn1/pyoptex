@@ -9,6 +9,7 @@ Journal of Mathematics and Physics 12, pp. 311-320.
 
 import numpy as np
 
+from ._min_aberration import _MA_GENERATORS
 from ._paley import _paley_hadamard
 from .utils import (
     _assert_no_categorical_center,
@@ -150,15 +151,43 @@ def _pb_matrix(N):
     )
 
 
-def plackett_burman(factors, n_center=0):
+def _power_of_two_error(k, n_runs, default_n):
+    """Error for a power-of-2 n_runs above the default size: a regular design should be used instead."""
+    m = 1 << k.bit_length()  # smallest power of 2 >= k + 1
+    if m < n_runs:
+        why = (
+            f"the first {k} columns of the {n_runs}-run Sylvester design are the {m}-run design "
+            f"replicated {n_runs // m} times"
+        )
+    else:
+        why = f"the first {k} columns of the {n_runs}-run Sylvester design form a regular resolution III fraction"
+
+    if (k, n_runs) in _MA_GENERATORS or (2**k == n_runs <= 128):
+        use = (
+            f"use the minimum aberration design for {k} factors in {n_runs} runs instead: "
+            f"fractional_factorial(factors, min_aberration_generators(factors, n_runs={n_runs}))"
+        )
+    elif 2**k < n_runs:
+        use = f"use full_factorial(factors) for all {2**k} runs of the {k} factors, replicated {n_runs // 2**k} times"
+    else:
+        use = (
+            f"no catalogued minimum aberration design exists for {k} factors in {n_runs} runs; use the default "
+            f"n_runs=None ({default_n} runs) or a supported size that is not a power of 2"
+        )
+    return ValueError(
+        f"n_runs={n_runs} is a power of 2 above the default size ({default_n}) for {k} factors: {why}; {use}"
+    )
+
+
+def plackett_burman(factors, n_runs=None, n_center=0):
     """
     Generate a Plackett-Burman screening design.
 
     All factors must be two-level (continuous without explicit levels,
     which default to 2 levels at ``min``/``max``, continuous with two
-    explicit levels, or categorical with exactly two levels).  The design
-    size N is the smallest supported size that is >= k + 1, where k is
-    the number of factors.
+    explicit levels, or categorical with exactly two levels).  By default
+    the design size N is the smallest supported size that is >= k + 1,
+    where k is the number of factors.
 
     Supported design sizes: every multiple of 4 up to 64, then the
     powers of 2 (128, 256, 512).  Up to 63 factors N is therefore the
@@ -169,10 +198,37 @@ def plackett_burman(factors, n_center=0):
     block construction (28), and the Paley constructions of Hadamard
     matrices (52 with q = 25, 60 with q = 59; Paley, 1933).
 
+    **Column choice.**  The first k columns of the N-run design are used,
+    as in the published Plackett & Burman tables.  Typical uses are:
+
+    * k close to N - 1, for screening main effects in as few runs as
+      possible;
+    * more runs than factors (*n_runs*), where the unused columns serve
+      as dummy factors to estimate the error, and the nonregular sizes
+      (12, 20, 24, ...) allow interactions among a few active factors to
+      be estimated thanks to partial aliasing: e.g. any 3 columns of the
+      12-run design contain a full 2^3 factorial (Lin & Draper, 1992,
+      "Projection properties of Plackett and Burman designs",
+      Technometrics 34(4), pp. 423-428).
+
+    For the nonregular sizes the choice of columns affects the amount of
+    partial aliasing between main effects and two-factor interactions.
+    For power-of-2 sizes the design is a regular resolution III fraction;
+    for 4 factors in 8 runs, or for more runs with a power of 2, use
+    :py:func:`fractional_factorial <pyoptex.doe.classical.fractional_factorial>`
+    with :py:func:`min_aberration_generators
+    <pyoptex.doe.classical.min_aberration_generators>` instead, which has
+    a higher resolution (e.g. resolution IV for 4 factors in 8 runs).
+
     Parameters
     ----------
     factors : list(Factor)
         Two-level factors.
+    n_runs : int or None
+        Number of runs N.  ``None`` (default) uses the smallest supported
+        size that is >= k + 1.  Otherwise N must be a supported size and
+        >= k + 1.  A power of 2 larger than the default size is rejected,
+        since a regular fractional factorial is then better (see above).
     n_center : int
         Number of center points to append (default 0, as for a
         screening design), with each factor at the middle of its two
@@ -192,12 +248,23 @@ def plackett_burman(factors, n_center=0):
         nlev = len(_levels(f, 2))
         assert nlev == 2, f"Factor {f.name} must have exactly 2 levels for a Plackett-Burman design (has {nlev})"
 
-    N = next((n for n in _SUPPORTED_SIZES if n >= k + 1), None)
-    if N is None:
+    default_n = next((n for n in _SUPPORTED_SIZES if n >= k + 1), None)
+    if default_n is None:
         raise ValueError(f"Too many factors ({k}) for available Plackett-Burman sizes (max {_SUPPORTED_SIZES[-1] - 1})")
 
-    mat = _pb_matrix(N)
-    design = mat[:, :k]
+    if n_runs is None:
+        N = default_n
+    else:
+        if n_runs not in _SUPPORTED_SIZES or n_runs < k + 1:
+            raise ValueError(
+                f"n_runs={n_runs} is not possible for {k} factors: it must be at least {k + 1} and one of the "
+                f"supported sizes {_SUPPORTED_SIZES}"
+            )
+        if n_runs & (n_runs - 1) == 0 and n_runs > default_n:
+            raise _power_of_two_error(k, n_runs, default_n)
+        N = n_runs
+
+    design = _pb_matrix(N)[:, :k]
 
     normalized = _two_level_normalized(design, factors)
     normalized = np.vstack([normalized, _center_points(factors, 2, n_center)])

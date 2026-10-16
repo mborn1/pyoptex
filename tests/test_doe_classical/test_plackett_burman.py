@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from pyoptex.doe.classical import Factor, plackett_burman
+from pyoptex.doe.classical.plackett_burman import _pb_matrix
 
 
 class TestPlackettBurman:
@@ -146,6 +147,52 @@ class TestPlackettBurman:
         """Up to 63 factors N is the smallest multiple of 4 that is >= k + 1."""
         factors = [Factor(f"X{i}") for i in range(k)]
         assert len(plackett_burman(factors)) == expected_N
+
+    def test_n_runs_more_runs_than_factors(self):
+        """6 factors in the 12-run design: the first 6 columns of PB12, orthogonal."""
+        Y = plackett_burman([Factor(f"X{i}") for i in range(6)], n_runs=12)
+        assert Y.shape == (12, 6)
+        X = Y.to_numpy(dtype=np.float64)
+        np.testing.assert_allclose(X.T @ X, 12 * np.eye(6), atol=1e-10)
+        np.testing.assert_array_equal(X, _pb_matrix(12)[:, :6])
+
+    @pytest.mark.parametrize("n_runs", [20, 24])
+    def test_n_runs_larger_nonregular_sizes(self, n_runs):
+        Y = plackett_burman([Factor(f"X{i}") for i in range(7)], n_runs=n_runs)
+        assert Y.shape == (n_runs, 7)
+        X = Y.to_numpy(dtype=np.float64)
+        np.testing.assert_allclose(X.T @ X, n_runs * np.eye(7), atol=1e-10)
+
+    def test_n_runs_equal_to_default(self):
+        factors = [Factor(f"X{i}") for i in range(6)]
+        pd.testing.assert_frame_equal(plackett_burman(factors, n_runs=8), plackett_burman(factors))
+
+    def test_n_runs_with_center_points(self):
+        Y = plackett_burman([Factor(f"X{i}") for i in range(6)], n_runs=12, n_center=2)
+        assert len(Y) == 12 + 2
+
+    @pytest.mark.parametrize("n_runs", [6, 30])
+    def test_invalid_n_runs_raises(self, n_runs):
+        """Fewer runs than k + 1 (6 for 6 factors) or an unsupported size (30)."""
+        with pytest.raises(ValueError, match="supported sizes"):
+            plackett_burman([Factor(f"X{i}") for i in range(6)], n_runs=n_runs)
+
+    def test_larger_power_of_two_raises(self):
+        """The first 6 columns of the 16-run Sylvester design are the 8-run design replicated twice."""
+        with pytest.raises(ValueError, match=r"replicated 2 times.*fractional_factorial\(factors, min_aberration_gen"):
+            plackett_burman([Factor(f"X{i}") for i in range(6)], n_runs=16)
+        X16 = _pb_matrix(16)[:, :6]
+        np.testing.assert_array_equal(X16[:8], X16[8:])
+
+    def test_larger_power_of_two_without_replication_raises(self):
+        """10 factors in 16 runs is not replicated, but the minimum aberration design is better."""
+        with pytest.raises(ValueError, match="regular resolution III fraction.*min_aberration_generators"):
+            plackett_burman([Factor(f"X{i}") for i in range(10)], n_runs=16)
+
+    def test_larger_power_of_two_beyond_full_factorial_raises(self):
+        """3 factors in 16 runs: more runs than the full 2^3 factorial."""
+        with pytest.raises(ValueError, match=r"full_factorial\(factors\) for all 8 runs"):
+            plackett_burman([Factor(f"X{i}") for i in range(3)], n_runs=16)
 
     def test_64_factors_jumps_to_128(self):
         """Sizes 68 to 124 are not implemented, so 64 factors land on PB128."""
