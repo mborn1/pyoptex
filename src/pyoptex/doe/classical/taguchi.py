@@ -14,8 +14,9 @@ the library of orthogonal arrays of N. J. A. Sloane (neilsloane.com/oadir).
 """
 
 import numpy as np
+import pandas as pd
 
-from .utils import _levels, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _levels, _to_dataframe, _validate_factors
 
 # fmt: off
 _L12 = [
@@ -298,3 +299,53 @@ def taguchi(name, factors, columns=None):
         design[:, j] = lv[col]
 
     return _to_dataframe(design, factors)
+
+
+def crossed_array(inner, outer):
+    """
+    Cross an inner (control) design with an outer (noise) design.
+
+    Taguchi's robust parameter design runs every run of the inner array,
+    with the control factors, at every run of the outer array, with the
+    noise factors.  The variation of the response over the outer runs then
+    measures how robust each control setting is to the noise.  Any two
+    designs can be crossed, not only Taguchi arrays.
+
+    The result is in long format: ``len(inner) * len(outer)`` runs with
+    the inner columns followed by the outer columns, ordered by inner run
+    with the outer runs nested within each.  Taguchi's wide format, with
+    one response column per outer run, follows from the long format with
+    a pandas pivot once the response is measured, e.g.::
+
+        Y["outer_run"] = np.tile(np.arange(len(outer)), len(inner))
+        Y["inner_run"] = np.repeat(np.arange(len(inner)), len(outer))
+        wide = Y.pivot(index="inner_run", columns="outer_run", values="response")
+
+    A combined array, with the control and noise factors in a single
+    design (e.g. an optimal design created with pyoptex), is the modern
+    alternative and usually needs far fewer runs (Wu & Hamada, 2009,
+    "Experiments: Planning, Analysis, and Optimization", 2nd ed., Wiley).
+
+    Parameters
+    ----------
+    inner : pd.DataFrame
+        The inner (control) design.
+    outer : pd.DataFrame
+        The outer (noise) design.
+
+    Returns
+    -------
+    Y : pd.DataFrame
+        The crossed design in long format.
+    """
+    assert isinstance(inner, pd.DataFrame) and isinstance(outer, pd.DataFrame), "inner and outer must be DataFrames"
+    overlap = sorted(set(inner.columns) & set(outer.columns))
+    assert not overlap, f"inner and outer must have different columns (both have {overlap})"
+    for name, Y in (("inner", inner), ("outer", outer)):
+        assert BLOCK_COLUMN not in Y.columns, f"The {name} design has blocks, which crossed arrays do not support"
+
+    rows_inner = np.repeat(np.arange(len(inner)), len(outer))
+    rows_outer = np.tile(np.arange(len(outer)), len(inner))
+    return pd.concat(
+        [inner.iloc[rows_inner].reset_index(drop=True), outer.iloc[rows_outer].reset_index(drop=True)], axis=1
+    )

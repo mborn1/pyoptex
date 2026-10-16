@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pyoptex.doe.classical import Factor, taguchi
+from pyoptex.doe.classical import Factor, crossed_array, full_factorial, taguchi
 from pyoptex.doe.classical.taguchi import _ARRAYS
 
 # Printed tables (levels 1, 2, 3) for row-by-row comparison: L4, L8 and L9 as in
@@ -170,6 +170,34 @@ def test_l18_interaction_of_first_two_columns():
     for j in range(2, 8):
         pairs, counts = np.unique(np.column_stack([merged, A[:, j]]), axis=0, return_counts=True)
         assert len(pairs) == 18 and np.all(counts == 1)
+
+
+class TestCrossedArray:
+    def test_l8_by_l4(self):
+        """Every inner run appears exactly 4 times, once with each outer run."""
+        inner = taguchi("L8", [Factor(f"C{i}") for i in range(7)])
+        outer = taguchi("L4", [Factor(f"N{i}") for i in range(3)])
+        Y = crossed_array(inner, outer)
+        assert Y.shape == (32, 10)
+        assert list(Y.columns) == list(inner.columns) + list(outer.columns)
+        for i in range(8):
+            block = Y.iloc[4 * i : 4 * (i + 1)]
+            np.testing.assert_array_equal(
+                block[inner.columns].to_numpy(), np.repeat(inner.iloc[[i]].to_numpy(), 4, axis=0)
+            )
+            np.testing.assert_array_equal(block[outer.columns].to_numpy(), outer.to_numpy())
+
+    def test_overlapping_columns_raise(self):
+        inner = taguchi("L4", [Factor("A"), Factor("B")])
+        outer = taguchi("L4", [Factor("B"), Factor("N")])
+        with pytest.raises(AssertionError, match=r"different columns \(both have \['B'\]\)"):
+            crossed_array(inner, outer)
+
+    def test_blocked_design_raises(self):
+        inner = full_factorial([Factor("A"), Factor("B")], n_blocks=2)
+        outer = taguchi("L4", [Factor("N")])
+        with pytest.raises(AssertionError, match="has blocks"):
+            crossed_array(inner, outer)
 
 
 class TestTaguchi:
