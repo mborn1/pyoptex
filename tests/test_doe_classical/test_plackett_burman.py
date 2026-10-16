@@ -1,9 +1,12 @@
+from collections import Counter
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from pyoptex.doe.classical import Factor, plackett_burman
-from pyoptex.doe.classical.plackett_burman import _pb_matrix
+from pyoptex.doe.classical.plackett_burman import _SUPPORTED_SIZES, _pb_matrix
 
 
 class TestPlackettBurman:
@@ -186,13 +189,45 @@ class TestPlackettBurman:
 
     def test_larger_power_of_two_without_replication_raises(self):
         """10 factors in 16 runs is not replicated, but the minimum aberration design is better."""
-        with pytest.raises(ValueError, match="regular resolution III fraction.*min_aberration_generators"):
+        with pytest.raises(ValueError, match=r"regular resolution III fraction.*min_aberration_generators"):
             plackett_burman([Factor(f"X{i}") for i in range(10)], n_runs=16)
+
+    def test_larger_power_of_two_equal_to_full_factorial_raises(self):
+        """4 factors in 16 runs is the full 2^4 factorial."""
+        with pytest.raises(
+            ValueError, match=r"full 16-run factorial of the 4 factors instead: full_factorial\(factors\)"
+        ):
+            plackett_burman([Factor(f"X{i}") for i in range(4)], n_runs=16)
 
     def test_larger_power_of_two_beyond_full_factorial_raises(self):
         """3 factors in 16 runs: more runs than the full 2^3 factorial."""
         with pytest.raises(ValueError, match=r"full_factorial\(factors\) for all 8 runs"):
             plackett_burman([Factor(f"X{i}") for i in range(3)], n_runs=16)
+
+    @pytest.mark.parametrize("N, k", [(40, 8), (40, 15), (40, 19), (56, 10), (56, 27)])
+    def test_doubled_sizes_are_fold_overs(self, N, k):
+        """40 and 56 runs with k <= N/2 - 1: the fold-over of PB20 / PB28, not the smaller design run twice."""
+        X = plackett_burman([Factor(f"X{i}") for i in range(k)], n_runs=N).to_numpy(dtype=np.float64)
+        assert len({tuple(row) for row in X}) == N
+        np.testing.assert_allclose(X.T @ X, N * np.eye(k), atol=1e-10)
+        for cols in combinations(range(k), 3):
+            assert abs(np.prod(X[:, list(cols)], axis=1).sum()) < 1e-10
+        np.testing.assert_array_equal(X[: N // 2], _pb_matrix(N // 2)[:, :k])  # first stage: the original design
+        np.testing.assert_array_equal(X[N // 2 :], -X[: N // 2])  # second stage: its mirror image
+
+    def test_no_design_is_two_identical_halves(self):
+        """For every size up to 64 and k >= 3, the design is orthogonal and not the same design run twice.
+        (With 1 or 2 factors any balanced design has the same rows as its mirror image.)"""
+        for N in [n for n in _SUPPORTED_SIZES if n <= 64]:
+            for k in range(3, N):
+                try:
+                    Y = plackett_burman([Factor(f"X{i}") for i in range(k)], n_runs=N)
+                except ValueError:
+                    continue
+                X = Y.to_numpy(dtype=np.float64)
+                np.testing.assert_allclose(X.T @ X, N * np.eye(k), atol=1e-10, err_msg=f"N={N}, k={k}")
+                halves = [Counter(map(tuple, X[: N // 2])), Counter(map(tuple, X[N // 2 :]))]
+                assert halves[0] != halves[1], f"N={N}, k={k} is the same design run twice"
 
     def test_64_factors_jumps_to_128(self):
         """Sizes 68 to 124 are not implemented, so 64 factors land on PB128."""

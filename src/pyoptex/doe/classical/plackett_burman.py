@@ -75,12 +75,25 @@ def _hadamard(n):
 
 def _sylvester_doubling(mat):
     """
-    Double an N x (N-1) Plackett-Burman matrix to a 2N x (2N-1) one: with
-    H = [1, mat] the corresponding Hadamard matrix, ``[[H, H], [H, -H]]``
-    without its first column (e.g. 40 = 2 x 20 and 56 = 2 x 28).
+    Double an N x (N-1) Plackett-Burman matrix with columns h_j to a
+    2N x (2N-1) one (e.g. 40 = 2 x 20 and 56 = 2 x 28): the columns of the
+    Hadamard matrix ``[[H, H], [H, -H]]`` with H = [1, mat], ordered as the
+    N-1 mirror-image columns (h_j; -h_j), then (1; -1), then the N-1
+    columns (h_j; h_j).
+
+    The rows are the original design followed by its mirror image. For up to
+    N-1 factors the design is therefore the fold-over of the N-run design:
+    main effects are orthogonal to all two-factor interactions (every product
+    of three columns sums to 0, since each run x appears together with -x),
+    and the first N runs are the original design, so it can be run in two
+    stages. Taking the (h_j; h_j) columns first would instead give the N-run
+    design run twice.
     """
-    H = np.hstack([np.ones((mat.shape[0], 1), dtype=np.float64), mat])
-    return np.block([[H, H], [H, -H]])[:, 1:]
+    n = mat.shape[0]
+    mirror = np.vstack([mat, -mat])
+    sign = np.concatenate([np.ones(n), -np.ones(n)])[:, None]
+    repeat = np.vstack([mat, mat])
+    return np.hstack([mirror, sign, repeat])
 
 
 def _from_hadamard(H):
@@ -124,7 +137,8 @@ def _pb_matrix(N):
         return _sylvester_doubling(_pb_matrix(N // 2))
 
     if N == 52:
-        # Paley II with q = 25 = 5^2: 52 = 2 (25 + 1)
+        # Paley II with q = 25 = 5^2: 52 = 2 (25 + 1). A consequence of this construction is that
+        # with k <= 24 factors runs 26 and 52 coincide (one duplicated run, harmless).
         return _from_hadamard(_paley_hadamard(25))
 
     if N == 60:
@@ -162,7 +176,9 @@ def _power_of_two_error(k, n_runs, default_n):
     else:
         why = f"the first {k} columns of the {n_runs}-run Sylvester design form a regular resolution III fraction"
 
-    if (k, n_runs) in _MA_GENERATORS or (2**k == n_runs <= 128):
+    if 2**k == n_runs:
+        use = f"use the full {2**k}-run factorial of the {k} factors instead: full_factorial(factors)"
+    elif (k, n_runs) in _MA_GENERATORS:
         use = (
             f"use the minimum aberration design for {k} factors in {n_runs} runs instead: "
             f"fractional_factorial(factors, min_aberration_generators(factors, n_runs={n_runs}))"
@@ -213,6 +229,10 @@ def plackett_burman(factors, n_runs=None, n_center=0):
 
     For the nonregular sizes the choice of columns affects the amount of
     partial aliasing between main effects and two-factor interactions.
+    The 40- and 56-run designs with k <= N/2 - 1 factors are the fold-over
+    of the 20- and 28-run designs (the original runs followed by their
+    mirror image), so main effects are orthogonal to all two-factor
+    interactions.
     For power-of-2 sizes the design is a regular resolution III fraction;
     for 4 factors in 8 runs, or for more runs with a power of 2, use
     :py:func:`fractional_factorial <pyoptex.doe.classical.fractional_factorial>`
