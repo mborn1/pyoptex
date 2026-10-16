@@ -7,8 +7,7 @@ import pytest
 from pyoptex.doe.classical import Factor, crossed_array, full_factorial, taguchi
 from pyoptex.doe.classical.taguchi import _ARRAYS
 
-# Printed tables (levels 1, 2, 3) for row-by-row comparison: L4, L8 and L9 as in
-# Taguchi's standard tables, L12, L18 and L27 from the University of York tables.
+# Printed tables (levels 1, 2, 3) of Phadke (1989), Appendix C, for row-by-row comparison.
 # fmt: off
 _PRINTED = {
     "L4": ["111", "122", "212", "221"],
@@ -34,7 +33,8 @@ _PRINTED = {
 
 _SHAPES = {
     "L4": (4, 3), "L8": (8, 7), "L9": (9, 4), "L12": (12, 11), "L16": (16, 15), "L18": (18, 8), "L27": (27, 13),
-    "L16b": (16, 5), "L25": (25, 6), "L32": (32, 31), "L32b": (32, 10), "L36": (36, 23), "L50": (50, 12),
+    "L16b": (16, 5), "L25": (25, 6), "L32": (32, 31), "L32b": (32, 10), "L36": (36, 23), "L36b": (36, 16),
+    "L50": (50, 12),
     "L54": (54, 26), "L64": (64, 63), "L64b": (64, 21), "L81": (81, 40),
 }
 
@@ -42,15 +42,15 @@ _SHAPES = {
 _LEVELS = {
     "L4": [2] * 3, "L8": [2] * 7, "L9": [3] * 4, "L12": [2] * 11, "L16": [2] * 15, "L16b": [4] * 5,
     "L18": [2] + [3] * 7, "L25": [5] * 6, "L27": [3] * 13, "L32": [2] * 31, "L32b": [2] + [4] * 9,
-    "L36": [2] * 11 + [3] * 12, "L50": [2] + [5] * 11, "L54": [2] + [3] * 25, "L64": [2] * 63, "L64b": [4] * 21,
+    "L36": [2] * 11 + [3] * 12, "L36b": [2] * 3 + [3] * 13, "L50": [2] + [5] * 11, "L54": [2] + [3] * 25, "L64": [2] * 63, "L64b": [4] * 21,
     "L81": [3] * 40,
 }
 # fmt: on
 
-# York's printed two-level L32 and L64, verbatim. The L64 page lists only the first 31 of its
-# 63 columns, and prints run 31, columns 28 and 29 as 1 instead of 2.
+# The printed two-level L32 and the first 31 columns of the printed L64 (Phadke, 1989), verbatim,
+# including the misprint in the L64: run 31, columns 28 and 29 as 1 instead of 2 (p. 311).
 # fmt: off
-_YORK_TWO_LEVEL = {
+_PRINTED_TWO_LEVEL = {
     "L32": [
         "1111111111111111111111111111111", "1111111111111112222222222222222", "1111111222222221111111122222222",
         "1111111222222222222222211111111", "1112222111122221111222211112222", "1112222111122222222111122221111",
@@ -97,7 +97,7 @@ def _array(name):
     return _ARRAYS[name]() + 1
 
 
-@pytest.mark.parametrize("name", list(_SHAPES))
+@pytest.mark.parametrize("name", list(_ARRAYS))
 def test_orthogonal_array_of_strength_two(name):
     """Every pair of columns contains every level combination equally often."""
     A = _array(name)
@@ -126,24 +126,66 @@ def test_matches_printed_table(name):
     np.testing.assert_array_equal(_array(name), expected)
 
 
-def test_l32_matches_york():
-    expected = np.array([[int(c) for c in row] for row in _YORK_TWO_LEVEL["L32"]])
+def test_l32_matches_printed_table():
+    expected = np.array([[int(c) for c in row] for row in _PRINTED_TWO_LEVEL["L32"]])
     np.testing.assert_array_equal(_array("L32"), expected)
 
 
-def test_l64_matches_york_except_misprint():
-    """York lists the first 31 of the 63 columns; only its misprint in run 31, columns 28 and 29 differs."""
-    york = np.array([[int(c) for c in row] for row in _YORK_TWO_LEVEL["L64"]])
+def test_l64_matches_printed_table_except_misprint():
+    """In the first 31 columns only the misprint in run 31, columns 28 and 29 differs."""
+    printed = np.array([[int(c) for c in row] for row in _PRINTED_TWO_LEVEL["L64"]])
     generated = _array("L64")[:, :31]
-    differ = np.argwhere(generated != york)
+    differ = np.argwhere(generated != printed)
     assert differ.tolist() == [[30, 27], [30, 28]]
-    assert york[30, 27:29].tolist() == [1, 1] and generated[30, 27:29].tolist() == [2, 2]
+    assert printed[30, 27:29].tolist() == [1, 1] and generated[30, 27:29].tolist() == [2, 2]
 
 
-def test_corrected_york_misprints():
-    """The L36 and L64b contain corrections of misprints in the York tables, which make them orthogonal."""
-    np.testing.assert_array_equal(_array("L36")[32, 14:20], [2, 1, 2, 1, 1, 3])  # York: 1 2 1 1 3 1
-    np.testing.assert_array_equal(_array("L64b")[38:40, 10], [2, 1])  # York: 1, 2
+def _balanced(a, b):
+    """Every combination of the levels of a and b occurs equally often."""
+    pairs, counts = np.unique(np.column_stack([a, b]), axis=0, return_counts=True)
+    return len(pairs) == len(np.unique(a, axis=0)) * len(np.unique(b)) and len(set(counts)) == 1
+
+
+class TestL36b:
+    """Phadke's L'36 (1989, p. 304)."""
+
+    def test_columns_5_to_16_are_l36_columns_12_to_23(self):
+        np.testing.assert_array_equal(_array("L36b")[:, 4:], _array("L36")[:, 11:])
+
+    def test_column_3_is_interaction_of_columns_1_and_2(self):
+        X = 3 - 2 * _array("L36b")[:, :3]  # level 1 -> +1, level 2 -> -1
+        np.testing.assert_array_equal(X[:, 2], X[:, 0] * X[:, 1])
+
+    @pytest.mark.parametrize("two_level", [0, 1, 2])
+    def test_interactions_with_column_4_orthogonal_to_other_columns(self, two_level):
+        """The 6-level interaction of column 1, 2 or 3 with column 4 is balanced against every other column."""
+        A = _array("L36b")
+        interaction = 3 * (A[:, two_level] - 1) + A[:, 3]
+        for j in range(16):
+            if j not in (two_level, 3):
+                assert _balanced(interaction, A[:, j]), f"column {two_level + 1} x 4 vs column {j + 1}"
+
+    def test_columns_1_2_and_4_form_a_12_level_factor(self):
+        """With column 3 left empty, columns 1, 2 and 4 form a 12-level factor orthogonal to columns 5-16."""
+        A = _array("L36b")
+        twelve = 6 * (A[:, 0] - 1) + 3 * (A[:, 1] - 1) + A[:, 3]
+        assert len(np.unique(twelve)) == 12
+        for j in range(4, 16):
+            assert _balanced(twelve, A[:, j]), f"column {j + 1}"
+
+    def test_first_four_columns_per_group_of_three_runs(self):
+        A = _array("L36b")
+        groups = ["1111", "1221", "2121", "2211", "1112", "1222", "2122", "2212", "1113", "1223", "2123", "2213"]
+        for g, pattern in enumerate(groups):
+            np.testing.assert_array_equal(A[3 * g : 3 * g + 3, :4], [[int(c) for c in pattern]] * 3)
+
+
+def test_corrected_misprints():
+    """The four misprints in Phadke (1989) that break the orthogonality are corrected."""
+    np.testing.assert_array_equal(_array("L36b")[33, 14:16], [3, 1])  # Phadke, p. 304: 2 3
+    assert _array("L54")[48, 7] == 3  # Phadke, p. 309: 2
+    np.testing.assert_array_equal(_array("L64")[30, 27:29], [2, 2])  # Phadke, p. 311: 1 1
+    np.testing.assert_array_equal(_array("L64b")[38:40, 10], [2, 1])  # Phadke, p. 314: 1, 2
 
 
 def test_l16_first_rows():

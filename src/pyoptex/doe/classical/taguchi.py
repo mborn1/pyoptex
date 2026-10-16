@@ -1,16 +1,16 @@
 """
 Module for Taguchi orthogonal array generation.
 
-Arrays in the layout of Taguchi's standard tables (e.g. Phadke, 1989,
-"Quality Engineering Using Robust Design", Appendix C; Taguchi, "System of
-Experimental Design", Vol. 2). The L12, L16b, L18, L25, L27, L32, L32b, L36,
-L50, L54, L64, L64b and L81 follow the row and column order of the tables of
-the University of York (york.ac.uk/depts/maths/tables/orthogonal.htm). The
-York tables contain misprints in the L36, L64 and L64b, which break their
-orthogonality: the L36 and L64b here are corrected (see the comments at the
-arrays) and the two-level L64 is generated. The York page of the L64 also
-lists only the first 31 of its 63 columns. The L12 and L18 are the arrays of
-the library of orthogonal arrays of N. J. A. Sloane (neilsloane.com/oadir).
+Taguchi's standard orthogonal arrays as tabulated in Phadke, M. S. (1989),
+"Quality Engineering Using Robust Design", Prentice Hall, Appendix C
+"Standard Orthogonal Arrays and Linear Graphs", pp. 285-319, which reproduces
+Taguchi's own tables (p. 285). All arrays of that appendix are included;
+Phadke's L'16, L'32, L'36 and L'64 are called L16b, L32b, L36b and L64b here.
+The two-level arrays (L4, L8, L16, L32, L64), L9 and L27 are generated, the
+others are stored as digit tables. All arrays were compared cell by cell with
+Phadke and are identical, apart from four misprints in Phadke that break the
+orthogonality (L36b, L54, L64, L64b); these are corrected and documented at
+the arrays concerned.
 """
 
 import numpy as np
@@ -42,9 +42,6 @@ _L32B = [
     "2114142323", "2123231414", "2132324141", "2141413232", "2214234132", "2223143241", "2232412314", "2241321423",
     "2313312442", "2324421331", "2331134224", "2342243113", "2413424213", "2424313124", "2431242431", "2442131342",
 ]
-# York prints run 33, columns 15-20 as 1 2 1 1 3 1, which breaks the orthogonality (the
-# entries are shifted by one column); every group of 3 runs cycles the 3-level columns,
-# so run 33 = run 31 + 2 gives 2 1 2 1 1 3, as used here.
 _L36 = [
     "11111111111111111111111", "11111111111222222222222", "11111111111333333333333", "11111222222111122223333",
     "11111222222222233331111", "11111222222333311112222", "11222111222112312331223", "11222111222223123112331",
@@ -66,6 +63,8 @@ _L50 = [
     "243121342455", "244232453511", "245343514122", "251522534431", "252133145542", "253244251153", "254355312214",
     "255411423325",
 ]
+# Phadke (1989, p. 309) prints column 8 of run 49 as 2, which breaks the orthogonality;
+# the orthogonal value is 3, as used here.
 _L54 = [
     "11111111111111111111111111", "11111111222222222222222222", "11111111333333333333333333",
     "11222222111111232323232323", "11222222222222313131313131", "11222222333333121212121212",
@@ -86,9 +85,9 @@ _L54 = [
     "23213123132312231132112332", "23213123213123312213223113", "23213123321231123321331221",
     "23321231132312322311233211", "23321231213123133122311322", "23321231321231211233122133",
 ]
-# York prints column 11 of runs 39 and 40 as 1 and 2, which breaks the orthogonality;
-# the GF(4) structure of the array (every column a linear combination of columns 1, 2
-# and 6) gives 2 and 1, as used here.
+# Phadke (1989, p. 314) prints column 11 of runs 39 and 40 as 1 and 2, which breaks the
+# orthogonality; the GF(4) structure of the array (every column a linear combination of
+# columns 1, 2 and 6) gives 2 and 1, as used here.
 _L64B = [
     "111111111111111111111", "111112222222222222222", "111113333333333333333", "111114444444444444444",
     "122221111222233334444", "122222222111144443333", "122223333444411112222", "122224444333322221111",
@@ -191,6 +190,23 @@ def _l27():
     return np.column_stack([(x * a + y * b + z * c) % 3 for x, y, z in coefs])
 
 
+def _l36b():
+    """
+    L36b (Phadke's L'36, 2^3 x 3^13; Phadke, 1989, p. 304): columns 1-4 constant within
+    each group of 3 consecutive runs, and columns 5-16 equal to columns 12-23 of the L36
+    (Phadke, p. 304, note iii). Column 3 is the interaction of columns 1 and 2, the
+    interactions 1 x 4, 2 x 4 and 3 x 4 are orthogonal to all other columns, and with
+    column 3 left empty, columns 1, 2 and 4 together form a 12-level factor.
+
+    Phadke (1989, p. 304) prints columns 15-16 of run 34 as 2 3, which breaks the
+    orthogonality and contradicts his note (iii); building the array from the L36 columns
+    12-23 gives 3 1, as used here.
+    """
+    groups = ["1111", "1221", "2121", "2211", "1112", "1222", "2122", "2212", "1113", "1223", "2123", "2213"]
+    first = _parse([g for g in groups for _ in range(3)])
+    return np.column_stack([first, _parse(_L36)[:, 11:]])
+
+
 _ARRAYS = {
     "L4": lambda: _two_level_array(4),
     "L8": lambda: _two_level_array(8),
@@ -204,8 +220,11 @@ _ARRAYS = {
     "L32": lambda: _two_level_array(32),
     "L32b": lambda: _parse(_L32B),
     "L36": lambda: _parse(_L36),
+    "L36b": _l36b,
     "L50": lambda: _parse(_L50),
     "L54": lambda: _parse(_L54),
+    # Phadke (1989, p. 311) prints columns 28-29 of run 31 of the L64 as 1 1, which breaks the
+    # orthogonality; the generated (orthogonal) value is 2 2.
     "L64": lambda: _two_level_array(64),
     "L64b": lambda: _parse(_L64B),
     "L81": lambda: _parse(_L81),
@@ -241,6 +260,11 @@ def taguchi(name, factors, columns=None):
       (L32(2^1 4^9)).
     * ``'L36'`` -- columns 1 to 11 have two levels, columns 12 to 23
       three levels (L36(2^11 3^12)).
+    * ``'L36b'`` -- columns 1 to 3 have two levels, columns 4 to 16 three
+      levels (L36(2^3 3^13)).  Column 3 is the interaction of columns 1
+      and 2, and the interactions 1 x 4, 2 x 4 and 3 x 4 are orthogonal
+      to all other columns.  With column 3 left empty, columns 1, 2 and 4
+      together form a 12-level factor (Phadke, 1989, p. 304).
     * ``'L50'`` -- column 1 has two levels, columns 2 to 12 five levels
       (L50(2^1 5^11)).
     * ``'L54'`` -- column 1 has two levels, columns 2 to 26 three levels
@@ -249,15 +273,15 @@ def taguchi(name, factors, columns=None):
     * ``'L81'`` -- 40 three-level columns (L81(3^40)).
 
     The arrays with a ``b`` are the second array of that run size in
-    Taguchi's tables.
+    Taguchi's tables, called L'16, L'32, L'36 and L'64 by Phadke (1989).
 
     Parameters
     ----------
     name : str
         The array: ``'L4'``, ``'L8'``, ``'L9'``, ``'L12'``, ``'L16'``,
         ``'L16b'``, ``'L18'``, ``'L25'``, ``'L27'``, ``'L32'``,
-        ``'L32b'``, ``'L36'``, ``'L50'``, ``'L54'``, ``'L64'``,
-        ``'L64b'`` or ``'L81'``.
+        ``'L32b'``, ``'L36'``, ``'L36b'``, ``'L50'``, ``'L54'``,
+        ``'L64'``, ``'L64b'`` or ``'L81'``.
     factors : list(Factor)
         The factors.  Categorical factors and continuous factors with
         explicit ``levels`` must have as many levels as their column;
