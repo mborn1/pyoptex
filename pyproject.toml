@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>=61.0",
+  "setuptools>=77",
   "Cython~=3.0",
   "numpy>=2.0.0rc1,<3.0.0",
   "wheel"
@@ -30,7 +30,6 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Cython",
     "Operating System :: OS Independent",
-    "License :: OSI Approved :: BSD License",
 ]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
