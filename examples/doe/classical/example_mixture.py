@@ -39,3 +39,18 @@ print(f"Runs: {len(Y_centroid)}")
 print(Y_centroid.round(3))
 
 log_checkpoint("simplex_centroid_shape", list(Y_centroid.shape))
+
+# With lower bounds: at least 10% polymer, 20% filler and 10% plasticizer.
+# The design is built in pseudocomponents, so the region is still a simplex,
+# and augment=True adds 3 axial check blends to test the model's fit.
+bounded = [
+    Factor("Polymer", type="mixture", levels=[0.1, 1]),
+    Factor("Filler", type="mixture", levels=[0.2, 1]),
+]
+Y_bounded = simplex_centroid(bounded, last_min=0.1, augment=True)
+Y_bounded["Plasticizer"] = 1 - Y_bounded.sum(axis=1)
+print("=== Simplex centroid with lower bounds and check blends ===")
+print(f"Runs: {len(Y_bounded)}")
+print(Y_bounded.round(3))
+
+log_checkpoint("simplex_centroid_bounded_shape", list(Y_bounded.shape))

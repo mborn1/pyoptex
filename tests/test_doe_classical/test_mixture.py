@@ -1,3 +1,4 @@
+from itertools import product
 from math import comb
 
 import numpy as np
@@ -67,7 +68,75 @@ class TestMixtureValidation:
         with pytest.raises(AssertionError, match="must be a mixture factor"):
             design([Factor("A", type="mixture"), Factor("B")])
 
-    def test_constrained_component_raises(self, design):
+    def test_binding_upper_bound_raises(self, design):
+        """B ranges up to 0.5, below its implied maximum 0.2 + (1 - 0.2) = 1: not a simplex."""
         factors = [Factor("A", type="mixture"), Factor("B", type="mixture", levels=[0.2, 0.5])]
-        with pytest.raises(AssertionError, match="must range from 0 to 1"):
+        with pytest.raises(AssertionError, match=r"maximum 0.5, below its implied maximum 1.*not a simplex"):
             design(factors)
+
+    def test_lower_bounds_summing_to_one_raise(self, design):
+        factors = [Factor("A", type="mixture", levels=[0.5, 1]), Factor("B", type="mixture", levels=[0.5, 1])]
+        with pytest.raises(AssertionError, match="sum to less than 1"):
+            design(factors)
+
+
+def _bounded_factors():
+    """3 components with lower bounds 0.1, 0.2 and (implied, via last_min) 0.1: R = 1 - 0.4 = 0.6."""
+    return [Factor("A", type="mixture", levels=[0.1, 1]), Factor("B", type="mixture", levels=[0.2, 1])]
+
+
+_LOWER = np.array([0.1, 0.2, 0.1])
+
+
+@pytest.mark.parametrize("design", [lambda f, **kw: simplex_lattice(f, 2, **kw), simplex_centroid])
+class TestLowerBounds:
+    def test_proportions(self, design):
+        X = _full_blend(design(_bounded_factors(), last_min=0.1))
+        np.testing.assert_allclose(X.sum(axis=1), 1.0)
+        assert np.all(X >= _LOWER - 1e-12)
+
+    def test_vertices(self, design):
+        """The pure pseudocomponents are at L_i + (1 - sum L) for component i and L_j for the others."""
+        X = _full_blend(design(_bounded_factors(), last_min=0.1))
+        for i in range(3):
+            vertex = _LOWER.copy()
+            vertex[i] += 0.6
+            assert np.any(np.all(np.isclose(X, vertex), axis=1)), f"vertex {vertex} missing"
+
+    def test_transformed_from_pseudocomponents(self, design):
+        """x = L + (1 - sum L) z, with z the design without bounds."""
+        z = _full_blend(design(_mixture_factors(3)))
+        X = _full_blend(design(_bounded_factors(), last_min=0.1))
+        np.testing.assert_allclose(X, _LOWER + 0.6 * z)
+
+
+class TestAugment:
+    def test_centroid_design(self):
+        """Simplex centroid + q axial check blends: 2^q - 1 + q runs."""
+        for q in (3, 4):
+            X = _full_blend(simplex_centroid(_mixture_factors(q), augment=True))
+            assert X.shape == (2**q - 1 + q, q)
+            axial = X[-q:]
+            expected = np.full((q, q), 1 / (2 * q))
+            np.fill_diagonal(expected, (q + 1) / (2 * q))
+            np.testing.assert_allclose(axial, expected)
+
+    def test_lattice_adds_centroid_when_missing(self):
+        """The {3, 2} lattice has no centroid run, the {3, 3} lattice does."""
+        assert len(simplex_lattice(_mixture_factors(3), 2, augment=True)) == 6 + 1 + 3
+        assert len(simplex_lattice(_mixture_factors(3), 3, augment=True)) == 10 + 3
+
+    def test_axial_blends_with_lower_bounds(self):
+        X = _full_blend(simplex_centroid(_bounded_factors(), last_min=0.1, augment=True))
+        np.testing.assert_allclose(X[-3], _LOWER + 0.6 * np.array([4, 1, 1]) / 6)
+        np.testing.assert_allclose(X.sum(axis=1), 1.0)
+
+
+def test_unchanged_without_bounds_and_augment():
+    """Without lower bounds or augmentation the designs are the plain simplex designs."""
+    X = simplex_lattice(_mixture_factors(4), 3).to_numpy()
+    parts = sorted((p for p in product(range(4), repeat=4) if sum(p) == 3), reverse=True)
+    np.testing.assert_array_equal(X, (np.array(parts, dtype=np.float64) / 3)[:, :-1])
+    X = _full_blend(simplex_centroid(_mixture_factors(3)))
+    assert X.shape == (7, 3)
+    np.testing.assert_array_equal(X[:3], np.eye(3))
