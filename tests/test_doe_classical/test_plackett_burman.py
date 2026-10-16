@@ -1,4 +1,3 @@
-from collections import Counter
 from itertools import combinations
 
 import numpy as np
@@ -216,18 +215,19 @@ class TestPlackettBurman:
         np.testing.assert_array_equal(X[N // 2 :], -X[: N // 2])  # second stage: its mirror image
 
     def test_no_design_is_two_identical_halves(self):
-        """For every size up to 64 and k >= 3, the design is orthogonal and not the same design run twice.
-        (With 1 or 2 factors any balanced design has the same rows as its mirror image.)"""
+        """For every size up to 64 and every k, the design is orthogonal and not the same design run twice
+        (run i + N/2 equal to run i for every i). Only when 2^k < N, so that repeated runs are unavoidable
+        (1 factor in 4 runs), is this not checked."""
         for N in [n for n in _SUPPORTED_SIZES if n <= 64]:
-            for k in range(3, N):
+            for k in range(1, N):
                 try:
                     Y = plackett_burman([Factor(f"X{i}") for i in range(k)], n_runs=N)
                 except ValueError:
                     continue
                 X = Y.to_numpy(dtype=np.float64)
                 np.testing.assert_allclose(X.T @ X, N * np.eye(k), atol=1e-10, err_msg=f"N={N}, k={k}")
-                halves = [Counter(map(tuple, X[: N // 2])), Counter(map(tuple, X[N // 2 :]))]
-                assert halves[0] != halves[1], f"N={N}, k={k} is the same design run twice"
+                if 2**k >= N:
+                    assert not np.array_equal(X[: N // 2], X[N // 2 :]), f"N={N}, k={k} is the same design run twice"
 
     def test_64_factors_jumps_to_128(self):
         """Sizes 68 to 124 are not implemented, so 64 factors land on PB128."""
