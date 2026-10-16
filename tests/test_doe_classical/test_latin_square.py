@@ -69,12 +69,12 @@ class TestLatinSquare:
             latin_square(_factors(2, 4))
 
     def test_different_number_of_levels_raises(self):
-        factors = _factors(3, 3)[:2] + [Factor("S", type="categorical", levels=["a", "b"])]
+        factors = [*_factors(3, 3)[:2], Factor("S", type="categorical", levels=["a", "b"])]
         with pytest.raises(AssertionError, match="same number of levels"):
             latin_square(factors)
 
     def test_continuous_factor_raises(self):
-        factors = _factors(3, 2) + [Factor("S")]
+        factors = [*_factors(3, 2), Factor("S")]
         with pytest.raises(AssertionError, match="must be categorical"):
             latin_square(factors)
 
