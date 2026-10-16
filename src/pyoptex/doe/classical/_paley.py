@@ -13,11 +13,9 @@ import numpy as np
 
 
 def _prime_power(q):
-    """Return (p, e) with q = p^e for an odd prime p and e >= 1, or None."""
-    for p in range(3, q + 1, 2):
-        if q % p == 0:
-            if any(p % d == 0 for d in range(3, int(p**0.5) + 1, 2)):
-                return None
+    """Return (p, e) with q = p^e for a prime p and e >= 1, or None."""
+    for p in range(2, q + 1):
+        if q % p == 0:  # the smallest divisor > 1 is prime
             e = 0
             while q % p == 0:
                 q //= p
@@ -75,6 +73,7 @@ def _paley_conference(q):
     prime: symmetric when q = 1 (mod 4), antisymmetric when q = 3 (mod 4).
     """
     p, e = _prime_power(q)
+    assert p > 2, f"The Paley construction needs a power of an odd prime (got q = {q})"
     elems, mul = _galois_field(p, e)
     squares = {mul(x, x) for x in elems[1:]}
 
