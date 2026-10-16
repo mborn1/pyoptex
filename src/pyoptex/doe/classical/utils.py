@@ -339,7 +339,7 @@ def _blocked_dataframe(design, labels, center, factors, confounded=None):
     return Y
 
 
-def randomize(Y, block_column=BLOCK_COLUMN):
+def randomize(Y, block_column=BLOCK_COLUMN, shuffle_blocks=False):
     """
     Randomize the run order of a design.
 
@@ -349,17 +349,34 @@ def randomize(Y, block_column=BLOCK_COLUMN):
     makes the order reproducible.
 
     In a blocked design (with a *block_column*), the runs are shuffled
-    within each block and the blocks keep their order, since all runs of
-    a block must be done under the same conditions (e.g. on the same day).
+    within each block and every block stays contiguous, since all runs of
+    a block must be done under the same conditions (e.g. on the same
+    day).  By default the blocks keep their order; with
+    ``shuffle_blocks=True`` the order of the blocks is randomized too.
+
+    *block_column* can also be a list of columns, whose combinations of
+    values define the groups.  For a classical split-plot experiment,
+    ``randomize(Y, block_column=[hard-to-change factors],
+    shuffle_blocks=True)`` keeps the runs with the same settings of the
+    hard-to-change factors together as whole plots, in random order, and
+    randomizes the runs within each whole plot.  The design is then a
+    split-plot design and should be analysed with the corresponding
+    (GLS) model; :py:mod:`pyoptex.doe.fixed_structure.splitk_plot`
+    creates optimal split-plot designs and evaluates them with that
+    model.
 
     Parameters
     ----------
     Y : pd.DataFrame
         The design.
-    block_column : str or None
+    block_column : str, list(str) or None
         Name of the block column (``'Block'`` for blocked classical
-        designs). Ignored when the design has no such column; ``None``
-        shuffles all runs regardless of blocks.
+        designs), or a list of columns whose combinations of values
+        define the groups.  A single column that the design does not have
+        is ignored; ``None`` shuffles all runs regardless of blocks.
+    shuffle_blocks : bool
+        Whether to randomize the order of the blocks as well (default
+        False).
 
     Returns
     -------
@@ -368,9 +385,19 @@ def randomize(Y, block_column=BLOCK_COLUMN):
         gives the standard order of each run.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a DataFrame"
-    if block_column is None or block_column not in Y.columns:
+    if isinstance(block_column, str):
+        block_column = [block_column] if block_column in Y.columns else None
+    if block_column is None:
         return Y.iloc[np.random.permutation(len(Y))]
 
-    blocks = Y[block_column].to_numpy()
-    order = [np.random.permutation(np.flatnonzero(blocks == b)) for b in pd.unique(blocks)]
+    block_column = list(block_column)
+    assert len(block_column) > 0, "block_column must name at least one column"
+    for c in block_column:
+        assert c in Y.columns, f"Column {c} in block_column is not a column of the design"
+
+    # Groups in order of first appearance, each shuffled internally
+    groups = Y.groupby(block_column, sort=False, dropna=False).ngroup().to_numpy()
+    order = [np.random.permutation(np.flatnonzero(groups == g)) for g in range(groups.max() + 1)]
+    if shuffle_blocks:
+        order = [order[g] for g in np.random.permutation(len(order))]
     return Y.iloc[np.concatenate(order)]

@@ -224,3 +224,50 @@ class TestRandomizeWithinBlocks:
         set_seed(42)
         Y = full_factorial(_factors(4), n_blocks=4)
         assert randomize(Y, block_column=None)["Block"].tolist() != Y["Block"].tolist()
+
+    def test_default_unchanged(self):
+        """Without shuffle_blocks the result is the same as the original implementation for the same seed."""
+        Y = full_factorial(_factors(5), n_blocks=8, n_center=1)
+        set_seed(7)
+        blocks = Y["Block"].to_numpy()
+        expected = Y.iloc[
+            np.concatenate([np.random.permutation(np.flatnonzero(blocks == b)) for b in pd.unique(blocks)])
+        ]
+        set_seed(7)
+        pd.testing.assert_frame_equal(randomize(Y), expected)
+        set_seed(7)
+        expected_all = Y.iloc[np.random.permutation(len(Y))]
+        set_seed(7)
+        pd.testing.assert_frame_equal(randomize(Y, block_column=None), expected_all)
+
+    def test_shuffle_blocks(self):
+        """Every block stays contiguous and complete, the block order changes, and set_seed makes it reproducible."""
+        Y = full_factorial(_factors(5), n_blocks=8, n_center=1)
+        orders = set()
+        for seed in range(5):
+            set_seed(seed)
+            Yr = randomize(Y, shuffle_blocks=True)
+            pd.testing.assert_frame_equal(Yr.sort_index(), Y)
+            sequence = Yr["Block"].tolist()
+            segments = [b for i, b in enumerate(sequence) if i == 0 or b != sequence[i - 1]]
+            assert sorted(segments) == list(range(1, 9))  # each block is one contiguous segment
+            orders.add(tuple(segments))
+            set_seed(seed)
+            pd.testing.assert_frame_equal(randomize(Y, shuffle_blocks=True), Yr)
+        assert len(orders) > 1 and orders != {tuple(range(1, 9))}
+
+    def test_list_of_columns_as_whole_plots(self):
+        """A split-plot randomization: the hard-to-change factors X0 and X1 define the whole plots."""
+        Y = full_factorial(_factors(4))
+        set_seed(42)
+        Yr = randomize(Y, block_column=["X0", "X1"], shuffle_blocks=True)
+        pd.testing.assert_frame_equal(Yr.sort_index(), Y)
+        plots = list(zip(Yr["X0"], Yr["X1"], strict=True))
+        segments = [p for i, p in enumerate(plots) if i == 0 or p != plots[i - 1]]
+        assert len(segments) == len(set(segments)) == len(Y[["X0", "X1"]].drop_duplicates()) == 4
+        assert all(len(Yr[(Yr["X0"] == a) & (Yr["X1"] == b)]) == 4 for a, b in segments)
+
+    def test_missing_column_in_list_raises(self):
+        Y = full_factorial(_factors(3))
+        with pytest.raises(AssertionError, match="not a column of the design"):
+            randomize(Y, block_column=["X0", "Z"])
