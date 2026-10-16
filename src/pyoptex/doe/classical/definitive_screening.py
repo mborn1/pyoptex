@@ -55,7 +55,8 @@ def definitive_screening(factors, n_fake=0, n_center=1):
     For those the next available order is used, which adds runs.
 
     Every factor takes the fixed levels ``min``, mid-range and ``max``;
-    explicit factor ``levels`` are not used.
+    explicit factor ``levels`` are not used.  Categorical factors are not
+    supported; for those an optimal design is the route.
 
     Parameters
     ----------
