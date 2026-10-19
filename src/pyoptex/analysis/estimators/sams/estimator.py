@@ -253,6 +253,7 @@ class SamsRegressor(MultiRegressionMixin):
                 "A future version will redefine model_size as s_max. "
                 "See https://github.com/mborn1/pyoptex/issues/50.",
                 FutureWarning,
+                stacklevel=2,  # point at the caller, not this file
             )
         self.model_size = model_size
         self.nb_models = nb_models
