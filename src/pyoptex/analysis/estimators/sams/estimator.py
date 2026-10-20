@@ -278,13 +278,7 @@ class SamsRegressor(MultiRegressionMixin):
         super()._regr_params(X, y)
         self._model_size = self.model_size if self.model_size is not None else int(len(X) / 3)
 
-        # Set some default values
-        self._nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
-        self._nterms_bnb = (
-            range(len(self.forced_model) + 1, self._nterms_bnb)
-            if isinstance(self._nterms_bnb, int)
-            else self._nterms_bnb
-        )
+        # Set some default values (the BnB sizes are set in _fit, once the term groups are known)
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
 
     def _validate_fit(self, X, y):
@@ -539,6 +533,13 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             V = obs_var_from_Zs(self.Zs_, len(X), self._est_ratios)
             self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
+
+        # BnB submodel sizes are in term groups, starting after the forced groups
+        nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
+        self._nterms_bnb = (
+            range(len(self.sams_model_.forced) + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
+        )
+
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
         if self.nb_models == "all":
             self.results_ = simulate_all(self.sams_model_, self._model_size, tqdm=self.tqdm)
