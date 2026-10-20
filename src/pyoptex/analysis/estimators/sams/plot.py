@@ -97,11 +97,11 @@ def plot_raster(results, terms, skipn=0, metric_name="metric", forced=None, rast
         forced = np.unique(forced)
 
         # Set the coefficients
-        raster = np.nan_to_num(results['coeff'], nan=0.0)
+        raster = np.nan_to_num(results["coeff"], nan=0.0)
         raster[:, forced] = 0.0
     else:
         # Set the coefficients
-        raster = np.nan_to_num(results['coeff'], nan=0.0)
+        raster = np.nan_to_num(results["coeff"], nan=0.0)
 
     # Normalize the coefficients based on absolute value
     raster /= np.expand_dims(np.max(np.abs(raster), 1), 1)

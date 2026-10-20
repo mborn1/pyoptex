@@ -34,8 +34,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        'model' (np.int64, size `model_size`): the term group indices of the model,
+        'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
+        not in the model, and 'metric' (np.float64). Results contains `nb_models` elements.
     """
     # Initialize variables
     model_it = 0
@@ -43,21 +44,12 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         accept_fn = ExponentialAccept()
     accept_fn.reset()
 
-    # Worst-case number of coefficients for model_size groups
-    group_sizes = np.array([len(g) for g in model.term_groups])
-    max_coeff_size = int(np.sum(np.sort(group_sizes)[::-1][:model_size]))
-    assert max_coeff_size < model.X.shape[0], (
-    f"model_size={model_size} term groups can expand to {max_coeff_size} "
-    f"columns, which exceeds the {model.X.shape[0]} runs available"
-    )
+    # Validate the model size and number of models
+    model.check_size(model_size, nb_models, allow_duplicate)
 
     # Initialize model storage
     n_cols = model.X.shape[1]
-    rdtype = np.dtype([
-        ("model", np.int64, model_size), 
-        ("coeff", np.float64, n_cols), 
-        ("metric", np.float64)
-    ])
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, n_cols), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
     models = np.zeros((nb_models, model_size), dtype=np.int64)
 
@@ -93,7 +85,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 ):
                     # Pad coefficients to fixed size
                     coeff = np.full(n_cols, np.nan)
-                    coeff[model._expand(m)] = fit.params
+                    coeff[model.expand(m)] = fit.params
 
                     # Store the model
                     models[model_it] = m
@@ -130,28 +122,20 @@ def simulate_all(model, model_size, tqdm=True):
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        'model' (np.int64, size `model_size`): the term group indices of the model,
+        'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
+        not in the model, and 'metric' (np.float64). Results contains one element per model.
     """
+    # Validate the model size
+    model.check_size(model_size)
+
     # Generate all possible model combinations
     models = model.all(model_size)
     nb_models = len(models)
 
-    # Worst-case number of coefficients for model_size groups
-    group_sizes = np.array([len(g) for g in model.term_groups])
-    max_coeff_size = int(np.sum(np.sort(group_sizes)[::-1][:model_size]))
-    assert max_coeff_size < model.X.shape[0], (
-    f"model_size={model_size} term groups can expand to {max_coeff_size} "
-    f"columns, which exceeds the {model.X.shape[0]} runs available"
-    )
-
     # Initialize model storage
     n_cols = model.X.shape[1]
-    rdtype = np.dtype([
-        ("model", np.int64, model_size), 
-        ("coeff", np.float64, n_cols), 
-        ("metric", np.float64)
-    ])
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, n_cols), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
 
     # Compute the metrics for all
@@ -159,7 +143,7 @@ def simulate_all(model, model_size, tqdm=True):
         # Store the model
         fit = model.fit(m)
         coeff = np.full(n_cols, np.nan)
-        coeff[model._expand(m)] = fit.params
+        coeff[model.expand(m)] = fit.params
 
         # Store the result
         results[model_it] = m, coeff, fit.metric

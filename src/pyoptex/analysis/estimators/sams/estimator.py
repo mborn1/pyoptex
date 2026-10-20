@@ -113,11 +113,13 @@ class SamsRegressor(MultiRegressionMixin):
         A SAMS model used in sampling and fitting data during the SAMS procedure.
     results\\_ : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        'model' (np.int64, size `model_size`): the term group indices of the model
+        (see `sams_model_.term_groups`), 'coeff' (np.float64, one per encoded column):
+        the coefficients, NaN for columns not in the model, and 'metric' (np.float64).
+        Results contains `nb_models` elements.
         These are the returned models from the SAMS procedure.
     models\\_ : list(np.array(1d))
-        The list of models, ordered by entropy.
+        The list of models as column indices, ordered by entropy.
     entropies\\_ : np.array(1d)
         The entropy of each exported model in `models\\_`. In
         case of multiple clusters, the entropies are calculated
@@ -374,15 +376,13 @@ class SamsRegressor(MultiRegressionMixin):
 
         Parameters
         ----------
-        results : np.array(1d)
-            A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-            and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        results : np.array(2d)
+            The sampled models as term group indices, one row per model
+            (the 'model' field of `results_`).
         sizes : iterable(int)
             An iterable of ints with the fixed sizes of the submodels.
         nterms : int
-            The total number of fixed effects in the encoded, normalized
-            model matrix (=X.shape[1] after encoding and normalization).
+            The number of term groups (`sams_model_.n_term_groups`).
         topn : int
             The number of submodels with each size to extract.
         timeout_sec : int
@@ -406,10 +406,7 @@ class SamsRegressor(MultiRegressionMixin):
         for _i, size in tqdm(enumerate(sizes), total=len(sizes), disable=(not self.tqdm)):
             # Compute the result with a timeout
             result = timeout(
-                SamsBnB(
-                    size, results, nterms, 
-                    self.mode, self.sams_model_.dep, self.sams_model_.forced
-                ).top,
+                SamsBnB(size, results, nterms, self.mode, self.sams_model_.dep, self.sams_model_.forced).top,
                 topn,
                 timeout=timeout_sec,
             )
@@ -499,18 +496,18 @@ class SamsRegressor(MultiRegressionMixin):
                 submodels,
                 freqs,
                 self._model_size,
-                self.dependencies,
+                self.sams_model_.dep,  # submodels are in group space
                 self.mode,
-                self.forced_model,
+                self.sams_model_.forced,
                 self.entropy_sampling_N,
                 self.entropy_sampler,
             )
 
         else:
-            # Compute the number of factors for each
+            # Compute the number of term groups for each (a categorical factor counts as one)
             model_counts = {e: 0 for e in ("quad", "tfi", "lin")}
-            for mt, et in zip(self.entropy_model_order.values(), self.effect_types_, strict=True):
-                model_counts[mt] += 1 if et == 1 else et - 1
+            for mt in self.entropy_model_order.values():
+                model_counts[mt] += 1
             model_counts = [model_counts.get(e, 0) for e in ("quad", "tfi", "lin")]
 
             # Compute entropy (based on model order)
@@ -581,7 +578,7 @@ class SamsRegressor(MultiRegressionMixin):
         if self.ncluster is None:
             # Perform branch and bound
             submodels, freq = self._topn_selection(
-                results["model"], self._nterms_bnb, self.sams_model_.n_term_groups_, self.topn_bnb, self.bnb_timeout
+                results["model"], self._nterms_bnb, self.sams_model_.n_term_groups, self.topn_bnb, self.bnb_timeout
             )
 
             # Compute entropies
@@ -592,7 +589,7 @@ class SamsRegressor(MultiRegressionMixin):
 
         else:
             # Expand models to integer cluster (for kmeans)
-            results_cluster = np.zeros((len(results), self.sams_model_.n_term_groups_))
+            results_cluster = np.zeros((len(results), self.sams_model_.n_term_groups))
             np.put_along_axis(results_cluster, results["model"], 1, axis=1)
 
             # Auto detect the number of clusters
@@ -630,7 +627,7 @@ class SamsRegressor(MultiRegressionMixin):
                 # Perform branch and bound
                 results_ = results["model"][cluster_i][skipn:]
                 submodels, freq = self._topn_selection(
-                    results_, self._nterms_bnb, self.sams_model_.n_term_groups_, self.topn_bnb, self.bnb_timeout
+                    results_, self._nterms_bnb, self.sams_model_.n_term_groups, self.topn_bnb, self.bnb_timeout
                 )
                 m_.extend(submodels)
                 f_.append(freq)
@@ -651,13 +648,13 @@ class SamsRegressor(MultiRegressionMixin):
         self.frequencies_ = freq[best_idx]
 
         # Take only the unique submodels
-        submodels = self._unique_submodels(self.models_, self.sams_model_.n_term_groups_)
+        submodels = self._unique_submodels(self.models_, self.sams_model_.n_term_groups)
         self.models_ = [model for accept, model in zip(submodels, self.models_, strict=True) if accept]
         self.frequencies_ = self.frequencies_[submodels]
         self.entropies_ = self.entropies_[submodels]
 
         # Expand group indices to column indices for downstream use
-        self.models_ = [self.sams_model_._expand(m) for m in self.models_]
+        self.models_ = [self.sams_model_.expand(m) for m in self.models_]
 
         # Set required parameters
         self.selection_metrics_ = self.entropies_
@@ -693,6 +690,9 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Extract top raster terms
         raster_terms = reduce(np.union1d, self.models_[:ntop])
+
+        # Expand forced groups to their columns (raster is in column space)
+        forced = self.sams_model_.expand(self.sams_model_.forced)
 
         # Check for amount of clusters
         if self.kmeans_ is not None and self.kmeans_.dists is not None:
@@ -730,7 +730,7 @@ class SamsRegressor(MultiRegressionMixin):
                 terms,
                 self._skipn,
                 "r2(adj)",
-                self.forced_model,
+                forced,
                 raster_terms,
                 self.kmeans_,
                 (fig, (2, 1), (2, 2)),
@@ -738,8 +738,6 @@ class SamsRegressor(MultiRegressionMixin):
 
         else:
             # Plot simple raster
-            fig = plot_raster(
-                self.results_, terms, self._skipn, "r2(adj)", self.forced_model, raster_terms, self.kmeans_
-            )
+            fig = plot_raster(self.results_, terms, self._skipn, "r2(adj)", forced, raster_terms, self.kmeans_)
 
         return fig
