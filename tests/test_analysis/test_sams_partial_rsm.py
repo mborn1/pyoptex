@@ -12,16 +12,33 @@ def test_sams_partial_rsm():
     ref = load_reference("analysis/sams_partial_rsm")
     set_seed(42)
 
-    factors = [Factor("A"), Factor("B"), Factor("C"), Factor("D"), Factor("E"), Factor("F")]
+    factors = [
+        Factor("A"),
+        Factor("B"),
+        Factor("C"),
+        Factor("D"),
+        Factor("E"),
+        Factor("F", type="categorical", levels=["L1", "L2", "L3"]),
+    ]
     assert [str(f.name) for f in factors] == ref["factor_names"]
 
     N = 200
-    data = pd.DataFrame(np.random.rand(N, len(factors)) * 2 - 1, columns=[str(f.name) for f in factors])
-    data["Y"] = 2 * data["A"] + 3 * data["C"] - 4 * data["A"] * data["B"] + 5 + np.random.normal(0, 1, N)
+    data = pd.DataFrame(np.random.rand(N, len(factors) - 1) * 2 - 1, columns=[str(f.name) for f in factors[:-1]])
+    data["F"] = np.random.choice(["L1", "L2", "L3"], N)
+    data["Y"] = (
+        2 * data["A"]
+        + 3 * data["C"]
+        - 4 * data["A"] * data["B"]
+        + 3 * (data["F"] == "L2")
+        - 2 * (data["F"] == "L3")
+        + 5
+        + np.random.normal(0, 1, N)
+    )
     assert list(data.shape) == ref["data_shape"]
     np.testing.assert_allclose(data["Y"].mean(), ref["data_Y_mean"], rtol=1e-10)
 
-    model_order = {str(f.name): "quad" for f in factors}
+    # Quad factors first; the categorical factor has no quadratic term
+    model_order = {str(f.name): "quad" if f.is_continuous else "tfi" for f in factors}
     model = partial_rsm_names(model_order)
     Y2X = model2Y2X(model, factors)
     assert list(model.shape) == ref["model_shape"]
@@ -45,6 +62,13 @@ def test_sams_partial_rsm():
     assert len(regr.models_) == ref["nb_models"]
     assert [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))] == ref["model_formulas"]
     assert [m.tolist() for m in regr.models_] == ref["selected_models"]
+    np.testing.assert_allclose(regr.entropies_, ref["entropies"], rtol=1e-10)
+
+    # Each multi-column term group (the dummy columns of F and its interactions) is fully in or out
+    groups = [g for g in regr.sams_model_.term_groups if len(g) > 1]
+    for m in regr.models_:
+        for g in groups:
+            assert np.isin(g, m).sum() in (0, len(g))
 
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)

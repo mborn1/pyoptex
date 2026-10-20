@@ -44,6 +44,7 @@ def test_sams_generic_all():
     assert len(regr.models_) == ref["nb_models"]
     assert [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))] == ref["model_formulas"]
     assert [m.tolist() for m in regr.models_] == ref["selected_models"]
+    np.testing.assert_allclose(regr.entropies_, ref["entropies"], rtol=1e-10)
 
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)
@@ -53,3 +54,10 @@ def test_sams_generic_all():
     np.testing.assert_allclose(data["pred"].mean(), ref["pred_mean"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].std(), ref["pred_std"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].values, ref["predictions"], rtol=1e-10)
+
+    # Same data with mode=None and no dependencies
+    regr = SamsRegressor(
+        factors, Y2X, mode=None, forced_model=np.array([0], np.int64), model_size=6, nb_models="all", skipn=0.7
+    )
+    regr.fit(data.drop(columns=["Y", "pred"]), data["Y"])
+    assert len(regr.models_) > 0
