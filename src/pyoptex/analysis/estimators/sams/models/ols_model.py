@@ -72,10 +72,12 @@ class OlsModel(Model):
         params : np.array(1d)
             The coefficients of the linear regression
         r2adj : float
-            The adjusted coefficient of determination.
+            The adjusted coefficient of determination, -inf if there
+            are no residual degrees of freedom.
         mse_resid : float
             The sum of squared residuals divided by the degrees
-            of freedom (= X.shape[0] - X.shape[1]).
+            of freedom (= X.shape[0] - X.shape[1]), NaN if there
+            are none.
         """
         n, k = X.shape
         # Fit OLS (performance in numpy with fallback for nearly singular designs)
@@ -89,8 +91,12 @@ class OlsModel(Model):
             RSS = ols.ssr
             df_resid = int(ols.df_resid)
         else:
-            RSS = residuals[0]
             df_resid = n - k
+            RSS = residuals[0] if df_resid > 0 else np.nan  # lstsq returns no residuals when n <= k
+
+        # Saturated fit: no residual degrees of freedom, so r2adj is undefined
+        if df_resid <= 0:
+            return params, -np.inf, np.nan
 
         mse_resid = RSS / df_resid
 
