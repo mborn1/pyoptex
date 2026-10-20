@@ -121,8 +121,9 @@ def find_knee(metric, min_distance=0.05, lo=0.01, hi=0.90):
         (max distance below this threshold), returns 0.
     lo : float
         Lower bound of the search range as a fraction of the array
-        length. The knee is never placed before this point, ensuring
-        at least (1 - lo) of the data is always retained.
+        length. A knee is never placed before this point, so at most
+        (1 - lo) of the data is retained. If no knee is found, 0 is
+        returned and all data is kept.
     hi : float
         Upper bound of the search range as a fraction of the array
         length. The knee is never placed past this point, ensuring
