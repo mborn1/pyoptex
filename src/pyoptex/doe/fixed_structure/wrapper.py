@@ -175,7 +175,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         # Extract the old prior number of runs
         n_old = len(prior)
 
-        # Normalize and convert to numpy
+        # Normalize and convert to numpy (on a copy, so the caller's prior is not changed)
+        prior = prior.copy()
         for f in factors:
             prior[str(f.name)] = f.normalize(prior[str(f.name)])
         prior = prior[col_names].to_numpy()

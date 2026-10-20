@@ -191,7 +191,8 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         prior, old_plots = prior
         assert all(isinstance(p, Plot) for p in old_plots), "Old plots must be of type Plot"
 
-        # Normalize factors
+        # Normalize factors (on a copy, so the caller's prior is not changed)
+        prior = prior.copy()
         for f in factors:
             prior[str(f.name)] = f.normalize(prior[str(f.name)])
 
