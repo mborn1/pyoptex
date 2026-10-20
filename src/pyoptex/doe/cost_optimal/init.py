@@ -350,8 +350,9 @@ def init_warm_feasible(params, df, group_col=None, n_keep=None, max_tries=5000):
     Seed the optimizer from an existing design by keeping a random subset of intact groups.
 
     Sampling by group (rather than by individual rows) can ensure that hard-to-change factor
-    settings remain together. The prior is always placed first and runs that violate the
-    constraints are dropped. Because feasibility and estimability are not guaranteed
+    settings remain together. Runs that violate the constraints are removed from their group
+    first; the remaining runs of a group are always kept or dropped together. The prior is
+    always placed first. Because feasibility and estimability are not guaranteed
     by a random draw, the function resamples until the retained subset yields a full-rank
     model matrix and satisfies all cost constraints. If the maximum number of attempts is
     reached without finding a fully feasible set, it warns and returns the full-rank attempt
@@ -397,14 +398,27 @@ def init_warm_feasible(params, df, group_col=None, n_keep=None, max_tries=5000):
     # Drop impossible combinations
     valid = ~params.fn.constraints(Yenc)
     Yenc, group = Yenc[valid], group[valid]
+    ndropped = np.sum(~valid)
+    if ndropped > 0:
+        warnings.warn(
+            f"Dropped {ndropped} of {len(df)} warm-start runs that violate the constraints.", UserWarning, stacklevel=2
+        )
 
-    groups = np.unique(group)
+    groups, sizes = np.unique(group, return_counts=True)
     k = n_keep if n_keep is not None else max(1, len(groups) // 2)
 
     # Nothing to subsample: check the full design once
     full = k >= len(groups)
     tries = min(max_tries, 1) if full else max_tries
     nparams = params.fn.Y2X(params.prior).shape[1]
+
+    # Fail fast: even the k largest groups cannot reach full rank
+    nmax = len(params.prior) + np.sort(sizes)[::-1][:k].sum()
+    if nmax < nparams:
+        raise ValueError(
+            f"At most {nmax} runs can be kept ({len(params.prior)} prior + {min(k, len(groups))} of {len(groups)} "
+            f"groups), but the model has {nparams} parameters. Use a larger n_keep or group_col with larger groups."
+        )
 
     best, best_overrun = None, np.inf
     for _ in tqdm(range(tries)):
@@ -431,13 +445,13 @@ def init_warm_feasible(params, df, group_col=None, n_keep=None, max_tries=5000):
 
     if best is None:
         raise ValueError(
-            f"No full-rank subset found in {tries} attempts of {min(k, len(groups))} out of {len(groups)} "
-            f"groups (the model has {nparams} parameters). Cannot warm start; try a larger n_keep or max_tries."
+            f"No full-rank subset found in {tries} attempts ({min(k, len(groups))} of {len(groups)} groups each); "
+            f"the model has {nparams} parameters. Cannot warm start; try a larger n_keep or max_tries."
         )
 
     warnings.warn(
-        f"No full-rank subset within budget found in {tries} attempts of {min(k, len(groups))} out of "
-        f"{len(groups)} groups; returning the full-rank subset with the smallest cost overrun "
+        f"No full-rank subset within budget found in {tries} attempts ({min(k, len(groups))} of "
+        f"{len(groups)} groups each); returning the full-rank subset with the smallest cost overrun "
         f"({best_overrun:.3g}, summed relative to the maximum costs).",
         stacklevel=2,
     )
