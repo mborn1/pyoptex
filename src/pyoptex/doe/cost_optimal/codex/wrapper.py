@@ -1,6 +1,7 @@
 """
 Module for the interface to run the CODEX algorithm
 """
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -202,7 +203,8 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
         prior = encode_design(prior, effect_types, coords=coords)
 
         # Validate prior
-        assert not np.any(fn.constraints(prior)), "Prior contains constraint violating runs"
+        if np.any(fn.constraints(prior)):
+            warnings.warn("Prior contains constraint violating runs", UserWarning, stacklevel=2)
         fn.constraints.clear()  # Clear to permit pickling for multiprocessing
 
     else:
