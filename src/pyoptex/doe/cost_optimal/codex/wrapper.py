@@ -203,7 +203,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
         # Validate prior
         if np.any(fn.constraints(prior)):
-            warnings.warn("Prior contains constraint violating runs", UserWarning)
+            warnings.warn("Prior contains constraint violating runs", UserWarning, stacklevel=2)
         fn.constraints.clear()  # Clear to permit pickling for multiprocessing
 
     else:
