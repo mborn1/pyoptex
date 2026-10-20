@@ -133,7 +133,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             be_ratios = np.empty_like(ratios, shape=(0, ratios.shape[1]))
         else:
             be_ratios = ratios[:, -len(block_effects) :]
-            ratios = ratios[:, : len(block_effects)]
+            ratios = ratios[:, : len(re)]
     else:
         # No blocking ratios
         be_ratios = []
@@ -175,7 +175,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         # Extract the old prior number of runs
         n_old = len(prior)
 
-        # Normalize and convert to numpy
+        # Normalize and convert to numpy (on a copy, so the caller's prior is not changed)
+        prior = prior.copy()
         for f in factors:
             prior[str(f.name)] = f.normalize(prior[str(f.name)])
         prior = prior[col_names].to_numpy()
