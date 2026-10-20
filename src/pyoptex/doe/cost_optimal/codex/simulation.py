@@ -10,6 +10,32 @@ from ....utils.design import obs_var_from_Zs
 from ..utils import State, obs_var_Zs
 from ..validation import validate_state
 
+def copy_state(s):
+    """
+    Creates a deep copy of a State object to prevent aliasing of its mutable arrays.
+
+    Since `State` is a namedtuple, standard assignment only copies references. This
+    helper explicitly copies all underlying numpy arrays to ensure that in-place 
+    mutations by optimizers (e.g., modifying `Y`) do not accidentally corrupt 
+    saved snapshots like `best_state` and cause them to desync.
+
+    Parameters
+    ----------
+    s : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
+        The state object to be copied.
+
+    Returns
+    -------
+    :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
+        A new State instance containing independent copies of all arrays.
+    """
+    return State(
+        np.copy(s.Y), np.copy(s.X),
+        tuple(np.copy(Zi) if Zi is not None else None for Zi in s.Zs),
+        np.copy(s.Vinv), s.metric, np.copy(s.cost_Y),
+        [(np.copy(c), m, np.copy(idx)) for c, m, idx in s.costs],
+        np.copy(s.max_cost)
+    )
 
 @profile
 def simulate(params, nsims=100, validate=False):
@@ -133,7 +159,7 @@ def simulate(params, nsims=100, validate=False):
                     best_state.cost_Y > best_state.max_cost
                 )
                 if state.metric > best_state.metric or cost_transition:
-                    best_state = state
+                    best_state = copy_state(state)
             else:
                 params.fn.temp.rejected()
                 params.fn.restart.rejected()
@@ -141,6 +167,8 @@ def simulate(params, nsims=100, validate=False):
 
             # Restart policy
             state = params.fn.restart.call(state, best_state)
+            if state is best_state:
+                state = copy_state(state)
             validate and validate_state(state, params)
     except KeyboardInterrupt:
         interrupted = True
