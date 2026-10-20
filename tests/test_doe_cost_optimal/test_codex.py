@@ -51,7 +51,9 @@ def test_codex():
     nsims = 10
     nreps = 1
     fn = default_fn(nsims, factors, cost_fn, metric, Y2X, constraints=constraints)
+    prior_before = prior.copy()
     params = create_parameters(factors, fn, prior=prior)
+    pd.testing.assert_frame_equal(prior, prior_before)  # the caller's prior is not changed
 
     Y, state = create_cost_optimal_codex_design(params, nsims=nsims, nreps=nreps, validate=True)
 

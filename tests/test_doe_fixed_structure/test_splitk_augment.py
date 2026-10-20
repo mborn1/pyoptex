@@ -52,7 +52,9 @@ def test_splitk_augment():
     validate_plot_sizes(factors, model)
     n_tries = 10
     fn = default_fn(factors, metric, Y2X)
+    prior_before = prior[0].copy()
     params = create_parameters(factors, fn, prior=prior)
+    pd.testing.assert_frame_equal(prior[0], prior_before)  # the caller's prior is not changed
 
     Y, state = create_splitk_plot_design(params, n_tries=n_tries, validate=True)
 
