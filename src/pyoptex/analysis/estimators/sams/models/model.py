@@ -77,6 +77,7 @@ class Model:
         assert mode in (None, "weak", "strong"), "The mode must be None, weak or strong heredity"
         if mode is not None:
             assert dep is not None, "Must specify a dependency matrix if the mode is weak or strong heredity"
+        if dep is not None:
             assert len(dep.shape) == 2, "Dependencies must be a 2D array"
             assert dep.shape[0] == dep.shape[1], "Dependency matrix must be square"
             assert dep.shape[0] == X.shape[1], "Must specify a dependency for each term"
