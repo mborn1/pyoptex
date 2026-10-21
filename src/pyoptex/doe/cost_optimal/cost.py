@@ -16,22 +16,22 @@ def _fn_no_params(f, Y, params):
 
 
 def _fn_decoded(f, Y, params):
-    # Decode the design to a dataframe
     Y = decode_design(Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
     return f(Y, params)
 
+def _fn_as_dataframe(f, Y, params):
+    Y = pd.DataFrame(
+        Y,
+        columns=[str(factor.name) for factor in params.factors]
+    )
+    return f(Y, params)
 
 def _fn_denormalized(f, Y, params):
-    # Decode the design to a dataframe
-    Y = decode_design(Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(factor.name) for factor in params.factors])
     for factor in params.factors:
         Y[str(factor.name)] = factor.denormalize(Y[str(factor.name)])
     return f(Y, params)
 
-
-def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
+def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, dataframe=None):
     """
     Cost function decorator code.
 
@@ -47,35 +47,61 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False):
         Whether the cost function requires the CODEX
         :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`.
         This prevents numba compilation.
+    dataframe : bool or None, default None
+        Whether to convert the design to a pandas DataFrame before passing it to `f`.
+        If None, this defaults to True when `denormalize=True` or `decoded=True`
+        and False otherwise. Ignored when denormalize=True: denormalized inputs
+        are always passed as a DataFrame.
 
     Returns
     -------
     fn : func(Y, params)
         The decorated function
     """
+    # Denormalized inputs are always a DataFrame
+    if denormalize and dataframe is False:
+        dataframe = True
+    
+    if dataframe is None:
+        dataframe = denormalize or decoded
+
+    # Encoded categoricals span several columns, so column names cannot be assigned
+    if dataframe and not (denormalize or decoded):
+        raise ValueError(
+            "dataframe=True requires decoded=True or denormalize=True: "
+            "encoded designs have no one-column-per-factor layout."
+        )
 
     # Check if parameters are required (prevents direct use of numba.njit compilation)
     if not contains_params:
         f = wraps(f)(partial(_fn_no_params, f))
 
-    # Check for denormalization in the cost function
+    # The last wrapper added runs first: decode, then DataFrame, then denormalize
     if denormalize:
-        # Wrap the function
         f = wraps(f)(partial(_fn_denormalized, f))
+
+    if dataframe:
+        f = wraps(f)(partial(_fn_as_dataframe, f))
+
+    if denormalize or decoded:
+        f = wraps(f)(partial(_fn_decoded, f))
+
+    if denormalize:
         NOTE = "This cost function works on denormalized inputs"
 
     elif decoded:
-        # Wrap the function
-        f = wraps(f)(partial(_fn_decoded, f))
         NOTE = "This cost function works on decoded categorical inputs"
 
     else:
         NOTE = "This cost function works on normalized (encoded) inputs"
 
-    # Extend the documentation with a note on normalization
     if f.__doc__ is not None:
         params_pos = f.__doc__.find("    Parameters\n    ---------")
-        f.__doc__ = f.__doc__[:params_pos] + f"\n    .. note::\n        {NOTE}\n\n" + f.__doc__[params_pos:]
+        f.__doc__ = (
+            f.__doc__[:params_pos]
+            + f"\n    .. note::\n        {NOTE}\n\n"
+            + f.__doc__[params_pos:]
+        )
 
     return f
 
@@ -96,6 +122,11 @@ def cost_fn(*args, **kwargs):
         Whether the cost function requires the
         :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`.
         This prevents numba compilation.
+    dataframe : bool or None, default None
+        Whether to convert the design to a pandas DataFrame before passing it to `f`.
+        If None, this defaults to True when `denormalize=True` or `decoded=True`
+        and False otherwise. Ignored when denormalize=True: denormalized inputs
+        are always passed as a DataFrame.
 
     Returns
     -------
