@@ -161,11 +161,15 @@ class Model:
             f"columns, which exceeds the {self.X.shape[0]} runs available"
         )
 
-        # Without duplicates, more models than combinations would never finish.
-        # This is an upper bound: heredity can leave fewer feasible models.
+        # Without duplicates, more models than exist would never finish
         if nb_models is not None and not allow_duplicate:
-            n_forced = len(self.forced)
-            n_unique = math.comb(self.n_term_groups - n_forced, model_size - n_forced)
+            if math.comb(self.n_term_groups, model_size) <= 100_000:
+                # Small enough to enumerate: count the feasible models exactly
+                n_unique = len(self.all(model_size))
+            else:
+                # Upper bound only: heredity can still leave fewer models, and sampling then never finishes
+                n_forced = len(self.forced)
+                n_unique = math.comb(self.n_term_groups - n_forced, model_size - n_forced)
             if nb_models > n_unique:
                 raise ValueError(
                     f"Cannot sample {nb_models} unique models: at most {n_unique} models of {model_size} term groups "
