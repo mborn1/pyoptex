@@ -66,6 +66,7 @@ def test_sams_partial_rsm():
 
     # Each multi-column term group (the dummy columns of F and its interactions) is fully in or out
     groups = [g for g in regr.sams_model_.term_groups if len(g) > 1]
+    assert len(groups) == 6
     for m in regr.models_:
         for g in groups:
             assert np.isin(g, m).sum() in (0, len(g))
