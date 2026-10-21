@@ -643,7 +643,7 @@ class SamsRegressor(MultiRegressionMixin):
             self.entropies_ = np.concatenate(e_)
 
         # Sort models according to entropy
-        best_idx = np.argsort(self.entropies_)[::-1]
+        best_idx = np.argsort(-self.entropies_, kind="stable")
         self.entropies_ = self.entropies_[best_idx]
         self.models_ = [submodels[i] for i in best_idx]
         self.frequencies_ = freq[best_idx]
