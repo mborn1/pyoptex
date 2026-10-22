@@ -117,7 +117,9 @@ def encode_design(Y, effect_types, coords=None):
     Parameters
     ----------
     Y : np.array(2d)
-        The current design matrix.
+        The current design matrix, with one column per factor. It may
+        not contain missing (NaN) or infinite values; remove or fill
+        those runs first.
     effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
@@ -132,22 +134,32 @@ def encode_design(Y, effect_types, coords=None):
     Raises
     ------
     ValueError
-        If the number of effect types differs from the number of
-        columns of Y, or if a categorical column does not hold
-        integers from 0 to its number of levels - 1 (e.g. NaN or -1).
-        The Cython encoding indexes the coordinates with these values
-        without bounds checks.
+        If Y is not two-dimensional, if the number of effect types
+        differs from the number of columns of Y, if any value is
+        missing or not finite (NaN or infinite), or if a categorical
+        column does not hold integers from 0 to its number of
+        levels - 1 (e.g. -1). The Cython encoding indexes the
+        coordinates with the categorical values without bounds checks.
     """
     Y = np.ascontiguousarray(Y)
     effect_types = np.ascontiguousarray(effect_types, dtype=np.int64)
 
+    if Y.ndim != 2:
+        raise ValueError(f"The design must be a 2-D array (runs x factors), but has {Y.ndim} dimensions")
     if len(effect_types) != Y.shape[1]:
         raise ValueError(f"There are {len(effect_types)} effect types for the {Y.shape[1]} columns of the design")
 
-    # Validate the categorical columns (continuous columns are only copied, so NaN passes through)
+    # No missing or non-finite values (column j holds the factor at position j)
+    finite = np.isfinite(Y)
+    if not np.all(finite):
+        j = int(np.flatnonzero(~np.all(finite, axis=0))[0])
+        invalid = ", ".join(str(v) for v in np.unique(Y[~finite[:, j], j]))
+        raise ValueError(f"Column {j} (factor {j}) holds missing or non-finite values [{invalid}]")
+
+    # Validate the categorical columns
     for j in np.flatnonzero(effect_types > 1):
         col = Y[:, j]
-        valid = np.isfinite(col) & (col == np.round(col)) & (col >= 0) & (col <= effect_types[j] - 1)
+        valid = (col == np.round(col)) & (col >= 0) & (col <= effect_types[j] - 1)
         if not np.all(valid):
             invalid = np.unique(col[~valid])
             shown = ", ".join(str(v) for v in invalid[:5]) + (", ..." if len(invalid) > 5 else "")

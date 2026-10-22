@@ -218,11 +218,14 @@ class FactorMixin:
             The normalized data, in the same type as the data.
             Categorical inputs become integers.
 
+        Missing values (NaN or None) stay missing: they become NaN, for
+        continuous and categorical factors alike.
+
         Raises
         ------
         ValueError
-            If categorical data contains values that are not levels
-            of the factor.
+            If categorical data contains non-missing values that are
+            not levels of the factor.
         """
         if self.is_continuous:
             return (data - self.mean) / self.scale
@@ -232,12 +235,14 @@ class FactorMixin:
                 if data not in m:
                     self._raise_unknown_levels([data])
                 x = m[data]
+            elif pd.api.types.is_scalar(data) and pd.isna(data):
+                x = np.nan
             else:
                 series = pd.Series(data)
                 x = series.map(m)
-                unmapped = x.isna()
-                if unmapped.any():
-                    self._raise_unknown_levels(pd.unique(series[unmapped]))
+                unknown = x.isna() & series.notna()
+                if unknown.any():
+                    self._raise_unknown_levels(pd.unique(series[unknown]))
                 if isinstance(data, np.ndarray):
                     x = x.to_numpy()
             return x
