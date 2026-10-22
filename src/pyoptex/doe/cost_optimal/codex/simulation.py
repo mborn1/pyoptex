@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from ...._profile import profile
 from ....utils.design import obs_var_from_Zs
-from ..utils import State, obs_var_Zs
+from ..utils import State, _within_budget, obs_var_Zs
 from ..validation import validate_state
 
 def copy_state(s):
@@ -97,7 +97,7 @@ def simulate(params, nsims=100, validate=False):
         np.copy(X),
         tuple(np.copy(Zi) if Zi is not None else None for Zi in Zs),
         np.copy(Vinv),
-        metric if not np.any(cost_Y > max_cost) else -np.inf,
+        metric if _within_budget(cost_Y, max_cost) else -np.inf,
         np.copy(cost_Y),
         [(np.copy(c), m, np.copy(idx)) for c, m, idx in costs],
         np.copy(max_cost),
@@ -134,7 +134,7 @@ def simulate(params, nsims=100, validate=False):
             params.stats["metrics"][i] = new_state.metric
 
             # Accept
-            cost_transition = np.all(new_state.cost_Y <= new_state.max_cost) and np.any(state.cost_Y > state.max_cost)
+            cost_transition = _within_budget(new_state.cost_Y, new_state.max_cost) and not _within_budget(state.cost_Y, state.max_cost)
             accept = (
                 params.fn.accept(state.metric, new_state.metric, params.fn.temp.T) > np.random.rand()
                 or cost_transition
@@ -155,8 +155,8 @@ def simulate(params, nsims=100, validate=False):
                 state = State(state.Y, state.X, state.Zs, Vinv, metric, state.cost_Y, state.costs, state.max_cost)
 
                 # Set the best state
-                cost_transition = np.all(state.cost_Y <= state.max_cost) and np.any(
-                    best_state.cost_Y > best_state.max_cost
+                cost_transition = _within_budget(state.cost_Y, state.max_cost) and not _within_budget(
+                    best_state.cost_Y, best_state.max_cost
                 )
                 if state.metric > best_state.metric or cost_transition:
                     best_state = copy_state(state)

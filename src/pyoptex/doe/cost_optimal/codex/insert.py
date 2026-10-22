@@ -6,7 +6,7 @@ import numpy as np
 
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
-from ..utils import obs_var_Zs
+from ..utils import _within_budget, obs_var_Zs
 from .formulas import NO_UPDATE, detect_block_end_from_start, insert_update_vinv
 from .simulation import State
 
@@ -223,7 +223,7 @@ def insert_optimal(new_run, state, params):
         metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))
 
         # Exceeds budget
-        exceeds_budget_temp = np.any(cost_Yn > max_cost)
+        exceeds_budget_temp = not _within_budget(cost_Yn, max_cost)
 
         # Maximize
         if (metric_temp > best_metric and exceeds_budget == exceeds_budget_temp) or (
