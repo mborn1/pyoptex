@@ -69,23 +69,29 @@ def parse_checkpoints(stdout: str) -> dict:
 def run_example(script_rel: str) -> dict:
     script_path = EXAMPLES_ROOT / script_rel
     env = os.environ.copy()
-    # Add examples parent to PYTHONPATH so `from examples._log_checkpoint import ...` works
+    # UTF-8 output on every platform (the default on Windows is the ANSI code page)
+    env["PYTHONUTF8"] = "1"
+    # Add examples/_no_show (whose sitecustomize makes plotly's fig.show() a no-op) and the
+    # examples parent to PYTHONPATH, so `from examples._log_checkpoint import ...` works
+    no_show = str(EXAMPLES_ROOT / "_no_show")
     workspace_root = str(EXAMPLES_ROOT.parent)
     existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = f"{workspace_root}:{existing}" if existing else workspace_root
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (no_show, workspace_root, existing) if p)
 
     print(f"  Running {script_rel} ...", end=" ", flush=True)
     result = subprocess.run(
         [sys.executable, str(script_path)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=600,
         env=env,
         cwd=str(script_path.parent),
     )
     if result.returncode != 0:
         print(f"FAILED (exit {result.returncode})")
-        print("  STDERR:", result.stderr[:2000])
+        # The tail, so a traceback is not hidden behind progress bars
+        print("  STDERR:", result.stderr[-2000:])
         return {}
     checkpoints = parse_checkpoints(result.stdout)
     print(f"OK ({len(checkpoints)} checkpoints)")

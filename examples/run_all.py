@@ -49,14 +49,24 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
     """
     start_time = time.time()
 
+    # UTF-8 output on every platform (the default on Windows is the ANSI code page),
+    # and _no_show first on the path, whose sitecustomize makes plotly's fig.show() a no-op
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+    no_show = str(Path(__file__).parent / "_no_show")
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (no_show, env.get("PYTHONPATH")) if p)
+
     try:
         # Run the script with subprocess
         result = subprocess.run(
             [sys.executable, script_path.name],  # Use just the filename
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             cwd=script_path.parent,  # Run from script's directory
+            env=env,
         )
 
         execution_time = time.time() - start_time
@@ -66,7 +76,8 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
         else:
             error_msg = f"Script failed with return code {result.returncode}\n"
             if result.stderr:
-                error_msg += f"STDERR: {result.stderr}\n"
+                # The tail, so a traceback is not hidden behind progress bars
+                error_msg += f"STDERR: {result.stderr[-2000:]}\n"
             if result.stdout:
                 error_msg += f"STDOUT: {result.stdout}"
             return False, error_msg, execution_time
