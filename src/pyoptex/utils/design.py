@@ -128,10 +128,35 @@ def encode_design(Y, effect_types, coords=None):
     -------
     Yenc : np.array(2d)
         The encoded design-matrix
+
+    Raises
+    ------
+    ValueError
+        If the number of effect types differs from the number of
+        columns of Y, or if a categorical column does not hold
+        integers from 0 to its number of levels - 1 (e.g. NaN or -1).
+        The Cython encoding indexes the coordinates with these values
+        without bounds checks.
     """
-    return encode_design_cython_impl(
-        np.ascontiguousarray(Y), np.ascontiguousarray(effect_types, dtype=np.int64), coords
-    )
+    Y = np.ascontiguousarray(Y)
+    effect_types = np.ascontiguousarray(effect_types, dtype=np.int64)
+
+    if len(effect_types) != Y.shape[1]:
+        raise ValueError(f"There are {len(effect_types)} effect types for the {Y.shape[1]} columns of the design")
+
+    # Validate the categorical columns (continuous columns are only copied, so NaN passes through)
+    for j in np.flatnonzero(effect_types > 1):
+        col = Y[:, j]
+        valid = np.isfinite(col) & (col == np.round(col)) & (col >= 0) & (col <= effect_types[j] - 1)
+        if not np.all(valid):
+            invalid = np.unique(col[~valid])
+            shown = ", ".join(str(v) for v in invalid[:5]) + (", ..." if len(invalid) > 5 else "")
+            raise ValueError(
+                f"Column {j} is categorical with {effect_types[j]} levels, so it must hold integers from 0 to "
+                f"{effect_types[j] - 1}, but it holds [{shown}]"
+            )
+
+    return encode_design_cython_impl(Y, effect_types, coords)
 
 
 def decode_design(Yenc, effect_types, coords=None):

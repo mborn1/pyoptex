@@ -217,18 +217,39 @@ class FactorMixin:
         norm_data : float or int or np.array(1d) or pd.Series
             The normalized data, in the same type as the data.
             Categorical inputs become integers.
+
+        Raises
+        ------
+        ValueError
+            If categorical data contains values that are not levels
+            of the factor.
         """
         if self.is_continuous:
             return (data - self.mean) / self.scale
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
             if isinstance(data, str):
+                if data not in m:
+                    self._raise_unknown_levels([data])
                 x = m[data]
             else:
-                x = pd.Series(data).map(m)
+                series = pd.Series(data)
+                x = series.map(m)
+                unmapped = x.isna()
+                if unmapped.any():
+                    self._raise_unknown_levels(pd.unique(series[unmapped]))
                 if isinstance(data, np.ndarray):
                     x = x.to_numpy()
             return x
+
+    def _raise_unknown_levels(self, unknown, max_shown=5):
+        """Raise a ValueError listing (at most *max_shown* of) the *unknown* values and the allowed levels."""
+        shown = ", ".join(str(v) for v in unknown[:max_shown])
+        more = f", ... ({len(unknown)} in total)" if len(unknown) > max_shown else ""
+        allowed = ", ".join(str(lvl) for lvl in self.levels)
+        raise ValueError(
+            f"Factor {self.name} has values not in its levels: [{shown}{more}]. Allowed levels: [{allowed}]."
+        )
 
     def denormalize(self, data):
         """
