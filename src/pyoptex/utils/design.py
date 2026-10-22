@@ -117,9 +117,9 @@ def encode_design(Y, effect_types, coords=None):
     Parameters
     ----------
     Y : np.array(2d)
-        The current design matrix, with one column per factor. It may
-        not contain missing (NaN) or infinite values; remove or fill
-        those runs first.
+        The current design matrix, with one column per factor, converted
+        to floats (None becomes NaN). It may not contain missing (NaN)
+        or infinite values; remove or fill those runs first.
     effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
@@ -134,18 +134,21 @@ def encode_design(Y, effect_types, coords=None):
     Raises
     ------
     ValueError
-        If Y is not two-dimensional, if the number of effect types
-        differs from the number of columns of Y, if any value is
-        missing or not finite (NaN or infinite), or if a categorical
-        column does not hold integers from 0 to its number of
-        levels - 1 (e.g. -1). The Cython encoding indexes the
+        If Y cannot be converted to floats (e.g. text), if Y is not
+        two-dimensional, if effect_types is not one-dimensional, if the
+        number of effect types differs from the number of columns of Y,
+        if any value is missing or not finite (NaN or infinite), or if
+        a categorical column does not hold integers from 0 to its
+        number of levels - 1 (e.g. -1). The Cython encoding indexes the
         coordinates with the categorical values without bounds checks.
     """
-    Y = np.ascontiguousarray(Y)
+    Y = np.ascontiguousarray(Y, dtype=np.float64)
     effect_types = np.ascontiguousarray(effect_types, dtype=np.int64)
 
     if Y.ndim != 2:
         raise ValueError(f"The design must be a 2-D array (runs x factors), but has {Y.ndim} dimensions")
+    if effect_types.ndim != 1:
+        raise ValueError(f"The effect types must be a 1-D array, but have {effect_types.ndim} dimensions")
     if len(effect_types) != Y.shape[1]:
         raise ValueError(f"There are {len(effect_types)} effect types for the {Y.shape[1]} columns of the design")
 

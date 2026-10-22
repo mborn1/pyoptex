@@ -228,6 +228,8 @@ class FactorMixin:
             not levels of the factor.
         """
         if self.is_continuous:
+            if pd.api.types.is_scalar(data) and pd.isna(data):
+                return np.nan
             return (data - self.mean) / self.scale
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
