@@ -69,8 +69,10 @@ def parse_checkpoints(stdout: str) -> dict:
 def run_example(script_rel: str) -> dict:
     script_path = EXAMPLES_ROOT / script_rel
     env = os.environ.copy()
-    # UTF-8 output on every platform (the default on Windows is the ANSI code page)
+    # UTF-8 output on every platform (the default on Windows is the ANSI code page; PYTHONIOENCODING
+    # too, since an inherited value would override UTF-8 mode for the standard streams)
     env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     # Add examples/_no_show (whose sitecustomize makes plotly's fig.show() a no-op) and the
     # examples parent to PYTHONPATH, so `from examples._log_checkpoint import ...` works
     no_show = str(EXAMPLES_ROOT / "_no_show")

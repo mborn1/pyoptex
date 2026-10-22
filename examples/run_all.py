@@ -50,10 +50,12 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
     """
     start_time = time.time()
 
-    # UTF-8 output on every platform (the default on Windows is the ANSI code page),
+    # UTF-8 output on every platform (the default on Windows is the ANSI code page; PYTHONIOENCODING
+    # too, since an inherited value would override UTF-8 mode for the standard streams),
     # and _no_show first on the path, whose sitecustomize makes plotly's fig.show() a no-op
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     no_show = str(Path(__file__).parent / "_no_show")
     env["PYTHONPATH"] = os.pathsep.join(p for p in (no_show, env.get("PYTHONPATH")) if p)
 
