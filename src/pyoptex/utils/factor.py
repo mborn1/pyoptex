@@ -217,18 +217,48 @@ class FactorMixin:
         norm_data : float or int or np.array(1d) or pd.Series
             The normalized data, in the same type as the data.
             Categorical inputs become integers.
+
+        Missing values (NaN or None) stay missing: they become NaN, for
+        continuous and categorical factors alike.
+
+        Raises
+        ------
+        ValueError
+            If categorical data contains non-missing values that are
+            not levels of the factor.
         """
         if self.is_continuous:
+            if pd.api.types.is_scalar(data) and pd.isna(data):
+                return np.nan
+            if isinstance(data, np.ndarray) and data.dtype == object:
+                data = data.astype(np.float64)  # None becomes NaN
             return (data - self.mean) / self.scale
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
             if isinstance(data, str):
+                if data not in m:
+                    self._raise_unknown_levels([data])
                 x = m[data]
+            elif pd.api.types.is_scalar(data) and pd.isna(data):
+                x = np.nan
             else:
-                x = pd.Series(data).map(m)
+                series = pd.Series(data)
+                x = series.map(m)
+                unknown = x.isna() & series.notna()
+                if unknown.any():
+                    self._raise_unknown_levels(pd.unique(series[unknown]))
                 if isinstance(data, np.ndarray):
                     x = x.to_numpy()
             return x
+
+    def _raise_unknown_levels(self, unknown, max_shown=5):
+        """Raise a ValueError listing (at most *max_shown* of) the *unknown* values and the allowed levels."""
+        shown = ", ".join(str(v) for v in unknown[:max_shown])
+        more = f", ... ({len(unknown)} in total)" if len(unknown) > max_shown else ""
+        allowed = ", ".join(str(lvl) for lvl in self.levels)
+        raise ValueError(
+            f"Factor {self.name} has values not in its levels: [{shown}{more}]. Allowed levels: [{allowed}]."
+        )
 
     def denormalize(self, data):
         """
