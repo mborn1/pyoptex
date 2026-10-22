@@ -25,11 +25,12 @@ def find_python_scripts(directory: Path) -> list[Path]:
     """
     scripts = []
     for root, dirs, files in os.walk(directory):
-        # Skip __pycache__ and other common directories to avoid
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        # Skip hidden directories and helpers (names starting with _, e.g. __pycache__ and _no_show)
+        dirs[:] = [d for d in dirs if not d.startswith((".", "_"))]
 
         for file in files:
-            if file.endswith(".py") and file != "run_all.py":
+            # Skip this script and helpers such as _log_checkpoint.py
+            if file.endswith(".py") and file != "run_all.py" and not file.startswith("_"):
                 script_path = Path(root) / file
                 scripts.append(script_path)
 
