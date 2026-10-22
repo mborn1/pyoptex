@@ -230,6 +230,8 @@ class FactorMixin:
         if self.is_continuous:
             if pd.api.types.is_scalar(data) and pd.isna(data):
                 return np.nan
+            if isinstance(data, np.ndarray) and data.dtype == object:
+                data = data.astype(np.float64)  # None becomes NaN
             return (data - self.mean) / self.scale
         else:
             m = {lname: i for i, lname in enumerate(self.levels)}
