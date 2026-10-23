@@ -34,8 +34,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        'model' (np.int64, size `model_size`): the term group indices of the model,
+        'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
+        not in the model, and 'metric' (np.float64). Results contains `nb_models` elements.
     """
     # Initialize variables
     model_it = 0
@@ -43,8 +44,12 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         accept_fn = ExponentialAccept()
     accept_fn.reset()
 
+    # Validate the model size and number of models
+    model.check_size(model_size, nb_models, allow_duplicate)
+
     # Initialize model storage
-    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
+    n_cols = model.X.shape[1]
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, n_cols), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
     models = np.zeros((nb_models, model_size), dtype=np.int64)
 
@@ -78,9 +83,13 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 if allow_duplicate or not np.any(
                     np.all(models[:model_it][np.abs(results["metric"][:model_it] - metric0) < 1e-8] == m, axis=1)
                 ):
+                    # Pad coefficients to fixed size
+                    coeff = np.full(n_cols, np.nan)
+                    coeff[model.expand(m)] = fit.params
+
                     # Store the model
                     models[model_it] = m
-                    results[model_it] = m, fit.params, metric0
+                    results[model_it] = m, coeff, metric0
 
                     # Increase progress
                     model_it += 1
@@ -113,23 +122,30 @@ def simulate_all(model, model_size, tqdm=True):
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64). Results contains `nb_models` elements.
+        'model' (np.int64, size `model_size`): the term group indices of the model,
+        'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
+        not in the model, and 'metric' (np.float64). Results contains one element per model.
     """
+    # Validate the model size
+    model.check_size(model_size)
+
     # Generate all possible model combinations
     models = model.all(model_size)
     nb_models = len(models)
 
     # Initialize model storage
-    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
+    n_cols = model.X.shape[1]
+    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, n_cols), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
 
     # Compute the metrics for all
     for model_it, m in tqdm_(enumerate(models), disable=(not tqdm)):
         # Store the model
         fit = model.fit(m)
+        coeff = np.full(n_cols, np.nan)
+        coeff[model.expand(m)] = fit.params
 
         # Store the result
-        results[model_it] = m, fit.params, fit.metric
+        results[model_it] = m, coeff, fit.metric
 
     return results

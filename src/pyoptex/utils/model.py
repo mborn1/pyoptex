@@ -620,6 +620,16 @@ def order_dependencies(model, factors):
     * :math:`x_0 x_1`: depends on both :math:`x_0` and :math:`x_1`, which both depend on the intercept.
     * :math:`x_0^2 x_1` : depends on both :math:`x_0^2` and :math:`x_1`, which depend on :math:`x_0` and the intercept.
 
+    The encoded columns originating from one precoded term (e.g. the
+    dummy columns of a multi-level categorical factor, or of an
+    interaction involving one) are marked as mutually dependent. This
+    creates a codependency in the dependency matrix, which the SAMS
+    sampler interprets as a term group that must enter and leave the
+    model together. The same mechanism can be used manually: setting
+    dep[i, j] = dep[j, i] = True forces terms i and j to be sampled
+    as a unit, which is useful for nested or otherwise codependent
+    factors.
+
     Parameters
     ----------
     model : pd.DataFrame
@@ -631,8 +641,8 @@ def order_dependencies(model, factors):
     -------
     dep : np.array(2d)
         The dependency matrix of size (N, N) with N the number
-        of terms in the encoded model. Term i depends on term j
-        if dep(i, j) = true.
+        of columns in the encoded model. Term i depends on term j
+        if dep(i, j) = true. Codependencies indicate term groups.
     """
     # Validation
     assert isinstance(model, pd.DataFrame), "Model must be a dataframe"
@@ -653,8 +663,7 @@ def order_dependencies(model, factors):
 
     # Compute the possible dependencies
     eye = np.expand_dims(np.eye(modelenc.shape[1]), 1)
-    model = np.expand_dims(modelenc, 0)
-    all_dep = model - eye  # all_dep[:, i] are all possible dependencies for term i
+    all_dep = np.expand_dims(modelenc, 0) - eye  # all_dep[:, i] are all possible dependencies for term i
 
     # Valid dependencies
     all_dep_valid = np.where(np.all(all_dep >= 0, axis=2))
@@ -668,6 +677,18 @@ def order_dependencies(model, factors):
     # Compute dependencies
     dep = np.zeros((modelenc.shape[0], modelenc.shape[0]), dtype=np.bool_)
     dep[from_terms, to_terms] = True
+
+    # Stamp mutual dependency within each dummy block so the
+    # encoded terms of one precoded term form a cycle (= travel together)
+    cols_per_factor = np.where(effect_types > 1, effect_types - 1, 1)
+    start = 0
+    for row in range(model.shape[0]):
+        n_encoded = int(np.prod(cols_per_factor[model[row] == 1]))
+        if n_encoded > 1:
+            block = np.arange(start, start + n_encoded)
+            dep[np.ix_(block, block)] = True
+            dep[block, block] = False  # no self-loops
+        start += n_encoded
 
     return dep
 

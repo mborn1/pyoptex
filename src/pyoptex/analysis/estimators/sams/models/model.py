@@ -2,10 +2,12 @@
 Module for the SAMS base model.
 """
 
+import math
 from collections import namedtuple
 from itertools import combinations
 
 import numpy as np
+from scipy.sparse.csgraph import connected_components
 
 from .....utils.model import permitted_dep_add
 
@@ -26,14 +28,18 @@ class Model:
         The encoded, normalized model matrix of the data
     y : np.array(1d)
         The output variable.
+    labels : np.array(1d)
+        The term group of each column of X. Groups are numbered by their first column.
+    term_groups : list(np.array(1d))
+        The column indices of X in each term group.
     forced : np.array(1d)
-        Any terms that must be included in the model.
+        The term groups that must be included in the model.
     mode : None or 'weak' or 'strong'
         The heredity model during sampling.
     dep : np.array(2d)
-        The dependency matrix of size (N, N) with N the number
-        of terms in the encoded model (output from Y2X). Term i depends on term j
-        if dep(i, j) = true.
+        The dependency matrix between term groups, of size (G, G) with G the
+        number of term groups. Group i depends on group j if dep(i, j) = true.
+        Models are sampled, mutated and returned as term group indices.
     """
 
     def __init__(self, X, y, forced=None, mode="weak", dep=None):
@@ -43,17 +49,25 @@ class Model:
         Parameters
         ----------
         X : np.array(2d)
-            The encoded, normalized model matrix of the data
+            The encoded, normalized model matrix of the data.
         y : np.array(1d)
             The output variable.
         forced : np.array(1d)
-            Any terms that must be included in the model.
+            Column indices of X that must be included in the model.
+            Internally converted to term group indices; forcing any
+            column of a group forces the whole group.
         mode : None or 'weak' or 'strong'
             The heredity model during sampling.
         dep : np.array(2d)
-            The dependency matrix of size (N, N) with N the number
-            of terms in the encoded model (output from Y2X). Term i depends on term j
-            if dep(i, j) = true.
+            The dependency matrix of size (N, N) with N the number of
+            columns in X. Term i depends on term j if dep(i, j) = true.
+            Codependent terms in this matrix (e.g. i depends on j and j
+            depends on i) are marked as a single term group that is
+            always sampled together. Hierarchical dependencies are not
+            included in this, codependency never arises from heredity
+            alone; they are used for the dummy columns of a multi-level
+            categorical factor, and can be specified manually for nested
+            or otherwise codependent terms.
         """
         # Validate the inputs
         assert len(X) == len(y), "Must have the same number of runs for the data as the output variable"
@@ -63,20 +77,104 @@ class Model:
         assert mode in (None, "weak", "strong"), "The mode must be None, weak or strong heredity"
         if mode is not None:
             assert dep is not None, "Must specify a dependency matrix if the mode is weak or strong heredity"
+        if dep is not None:
             assert len(dep.shape) == 2, "Dependencies must be a 2D array"
             assert dep.shape[0] == dep.shape[1], "Dependency matrix must be square"
             assert dep.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
-        # Create default forced
+        # Create default forced (in column indices)
         if forced is None:
             forced = np.array([], dtype=np.int64)
+
+        # No dependencies: an empty matrix (not None), so every column is its own group
+        if dep is None:
+            dep = np.zeros((X.shape[1], X.shape[1]), dtype=np.bool_)
+
+        # Strongly connected components = terms that must travel together
+        n_groups, labels = connected_components(dep, directed=True, connection="strong")
+
+        # Number the groups by their first column
+        first = [np.flatnonzero(labels == g)[0] for g in range(n_groups)]
+        self.labels = np.argsort(np.argsort(first))[labels]
+        self.term_groups = [np.flatnonzero(self.labels == g) for g in range(n_groups)]
+
+        # Collapse dep to group level (within-group edges dropped)
+        dep_g = np.zeros((n_groups, n_groups), dtype=np.bool_)
+        src, dst = np.nonzero(dep)
+        mask = self.labels[src] != self.labels[dst]
+        dep_g[self.labels[src[mask]], self.labels[dst[mask]]] = True
+        self.dep = dep_g
+
+        # Map forced from column indices to group indices
+        self.forced = np.unique(self.labels[forced])
 
         # Store
         self.X = X
         self.y = y
-        self.forced = forced
         self.mode = mode
-        self.dep = dep
+
+    @property
+    def n_term_groups(self):
+        """The number of term groups."""
+        return len(self.term_groups)
+
+    def expand(self, model):
+        """
+        Expand term group indices to column indices of X.
+
+        Parameters
+        ----------
+        model : np.array(1d)
+            The term group indices.
+
+        Returns
+        -------
+        columns : np.array(1d)
+            The column indices of X in these term groups.
+        """
+        if len(model) == 0:
+            return np.array([], dtype=np.int64)
+        return np.concatenate([self.term_groups[g] for g in model])
+
+    def check_size(self, model_size, nb_models=None, allow_duplicate=True):
+        """
+        Validate that models of `model_size` term groups can be sampled and fitted.
+
+        Parameters
+        ----------
+        model_size : int
+            The number of term groups per model.
+        nb_models : None or int
+            The number of models to sample. Only checked when duplicates are not allowed.
+        allow_duplicate : bool
+            Whether duplicate models may be stored.
+        """
+        assert model_size <= self.n_term_groups, (
+            f"model_size={model_size} exceeds the {self.n_term_groups} term groups available"
+        )
+
+        # Worst-case number of coefficients for model_size groups
+        group_sizes = np.sort([len(g) for g in self.term_groups])[::-1]
+        max_coeff_size = int(np.sum(group_sizes[:model_size]))
+        assert max_coeff_size < self.X.shape[0], (
+            f"model_size={model_size} term groups can expand to {max_coeff_size} "
+            f"columns, which exceeds the {self.X.shape[0]} runs available"
+        )
+
+        # Without duplicates, more models than exist would never finish
+        if nb_models is not None and not allow_duplicate:
+            if math.comb(self.n_term_groups, model_size) <= 100_000:
+                # Small enough to enumerate: count the feasible models exactly
+                n_unique = len(self.all(model_size))
+            else:
+                # Upper bound only: heredity can still leave fewer models, and sampling then never finishes
+                n_forced = len(self.forced)
+                n_unique = math.comb(self.n_term_groups - n_forced, model_size - n_forced)
+            if nb_models > n_unique:
+                raise ValueError(
+                    f"Cannot sample {nb_models} unique models: at most {n_unique} models of {model_size} term groups "
+                    f"exist. Use a smaller nb_models or allow duplicates."
+                )
 
     def _sort(self, model):
         """
@@ -249,7 +347,7 @@ class Model:
             The list of all feasible models.
         """
         models = []
-        for model in combinations(range(len(self.dep)), model_size):
+        for model in combinations(range(self.n_term_groups), model_size):
             model = np.array(model)
             if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(
                 np.isin(self.forced, model, assume_unique=True)
