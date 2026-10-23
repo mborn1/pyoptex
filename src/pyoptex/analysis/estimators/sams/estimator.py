@@ -6,12 +6,11 @@ from functools import reduce
 
 import numpy as np
 import plotly.graph_objects as go
-import ruptures as rpt
 from plotly.subplots import make_subplots
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-from ....utils.comp import timeout
+from ....utils.comp import timeout, find_knee
 from ....utils.design import obs_var_from_Zs
 from ....utils.model import identityY2X, model2encnames, sample_model_dep_onebyone
 from ...mixins.fit_mixin import MultiRegressionMixin
@@ -558,21 +557,14 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Skip bad part of the data
         if self.skipn == "auto":
-            # Compute the difference in derivative
-            slope = np.diff(results["metric"])
-            bkps = rpt.KernelCPD(kernel="linear", min_size=0).fit_predict(slope, pen=np.var(slope) * 1000)
-
-            # Extract the skip
-            if len(bkps) == 1:
-                self._skipn = 0
-            else:
-                # Take the last breakpoint
-                self._skipn = bkps[-2] + int(0.01 * (len(results) - bkps[-2]))  # Add a safety margin for steady state
+            self._skipn = find_knee(results["metric"])
+            # Safety margin: skip 1% past the knee
+            self._skipn += int(0.01 * (len(results) - self._skipn))
         elif isinstance(self.skipn, float):
             self._skipn = int(self.skipn * len(results))
         else:
             self._skipn = self.skipn
-        results = results[self._skipn :]
+        results = results[self._skipn:]
 
         # Possibly cluster
         if self.ncluster is None:
@@ -616,18 +608,23 @@ class SamsRegressor(MultiRegressionMixin):
             # Perform model select on each cluster
             m_, f_, e_ = [], [], []
             for i in range(0, ncluster):
-                # Select cluster i
                 cluster_i = self.kmeans_.labels_ == i
-                ncluster_i = np.sum(cluster_i)
+                cluster_results = results[cluster_i]
 
-                # Compute skip
-                skipn = int(0.05 * ncluster_i)
+                # Sort within cluster and find knee
+                cluster_order = np.argsort(cluster_results["metric"])
+                cluster_results = cluster_results[cluster_order]
+
+                # Adaptive skip per cluster
+                skipn = find_knee(cluster_results["metric"])
+                skipn += int(0.01 * (len(cluster_results) - skipn))
                 self.kmeans_.skips[i] = skipn
 
                 # Perform branch and bound
-                results_ = results["model"][cluster_i][skipn:]
+                results_ = cluster_results["model"][skipn:]
                 submodels, freq = self._topn_selection(
-                    results_, self._nterms_bnb, self.n_encoded_features_, self.topn_bnb, self.bnb_timeout
+                    results_, self._nterms_bnb, self.n_encoded_features_,
+                    self.topn_bnb, self.bnb_timeout
                 )
                 m_.extend(submodels)
                 f_.append(freq)
