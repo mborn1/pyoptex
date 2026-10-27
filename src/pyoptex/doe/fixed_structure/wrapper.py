@@ -272,7 +272,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             if level == 0:
                 grp_runs[i][j] = np.array([grps[i][j]], dtype=np.int64)
             else:
-                grp_runs[i][j] = np.flatnonzero(Zs[level - 1] == grps[i][j])
+                grp_runs[i][j] = np.flatnonzero(Zs[level - 1] == grps[i][j]).astype(np.int64)
 
     # Create the parameters
     params = Parameters(
