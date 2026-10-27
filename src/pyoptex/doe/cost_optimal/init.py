@@ -151,21 +151,11 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         # Drop impossible combinations
         Y = Y[~params.fn.constraints(Y)]
 
-        # Check that the allowed runs exist and can estimate the model (with the prior)
+        # Check that the constraints leave runs
         if len(Y) == 0:
             raise ValueError(
                 f"No run satisfies the constraints (checked all {n_combinations} level combinations). "
                 "Check the constraints and the factor levels."
-            )
-        X = np.concatenate((Xprior, params.fn.Y2X(Y)), axis=0)
-        if np.linalg.matrix_rank(X) < X.shape[1]:
-            # Determine which column causes rank deficiency
-            for i in range(1, X.shape[1] + 1):
-                if np.linalg.matrix_rank(X[:, :i]) < i:
-                    break
-            raise ValueError(
-                f"The runs allowed by the constraints cannot estimate all model terms (model column {i} depends on "
-                "earlier columns). Relax the constraints or simplify the model."
             )
 
         # Define a maximum size (for feasibility)
