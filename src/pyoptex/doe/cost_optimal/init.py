@@ -2,9 +2,12 @@
 Module for all init functions of the cost optimal designs
 """
 
+import warnings
+
 import numpy as np
 from tqdm import tqdm
 
+from ...utils.design import encode_design
 from ..utils.init import full_factorial, init_single_unconstrained
 
 
@@ -340,3 +343,116 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
             )
 
     return Y
+
+
+def init_warm_feasible(params, df, group_col=None, n_keep=None, max_tries=5000):
+    """
+    Seed the optimizer from an existing design by keeping a random subset of intact groups.
+
+    Sampling by group (rather than by individual rows) can ensure that hard-to-change factor
+    settings remain together. Runs that violate the constraints are removed from their group
+    first; the remaining runs of a group are always kept or dropped together. The prior is
+    always placed first. Because feasibility and estimability are not guaranteed
+    by a random draw, the function resamples until the retained subset yields a full-rank
+    model matrix and satisfies all cost constraints. If the maximum number of attempts is
+    reached without finding a fully feasible set, it warns and returns the full-rank attempt
+    with the smallest relative cost overrun, letting the caller decide how to proceed.
+
+    Parameters
+    ----------
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+    df : pandas.DataFrame
+        The design DataFrame containing the denormalized factor levels,
+        optionally with a grouping column
+    group_col : str, optional
+        The column name to group rows by (e.g., a batch or day identifier). If None,
+        defaults to the run index.
+    n_keep : int, optional
+        The number of groups to retain in the warm start subset. If None, defaults
+        to half of the unique groups. If it is at least the number of groups, the
+        full design is checked instead.
+    max_tries : int, default=5000
+        The maximum number of random draws to attempt before yielding the best
+        infeasible (but full-rank) subset.
+
+    Returns
+    -------
+    Y : np.array(2d)
+        The warm-started initial design subset.
+
+    Example
+    -------
+    >>> init_fn = lambda params: init_warm_feasible(params, df, group_col="day", n_keep=3)
+    >>> fn = default_fn(..., init=init_fn)
+    """
+    # Normalize and encode the design
+    Ydf = df.copy()
+    for f in params.factors:
+        Ydf[str(f.name)] = f.normalize(Ydf[str(f.name)])
+    factor_names = [str(f.name) for f in params.factors]
+    Ydec = Ydf[factor_names].to_numpy()
+    Yenc = encode_design(Ydec, params.effect_types, coords=params.coords)
+    group = Ydf.index.to_numpy() if group_col is None else Ydf[group_col].to_numpy()
+
+    # Drop impossible combinations
+    valid = ~params.fn.constraints(Yenc)
+    Yenc, group = Yenc[valid], group[valid]
+    ndropped = np.sum(~valid)
+    if ndropped > 0:
+        warnings.warn(
+            f"Dropped {ndropped} of {len(df)} warm-start runs that violate the constraints.", UserWarning, stacklevel=2
+        )
+
+    groups, sizes = np.unique(group, return_counts=True)
+    k = n_keep if n_keep is not None else max(1, len(groups) // 2)
+
+    # Nothing to subsample: check the full design once
+    full = k >= len(groups)
+    tries = min(max_tries, 1) if full else max_tries
+    nparams = params.fn.Y2X(params.prior).shape[1]
+
+    # Fail fast: even the k largest groups cannot reach full rank
+    nmax = len(params.prior) + np.sort(sizes)[::-1][:k].sum()
+    if nmax < nparams:
+        raise ValueError(
+            f"At most {nmax} runs can be kept ({len(params.prior)} prior + {min(k, len(groups))} of {len(groups)} "
+            f"groups), but the model has {nparams} parameters. Use a larger n_keep or group_col with larger groups."
+        )
+
+    best, best_overrun = None, np.inf
+    for _ in tqdm(range(tries)):
+        # Draw groups, prior first
+        pick = groups if full else np.random.choice(groups, size=k, replace=False)
+        Y = np.concatenate((params.prior, Yenc[np.isin(group, pick)]), axis=0)
+
+        # Skip rank-deficient attempts
+        X = params.fn.Y2X(Y)
+        if np.linalg.matrix_rank(X) < X.shape[1]:
+            continue
+
+        # Done if within budget
+        costs = params.fn.cost(Y, params)
+        cost_Y = np.array([np.sum(c) for c, _, _ in costs])
+        max_cost = np.array([m for _, m, _ in costs])
+        if np.all(cost_Y <= max_cost):
+            return Y
+
+        # Keep the smallest relative overrun
+        overrun = np.sum(np.maximum(cost_Y - max_cost, 0) / max_cost)
+        if overrun < best_overrun:
+            best, best_overrun = Y, overrun
+
+    if best is None:
+        raise ValueError(
+            f"No full-rank subset found in {tries} attempts ({min(k, len(groups))} of {len(groups)} groups each); "
+            f"the model has {nparams} parameters. Cannot warm start; try a larger n_keep or max_tries."
+        )
+
+    warnings.warn(
+        f"No full-rank subset within budget found in {tries} attempts ({min(k, len(groups))} of "
+        f"{len(groups)} groups each); returning the full-rank subset with the smallest cost overrun "
+        f"({best_overrun:.3g}, summed relative to the maximum costs).",
+        stacklevel=2,
+    )
+    return best
