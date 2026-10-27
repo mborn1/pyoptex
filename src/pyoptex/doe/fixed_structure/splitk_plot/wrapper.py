@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from ....utils.design import decode_design
+from ....utils.design import decode_design, encode_design
 from ...constraints import mixture_constraints, no_constraints
+from ..init import check_candidate_runs
 from ..utils import Factor, FunctionSet, State
 from .init import initialize_feasible
 from .optimize import optimize
@@ -186,6 +187,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
     Vinv = np.array([obs_var(plot_sizes, ratios=c) for c in cs])
 
     # Determine a prior
+    prior_enc = None
     if prior is not None:
         # Expand prior
         prior, old_plots = prior
@@ -198,6 +200,9 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Convert from pandas to numpy
         prior = prior[col_names].to_numpy()
+
+        # Encoded prior runs for the candidate check below
+        prior_enc = encode_design(prior, effect_types, coords=coords)
 
         # Don't encode the design
         # prior = encode_design(prior, effect_types, coords=coords)
@@ -251,6 +256,10 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
             for i in range(len(effect_levels))
         ]
     grp_runs = None  # Not implemented yet for this optimization
+
+    # Check once that the constraints leave runs which can estimate the model (if there is a function set)
+    if fn is not None:
+        check_candidate_runs(colstart, coords, fn.constraints, fn.Y2X, prior_enc)
 
     # Create the parameters
     params = Parameters(
