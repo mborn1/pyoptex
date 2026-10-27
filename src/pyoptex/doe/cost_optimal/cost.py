@@ -19,17 +19,17 @@ def _fn_decoded(f, Y, params):
     Y = decode_design(Y, params.effect_types, coords=params.coords)
     return f(Y, params)
 
+
 def _fn_as_dataframe(f, Y, params):
-    Y = pd.DataFrame(
-        Y,
-        columns=[str(factor.name) for factor in params.factors]
-    )
+    Y = pd.DataFrame(Y, columns=[str(factor.name) for factor in params.factors])
     return f(Y, params)
+
 
 def _fn_denormalized(f, Y, params):
     for factor in params.factors:
         Y[str(factor.name)] = factor.denormalize(Y[str(factor.name)])
     return f(Y, params)
+
 
 def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, dataframe=None):
     """
@@ -61,7 +61,7 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, datafram
     # Denormalized inputs are always a DataFrame
     if denormalize and dataframe is False:
         dataframe = True
-    
+
     if dataframe is None:
         dataframe = denormalize or decoded
 
@@ -97,11 +97,7 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, datafram
 
     if f.__doc__ is not None:
         params_pos = f.__doc__.find("    Parameters\n    ---------")
-        f.__doc__ = (
-            f.__doc__[:params_pos]
-            + f"\n    .. note::\n        {NOTE}\n\n"
-            + f.__doc__[params_pos:]
-        )
+        f.__doc__ = f.__doc__[:params_pos] + f"\n    .. note::\n        {NOTE}\n\n" + f.__doc__[params_pos:]
 
     return f
 
