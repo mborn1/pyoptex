@@ -25,9 +25,9 @@ def _fn_decoded(f, Y, params):
 def _fn_denormalized(f, Y, params):
     # Decode the design to a dataframe
     Y = decode_design(Y, params.effect_types, coords=params.coords)
-    Y = pd.DataFrame(Y, columns=[str(f.name) for f in params.factors])
-    for f in params.factors:
-        Y[str(f.name)] = f.denormalize(Y[str(f.name)])
+    Y = pd.DataFrame(Y, columns=[str(factor.name) for factor in params.factors])
+    for factor in params.factors:
+        Y[str(factor.name)] = factor.denormalize(Y[str(factor.name)])
     return f(Y, params)
 
 

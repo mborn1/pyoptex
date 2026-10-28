@@ -2,12 +2,15 @@
 Module for the interface to run the generic coordinate-exchange algorithm
 """
 
+from math import prod
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from ...utils.design import decode_design, obs_var_from_Zs
 from ..constraints import mixture_constraints, no_constraints
+from ..utils.init import full_factorial
 from .init import initialize_feasible
 from .optimize import optimize
 from .utils import Factor, FunctionSet, Parameters, RandomEffect, State
@@ -133,7 +136,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             be_ratios = np.empty_like(ratios, shape=(0, ratios.shape[1]))
         else:
             be_ratios = ratios[:, -len(block_effects) :]
-            ratios = ratios[:, : len(block_effects)]
+            ratios = ratios[:, : len(re)]
     else:
         # No blocking ratios
         be_ratios = []
@@ -175,7 +178,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
         # Extract the old prior number of runs
         n_old = len(prior)
 
-        # Normalize and convert to numpy
+        # Normalize and convert to numpy (on a copy, so the caller's prior is not changed)
+        prior = prior.copy()
         for f in factors:
             prior[str(f.name)] = f.normalize(prior[str(f.name)])
         prior = prior[col_names].to_numpy()
@@ -308,6 +312,13 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     """
     assert n_tries > 0, "Must specify at least one random initialization (n_tries > 0)"
     assert max_it > 0, "Must specify at least one iteration of the coordinate-exchange per random initialization"
+
+    # Check before the random starts that the constraints leave runs (else the initialization retries forever)
+    if prod(len(c) for c in params.coords) <= 200_000:
+        excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
+        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
+        if np.all(excluded):
+            raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 
     # Pre initialize metric
     params.fn.metric.preinit(params)

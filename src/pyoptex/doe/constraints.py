@@ -88,6 +88,10 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     Another example, "(`A` == "L1") & (`B` < 0)" specifies that if A is "L1", B cannot
     be smaller than 0.
 
+    The constraints are evaluated in the user's units (the factors' own ranges, not the
+    normalized -1 to 1), and products of factors work, e.g. "`A` * `B` <= 600". Recipe
+    (mixture) components are fractions of the total, between 0 and 1.
+
     Use constraint.func() to retrieve a function which can evaluate a decoded design matrix,
     use constraint.encode() to retrieve a function which can evaluate an encoded design matrix.
 
@@ -148,7 +152,6 @@ def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     script = "Col(".join(extract_cst(x) for x in script.split("Col("))
     if not exclude:
         script = f"~({script})"
-    print(script)
     tree = eval(
         script,
         {
