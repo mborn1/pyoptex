@@ -36,6 +36,12 @@ def validate_state(state, params, eps=1e-6):
             f"(validation) The metric does not match: {state.metric}, {metric}"
         )
 
-    # Validate constraints
-    constraints = params.fn.constraints(state.Y)
+    # Validate constraints, only on the runs the algorithm can change (the prior runs may violate them)
+    changeable = np.ones(len(state.Y), dtype=np.bool_)
+    if params.grp_runs is not None:
+        changeable[:] = False
+        for grp_runs in params.grp_runs:
+            for runs in grp_runs:
+                changeable[runs] = True
+    constraints = params.fn.constraints(state.Y[changeable])
     assert not np.any(constraints), f"(validation) Constraints are violated: {constraints}"

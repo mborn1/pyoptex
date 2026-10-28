@@ -2,6 +2,7 @@
 Module for the interface to run the generic coordinate-exchange algorithm
 """
 
+import warnings
 from math import prod
 
 import numpy as np
@@ -218,7 +219,8 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
                         re_vals[i][grp] = col_vals[0]
 
         # Validate constraints
-        assert not np.any(fn.constraintso(prior)), "Prior contains constraint-violating runs"
+        if np.any(fn.constraintso(prior)):
+            warnings.warn("Prior contains constraint violating runs", UserWarning, stacklevel=2)
         fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
 
         # Build full design: prior runs first, then zeros for new runs
