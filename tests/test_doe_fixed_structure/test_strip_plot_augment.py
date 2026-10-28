@@ -60,7 +60,9 @@ def test_strip_plot_augment():
 
     n_tries = 10
     fn = default_fn(factors, metric, Y2X)
+    prior_before = prior.copy()
     params = create_parameters(factors, fn, nruns, prior=prior)
+    pd.testing.assert_frame_equal(prior, prior_before)  # the caller's prior is not changed
 
     Y, state = create_fixed_structure_design(params, n_tries=n_tries)
 

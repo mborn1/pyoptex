@@ -190,7 +190,8 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     # Create the prior
     if prior is not None:
-        # Normalize factors
+        # Normalize factors (on a copy, so the caller's prior is not changed)
+        prior = prior.copy()
         for f in factors:
             prior[str(f.name)] = f.normalize(prior[str(f.name)])
 
