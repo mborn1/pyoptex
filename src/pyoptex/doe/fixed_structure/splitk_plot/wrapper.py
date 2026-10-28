@@ -2,12 +2,15 @@
 Module for the interface to run the split^k-plot algorithm
 """
 
+from math import prod
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from ....utils.design import decode_design
 from ...constraints import mixture_constraints, no_constraints
+from ...utils.init import full_factorial
 from ..utils import Factor, FunctionSet, State
 from .init import initialize_feasible
 from .optimize import optimize
@@ -307,6 +310,13 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     """
     assert n_tries > 0, "Must specify at least one random initialization (n_tries > 0)"
     assert max_it > 0, "Must specify at least one iteration of the coordinate-exchange per random initialization"
+
+    # Check before the random starts that the constraints leave runs (else the initialization retries forever)
+    if prod(len(c) for c in params.coords) <= 200_000:
+        excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
+        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
+        if np.all(excluded):
+            raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 
     # Pre initialize metric
     params.fn.metric.preinit(params)
