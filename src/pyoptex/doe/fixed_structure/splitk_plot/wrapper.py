@@ -274,6 +274,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         colstart,
         Zs,
         Vinv,
+        0,  # n_prior: split-plot requires a valid prior, so check every run
         plot_sizes,
         np.ascontiguousarray(cs),
         alphas,

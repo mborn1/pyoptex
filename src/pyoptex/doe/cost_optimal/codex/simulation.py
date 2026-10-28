@@ -113,9 +113,18 @@ def simulate(params, nsims=100, validate=False):
 
             # Create a new random run
             accepted_sample = False
+            n_rejected = 0
             while not accepted_sample:
                 new_run = params.fn.sample(state, params).reshape((1, -1))
                 accepted_sample = not params.fn.constraints(new_run)[0]
+
+                # Detect a design from which no allowed run can be sampled (else this loop never ends)
+                n_rejected += not accepted_sample
+                if n_rejected == 10_000 and np.all(params.fn.constraints(state.Y)):
+                    raise ValueError(
+                        "Every run in the design violates the constraints, and changing one factor of a run "
+                        "gives no allowed run. Keep at least one allowed run in the prior."
+                    )
 
             # Insert in ideal position
             new_state = params.fn.insert(new_run, state, params)
