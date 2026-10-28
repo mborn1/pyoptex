@@ -26,7 +26,7 @@ def validate_state(state, params, eps=1e-6):
     """
 
     # Make sure all runs are possible
-    constraints = params.fn.constraints(state.Y)
+    constraints = params.fn.constraints(state.Y[len(params.prior):])
     assert not np.any(constraints), f"(validation) Constraints of Y are violated: {constraints}"
 
     # Make sure the prior is at the start

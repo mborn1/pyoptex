@@ -36,6 +36,6 @@ def validate_state(state, params, eps=1e-6):
             f"(validation) The metric does not match: {state.metric}, {metric}"
         )
 
-    # Validate constraints
-    constraints = params.fn.constraints(state.Y)
+    # Validate constraints, only on the runs after the prior (the prior runs may violate them)
+    constraints = params.fn.constraints(state.Y[params.n_prior :])
     assert not np.any(constraints), f"(validation) Constraints are violated: {constraints}"

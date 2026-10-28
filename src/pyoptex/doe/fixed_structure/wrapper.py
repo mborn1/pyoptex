@@ -2,6 +2,7 @@
 Module for the interface to run the generic coordinate-exchange algorithm
 """
 
+import warnings
 from math import prod
 
 import numpy as np
@@ -218,8 +219,21 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
                         re_vals[i][grp] = col_vals[0]
 
         # Validate constraints
-        assert not np.any(fn.constraintso(prior)), "Prior contains constraint-violating runs"
+        violating = fn.constraintso(prior)
+        if np.any(violating):
+            warnings.warn("Prior contains constraint violating runs", UserWarning, stacklevel=2)
         fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
+
+        # New runs in the group of a hard-to-change factor inherit its setting from the prior runs of that group
+        for i in np.flatnonzero(effect_levels > 0):
+            Z = Zs[effect_levels[i] - 1]
+            shared = violating & np.isin(Z[:n_old], Z[n_old:])
+            if np.any(shared):
+                raise ValueError(
+                    f"Prior run {np.flatnonzero(shared)[0]} violates the constraints and shares its group of the "
+                    f"hard-to-change factor {factors[i].name} with new runs, which would inherit its setting. "
+                    "Remove that run from the prior or give the new runs their own groups."
+                )
 
         # Build full design: prior runs first, then zeros for new runs
         prior = np.concatenate((prior, np.zeros((nruns - len(prior), len(factors)), dtype=np.float64)), axis=0)
@@ -279,7 +293,20 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
     # Create the parameters
     params = Parameters(
-        fn, factors, nruns, effect_types, effect_levels, grps, grp_runs, ratios, coords, prior, colstart, Zs, Vinv
+        fn,
+        factors,
+        nruns,
+        effect_types,
+        effect_levels,
+        grps,
+        grp_runs,
+        ratios,
+        coords,
+        prior,
+        colstart,
+        Zs,
+        Vinv,
+        n_old,
     )
 
     return params
