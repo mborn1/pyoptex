@@ -171,7 +171,7 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
 
     # Extract the factor parameters
     col_names = [str(f.name) for f in factors]
-    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors], dtype=np.int64)
     grouped_cols = np.array([bool(f.grouped) for f in factors])
     ratios = [f.ratio if isinstance(f.ratio, (tuple, list, np.ndarray)) else [f.ratio] for f in factors]
     coords = [f.coords_ for f in factors]
@@ -186,7 +186,9 @@ def create_parameters(factors, fn, prior=None, use_formulas=True):
     )
 
     # Define the starting columns
-    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
+    colstart = np.concatenate(
+        ([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))), dtype=np.int64
+    )
 
     # Create the prior
     if prior is not None:
