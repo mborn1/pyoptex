@@ -9,6 +9,8 @@ from ...._profile import profile
 from ....utils.design import obs_var_from_Zs
 from ..utils import State, obs_var_Zs
 from ..validation import validate_state
+from .sample import sample_random
+
 
 def copy_state(s):
     """
@@ -118,13 +120,19 @@ def simulate(params, nsims=100, validate=False):
                 new_run = params.fn.sample(state, params).reshape((1, -1))
                 accepted_sample = not params.fn.constraints(new_run)[0]
 
-                # Detect a design from which no allowed run can be sampled (else this loop never ends)
+                # Detect a design from which no allowed run can be sampled (else this loop never ends):
+                # sample_random sets one factor of a run to one of its levels, so try all of those runs once
                 n_rejected += not accepted_sample
-                if n_rejected == 10_000 and np.all(params.fn.constraints(state.Y)):
-                    raise ValueError(
-                        "Every run in the design violates the constraints, and changing one factor of a run "
-                        "gives no allowed run. Keep at least one allowed run in the prior."
-                    )
+                if n_rejected == 10_000 and params.fn.sample is sample_random:
+                    runs = []
+                    for j, coords in enumerate(params.coords):
+                        runs.append(np.repeat(state.Y, len(coords), axis=0))
+                        runs[-1][:, params.colstart[j] : params.colstart[j + 1]] = np.tile(coords, (len(state.Y), 1))
+                    if np.all(params.fn.constraints(np.concatenate(runs))):
+                        raise ValueError(
+                            "No allowed run can be sampled: changing one factor of any run in the design gives a run "
+                            "that violates the constraints. Check the prior runs and the constraints."
+                        )
 
             # Insert in ideal position
             new_state = params.fn.insert(new_run, state, params)
