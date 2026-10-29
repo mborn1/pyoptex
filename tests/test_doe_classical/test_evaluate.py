@@ -16,6 +16,7 @@ from pyoptex.doe.classical import (
     plackett_burman,
 )
 from pyoptex.doe.classical.evaluate import (
+    _d_efficiency,
     _is_estimable,
     _prepare_X,
     a_efficiency,
@@ -471,3 +472,22 @@ def test_is_estimable_box_behnken_16_factors():
     np.testing.assert_array_equal(np.sum(design[0].to_numpy() ** 2, axis=1), 4.0)
     assert not _is_estimable(_prepare_X(*design))
     assert d_efficiency(*design) == 0.0
+
+
+class _GramForbidden(np.ndarray):
+    """Model matrix that fails the test when X'X (or any other matrix product with it) is formed."""
+
+    def __matmul__(self, other):
+        raise AssertionError("X'X must not be formed")
+
+
+def test_fewer_runs_than_parameters_is_not_estimable():
+    """With fewer runs than parameters the model is never estimable, so X'X is not even formed."""
+    factors = [Factor("A"), Factor("B")]
+    Y = full_factorial(factors)
+    Y2X = model2Y2X(partial_rsm_names({"A": "quad", "B": "quad"}), factors)
+    X = _prepare_X(Y, factors, Y2X).view(_GramForbidden)
+    assert X.shape == (4, 6)
+    assert not _is_estimable(X)
+    assert _d_efficiency(X) == 0.0
+    assert d_efficiency(Y, factors, Y2X) == 0.0

@@ -79,6 +79,8 @@ def _is_estimable(X):
     on some CI runners for large model matrices.
     """
     n, p = X.shape
+    if n < p:
+        return False
     XtX = X.T @ X
     tol = max(n, p) * np.finfo(np.float64).eps * np.max(np.diag(XtX), initial=0.0)
     return dpstrf(XtX, tol=tol)[2] == p
