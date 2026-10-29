@@ -15,7 +15,7 @@ repos:
     hooks:
       - id: sync-citation
         name: citation version check
-        entry: make check-citation
-        language: system
+        entry: python scripts/sync_citation_version.py --check
+        language: python
         files: (^src/pyoptex/__init__\.py$|^CITATION\.cff$)
         pass_filenames: false

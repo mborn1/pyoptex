@@ -107,8 +107,8 @@ The generated design can be visualized as a heatmap and its model correlations
 can be inspected:
 
 <p align="center">
-  <img src="docs/source/assets/img/heatmap.svg" alt="Design heatmap" width="48%">
-  <img src="docs/source/assets/img/corrmap.svg" alt="Correlation map" width="48%">
+  <img src="https://raw.githubusercontent.com/mborn1/pyoptex/main/docs/source/assets/img/heatmap.svg" alt="Design heatmap" width="48%">
+  <img src="https://raw.githubusercontent.com/mborn1/pyoptex/main/docs/source/assets/img/corrmap.svg" alt="Correlation map" width="48%">
 </p>
 
 ### Cost-optimal design with CODEX
@@ -156,7 +156,7 @@ Designs can be evaluated with diagnostics such as the fraction of design space
 (FDS) plot, which shows the prediction variance across the design space:
 
 <p align="center">
-  <img src="docs/source/assets/img/fraction_design_space.svg" alt="Fraction of design space plot" width="60%">
+  <img src="https://raw.githubusercontent.com/mborn1/pyoptex/main/docs/source/assets/img/fraction_design_space.svg" alt="Fraction of design space plot" width="60%">
 </p>
 
 ### Analyze your first dataset
@@ -171,7 +171,7 @@ row is a candidate model, each column a term, and the color indicates the
 coefficient magnitude.
 
 <p align="center">
-  <img src="docs/source/assets/img/raster_plot.png" alt="SAMS raster plot" width="60%">
+  <img src="https://raw.githubusercontent.com/mborn1/pyoptex/main/docs/source/assets/img/raster_plot.png" alt="SAMS raster plot" width="60%">
 </p>
 
 See the full [documentation](https://pyoptex.readthedocs.io/en/latest/) for
@@ -185,9 +185,9 @@ accompanying paper:
 
 > Born, M., & Goos, P. (2025). Optimal split^k-plot designs.
 > *Computational Statistics & Data Analysis*.
-> [doi:10.1016/j.csda.2024.108074](https://doi.org/10.1016/j.csda.2024.108074)
+> [doi:10.1016/j.csda.2024.108028](https://doi.org/10.1016/j.csda.2024.108028)
 
-A machine-readable citation file is available: [`CITATION.cff`](CITATION.cff).
+A machine-readable citation file is available: [`CITATION.cff`](https://github.com/mborn1/pyoptex/blob/main/CITATION.cff).
 
 ## License
 
@@ -198,7 +198,7 @@ appreciated by the community.
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development setup and guidelines.
+See [`CONTRIBUTING.md`](https://github.com/mborn1/pyoptex/blob/main/CONTRIBUTING.md) for development setup and guidelines.
 
 Ideas, bugs and feature requests can be added as an
 [issue](https://github.com/mborn1/pyoptex/issues).

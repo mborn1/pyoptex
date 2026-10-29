@@ -31,7 +31,20 @@ providing the information we need.
    ```
 
    This compiles the Cython extensions and installs all development tools
-   (ruff, mypy, pytest, Sphinx, etc.).
+   (ruff, mypy, pytest, pre-commit, Sphinx, etc.).
+
+4. **Install the pre-commit hooks**
+
+   ```bash
+   venv/bin/pre-commit install
+   venv/bin/pre-commit run --all-files  # check all files once
+   ```
+
+   The hooks then run on every `git commit`: ruff (lint, with `--fix`),
+   ruff-format, mypy, and the citation version check (the version in
+   `CITATION.cff` against `src/pyoptex/__init__.py`, and `date-released`
+   against the date of the release tag once it exists). The tests are
+   **not** part of the hooks: run `make test` before pushing.
 
 ## Verification checklist
 
@@ -46,7 +59,8 @@ as Makefile targets (the Makefile uses `venv/bin/` so activation is optional):
 | `make test`       | pytest with reproducible env vars  |
 | `make all`        | lint + typecheck + test            |
 
-Pre-commit hooks run the same checks automatically on `git commit`.
+The pre-commit hooks run the lint, format and type checks automatically on
+`git commit`, but not the tests: run `make test` before pushing.
 
 ## Code style
 
@@ -93,7 +107,10 @@ understand Cython. Key rules:
 
 - The version number lives only in `src/pyoptex/__init__.py`.
 - `CITATION.cff` is kept in sync automatically. After a version bump, run
-  `make sync-citation` and commit the result.
+  `make sync-citation` and commit the result. `date-released` is the date
+  of the tag `v<version>` if it exists, otherwise today's date (the release
+  is being prepared); `venv/bin/python scripts/sync_citation_version.py
+  --date YYYY-MM-DD` sets it explicitly.
 
 ## Pull requests
 
