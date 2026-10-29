@@ -5,7 +5,7 @@ alwaysApply: true
 
 # PyOptEx
 
-Python library for optimal design of experiments (DoE). Python 3.10–3.12. Hot paths are in Cython (`.pyx`).
+Python library for optimal design of experiments (DoE). Python 3.10–3.14. Hot paths are in Cython (`.pyx`).
 
 - **Fixed structure** (`src/pyoptex/doe/fixed_structure/`): split-plot, strip-plot, splitk-plot, staggered-level designs
 - **Cost-optimal CODEX** (`src/pyoptex/doe/cost_optimal/`): resource/cost-constrained designs
@@ -18,8 +18,15 @@ src/pyoptex/     package (doe/, analysis/, utils/, _seed)
 tests/           pytest
 examples/        standalone scripts (not in package)
 docs/            Sphinx
+scripts/         dev scripts (citation sync)
 venv/            virtualenv (Makefile uses venv/bin/)
 ```
+
+## Key files
+
+- `CITATION.cff` — version and date auto-synced from `src/pyoptex/__init__.py` via `scripts/sync_citation_version.py`. A pre-commit hook enforces this.
+- `CONTRIBUTING.md` — contributor guide (setup, style, PR workflow).
+- `.github/` — issue/PR templates, Dependabot, CI workflows.
 
 ## Dev setup
 

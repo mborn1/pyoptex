@@ -1,0 +1,129 @@
+# Contributing to PyOptEx
+
+Thanks for your interest in contributing! Whether it's a bug fix, new feature,
+documentation improvement, or just a question, your help is welcome.
+
+## Reporting issues
+
+Use the [GitHub issue tracker](https://github.com/mborn1/pyoptex/issues) to
+report bugs or request features. The issue templates will guide you through
+providing the information we need.
+
+## Development setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/mborn1/pyoptex.git
+   cd pyoptex
+   ```
+
+2. **Create a virtual environment**
+
+   ```bash
+   python -m venv venv
+   ```
+
+3. **Install in editable mode with dev dependencies**
+
+   ```bash
+   venv/bin/pip install -e ".[dev]"
+   ```
+
+   This compiles the Cython extensions and installs all development tools
+   (ruff, mypy, pytest, pre-commit, Sphinx, etc.).
+
+4. **Install the pre-commit hooks**
+
+   ```bash
+   venv/bin/pre-commit install
+   venv/bin/pre-commit run --all-files  # check all files once
+   ```
+
+   The hooks then run on `git commit`: ruff (lint, with `--fix`),
+   ruff-format and mypy on every commit that changes Python files; the
+   citation version check (the version in `CITATION.cff` against
+   `src/pyoptex/__init__.py`, and `date-released` against the date of the
+   release tag once it exists) only when `src/pyoptex/__init__.py` or
+   `CITATION.cff` is part of the commit. The tests are **not** part of the
+   hooks: run `make test` before pushing.
+
+## Verification checklist
+
+Run these checks before submitting a pull request. All of them are available
+as Makefile targets (the Makefile uses `venv/bin/` so activation is optional):
+
+| Command           | What it does                       |
+|-------------------|------------------------------------|
+| `make lint`       | Ruff linter on `src/` and `tests/` |
+| `make format`     | Ruff formatter (black-compatible)  |
+| `make typecheck`  | mypy type checker                  |
+| `make test`       | pytest with reproducible env vars  |
+| `make all`        | lint + typecheck + test            |
+
+The pre-commit hooks run the lint, format and type checks automatically on
+`git commit`, but not the tests: run `make test` before pushing.
+
+## Code style
+
+- **Line length**: 120 characters (enforced by ruff).
+- **Import order**: stdlib, third-party, first-party (`pyoptex`), separated by
+  blank lines. Use `ruff check --fix` to auto-sort.
+- **Type hints**: Add type hints to new public functions and methods.
+- **Docstrings**: Google-style, consistent with existing code.
+- **Numpy conventions**: Prefer vectorized operations over Python loops.
+
+## Cython (.pyx files)
+
+The performance-critical paths are in Cython. Only modify `.pyx` files if you
+understand Cython. Key rules:
+
+- Prefer typed memoryviews over `np.ndarray` for buffer access.
+- Use `cdef` for C-only functions, `cpdef` for dual-callable functions.
+- Annotate local variables for performance (`cdef int i`, `cdef double val`).
+- Rebuild after editing: `venv/bin/pip install -e ".[dev]"` or
+  `venv/bin/python setup.py build_ext --inplace`.
+
+## Tests
+
+- Add tests in `tests/` for new public API.
+- Tests use seeded RNG (`set_seed(42)` via the `conftest.py` autouse fixture)
+  and compare against reference JSON files in `tests/references/`.
+- Always run tests via `make test`, which sets environment variables for
+  reproducible numerics (single-threaded BLAS, CPU feature caps).
+- To regenerate reference files after intentional changes:
+  `make capture-references`.
+
+## Examples
+
+- Add standalone example scripts in `examples/` for new features.
+- Examples should be runnable with `venv/bin/python examples/run_all.py`.
+
+## Documentation
+
+- Documentation lives in `docs/` and is built with Sphinx.
+- Build locally: `make docs` (output in `docs/_build/html/`).
+- Update or add `.rst` files in `docs/source/` for new features.
+
+## Version and citation
+
+- The version number lives only in `src/pyoptex/__init__.py`.
+- `CITATION.cff` is kept in sync automatically. After a version bump, run
+  `make sync-citation` and commit the result. Once the tag `v<version>`
+  exists, its date is authoritative for `date-released`. Before the tag
+  exists (the release is being prepared), `date-released` is today's date,
+  or the date given with `venv/bin/python scripts/sync_citation_version.py
+  --date YYYY-MM-DD`; a `--date` that contradicts an existing tag is an
+  error. Without git the tag cannot be looked up, so `--date` is then
+  required (and `--check` checks only the version).
+
+## Pull requests
+
+- One logical change per PR.
+- Follow the [PR template](.github/pull_request_template.md) checklist.
+- If your change is user-facing, note it for the GitHub release notes.
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the
+[BSD 3-Clause License](LICENSE).
