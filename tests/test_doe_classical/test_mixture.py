@@ -174,5 +174,5 @@ def test_unchanged_without_bounds_and_augment():
 def test_mixture_factor_raises_in_non_mixture_design(design):
     """Factorial-type and response surface designs ignore that the components sum to 1."""
     factors = [Factor("A", type="mixture"), Factor("B"), Factor("C")]
-    with pytest.raises(AssertionError, match="Mixture factor A cannot be used.*simplex_lattice, simplex_centroid"):
+    with pytest.raises(AssertionError, match=r"Mixture factor A cannot be used.*simplex_lattice, simplex_centroid"):
         design(factors)
