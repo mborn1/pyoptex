@@ -40,11 +40,13 @@ providing the information we need.
    venv/bin/pre-commit run --all-files  # check all files once
    ```
 
-   The hooks then run on every `git commit`: ruff (lint, with `--fix`),
-   ruff-format, mypy, and the citation version check (the version in
-   `CITATION.cff` against `src/pyoptex/__init__.py`, and `date-released`
-   against the date of the release tag once it exists). The tests are
-   **not** part of the hooks: run `make test` before pushing.
+   The hooks then run on `git commit`: ruff (lint, with `--fix`),
+   ruff-format and mypy on every commit that changes Python files; the
+   citation version check (the version in `CITATION.cff` against
+   `src/pyoptex/__init__.py`, and `date-released` against the date of the
+   release tag once it exists) only when `src/pyoptex/__init__.py` or
+   `CITATION.cff` is part of the commit. The tests are **not** part of the
+   hooks: run `make test` before pushing.
 
 ## Verification checklist
 
@@ -107,10 +109,13 @@ understand Cython. Key rules:
 
 - The version number lives only in `src/pyoptex/__init__.py`.
 - `CITATION.cff` is kept in sync automatically. After a version bump, run
-  `make sync-citation` and commit the result. `date-released` is the date
-  of the tag `v<version>` if it exists, otherwise today's date (the release
-  is being prepared); `venv/bin/python scripts/sync_citation_version.py
-  --date YYYY-MM-DD` sets it explicitly.
+  `make sync-citation` and commit the result. Once the tag `v<version>`
+  exists, its date is authoritative for `date-released`. Before the tag
+  exists (the release is being prepared), `date-released` is today's date,
+  or the date given with `venv/bin/python scripts/sync_citation_version.py
+  --date YYYY-MM-DD`; a `--date` that contradicts an existing tag is an
+  error. Without git the tag cannot be looked up, so `--date` is then
+  required (and `--check` checks only the version).
 
 ## Pull requests
 

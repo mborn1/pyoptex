@@ -1,7 +1,12 @@
 """Sync the version and release date in CITATION.cff with src/pyoptex/__init__.py.
 
-date-released is the release date: the date of the git tag v<version> if it exists, otherwise today's date
-(the release is being prepared). --date YYYY-MM-DD overrides both. --check only reports mismatches.
+date-released is the release date. Once the tag v<version> exists, its date is authoritative (the tag date of
+an annotated tag, the commit date of a lightweight tag), and a --date that contradicts it is an error.
+Before the tag exists (the release is being prepared), date-released is --date YYYY-MM-DD if given,
+otherwise today's date.
+
+Without git the tag cannot be looked up: update mode then requires --date, and --check checks only the
+version. --check only reports mismatches, with the same date as update mode would write.
 """
 
 import argparse
@@ -10,6 +15,7 @@ import subprocess
 import sys
 from datetime import date
 from pathlib import Path
+from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parent.parent
 INIT = ROOT / "src" / "pyoptex" / "__init__.py"
@@ -30,21 +36,31 @@ def read_field(text: str, key: str) -> str | None:
     return match.group(1) if match else None
 
 
+class GitUnavailableError(Exception):
+    """git is not installed, or cannot read the repository, so the tags cannot be looked up."""
+
+
+def error(message: str) -> NoReturn:
+    print(f"ERROR: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
 def tag_date(version: str) -> str | None:
-    """Date (YYYY-MM-DD) of the commit tagged v<version>, or None if there is no such tag."""
+    """Date (YYYY-MM-DD) of the tag v<version>, or None if there is no such tag."""
     try:
         result = subprocess.run(
-            ["git", "log", "-1", "--format=%ad", "--date=short", f"refs/tags/v{version}", "--"],
+            ["git", "for-each-ref", "--format=%(creatordate:short)", f"refs/tags/v{version}"],
             cwd=ROOT,
             capture_output=True,
             text=True,
             check=False,
         )
-    except OSError:  # git is not installed
-        return None
+    except OSError as e:
+        raise GitUnavailableError("git not found") from e
     if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
+        raise GitUnavailableError(f"git failed: {result.stderr.strip()}")
+    lines = result.stdout.split()
+    return lines[0] if lines else None
 
 
 def update_citation(text: str, version: str, release_date: str) -> None:
@@ -59,13 +75,21 @@ def main() -> None:
     parser.add_argument(
         "--date",
         type=date.fromisoformat,
-        help="release date YYYY-MM-DD, instead of the date of the tag v<version> or today",
+        help="release date YYYY-MM-DD, for a release without a tag v<version> yet (default: today)",
     )
     args = parser.parse_args()
 
     version = read_version()
-    release_date = args.date.isoformat() if args.date is not None else tag_date(version)
-    source = "--date" if args.date is not None else f"tag v{version}"
+    given_date = args.date.isoformat() if args.date is not None else None
+    git_problem = None
+    try:
+        tagged_date = tag_date(version)
+    except GitUnavailableError as e:
+        tagged_date, git_problem = None, str(e)
+    if tagged_date is not None and given_date is not None and given_date != tagged_date:
+        error(f"tag v{version} exists with date {tagged_date}; --date {given_date} contradicts it")
+    release_date = tagged_date or given_date
+    source = f"tag v{version}" if tagged_date is not None else "--date"
 
     text = CFF.read_text(encoding="utf-8")
     cff_version = read_field(text, "version")
@@ -80,13 +104,17 @@ def main() -> None:
         if errors:
             print("\n".join(errors))
             sys.exit(1)
-        if release_date is None:
-            print(f"CITATION.cff version is in sync ({version}); no tag v{version} yet, date-released not checked")
-        else:
+        if release_date is not None:
             print(f"CITATION.cff is in sync (version {version}, date-released {release_date})")
+        elif git_problem is not None:
+            print(f"CITATION.cff version is in sync ({version}); {git_problem}, so date-released not checked")
+        else:
+            print(f"CITATION.cff version is in sync ({version}); no tag v{version} yet, date-released not checked")
         return
 
     if release_date is None:
+        if git_problem is not None:
+            error(f"{git_problem}; pass --date YYYY-MM-DD")
         release_date = date.today().isoformat()
         print(f"Note: no tag v{version} yet, so date-released is today ({release_date}); pass --date to set it")
 
