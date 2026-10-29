@@ -17,6 +17,7 @@ directly:
 
 import numpy as np
 import pandas as pd
+from scipy.linalg.lapack import dpstrf
 
 from ...utils.design import encode_design
 from ..utils.init import init_single_unconstrained
@@ -67,6 +68,22 @@ def _in_region(Ynp, factors):
     return np.all(np.abs(Ynp[:, cont]) <= 1 + 1e-9, axis=1)
 
 
+def _is_estimable(X):
+    """
+    Whether the model is estimable: the model matrix X has full column rank, so X'X is invertible.
+
+    The numerical rank comes from the pivoted Cholesky decomposition of X'X (LAPACK ``dpstrf``),
+    which stops at the first pivot below the tolerance. The tolerance is the one of
+    ``np.linalg.matrix_rank`` (``max(n, p) * eps`` times the largest singular value), applied to X'X
+    with its largest diagonal element as the scale. This avoids an SVD, which crashed in OpenBLAS
+    on some CI runners for large model matrices.
+    """
+    n, p = X.shape
+    XtX = X.T @ X
+    tol = max(n, p) * np.finfo(np.float64).eps * np.max(np.diag(XtX), initial=0.0)
+    return dpstrf(XtX, tol=tol)[2] == p
+
+
 def _prediction_variance(X, Xs):
     """Prediction variance ``f(x)' (X'X)^{-1} f(x)`` for every row of Xs."""
     return np.sum(Xs * np.linalg.solve(X.T @ X, Xs.T).T, axis=1)
@@ -75,15 +92,14 @@ def _prediction_variance(X, Xs):
 def _g_efficiency(X, Xs):
     """G-efficiency (%) from the model matrix X and region samples Xs, see :py:func:`g_efficiency`."""
     n, p = X.shape
-    if np.linalg.matrix_rank(X) < p:
+    if not _is_estimable(X):
         return 0.0
     return p / (n * np.max(_prediction_variance(X, Xs))) * 100.0
 
 
 def _average_prediction_variance(X, Xs):
     """Average prediction variance from X and region samples Xs, see :py:func:`average_prediction_variance`."""
-    p = X.shape[1]
-    if np.linalg.matrix_rank(X) < p:
+    if not _is_estimable(X):
         return np.inf
     moments = Xs.T @ Xs / Xs.shape[0]
     return float(np.trace(np.linalg.solve(X.T @ X, moments)))
@@ -92,17 +108,17 @@ def _average_prediction_variance(X, Xs):
 def _d_efficiency(X):
     """D-efficiency (%) from the model matrix X, see :py:func:`d_efficiency`."""
     n, p = X.shape
-    # Log-determinant avoids overflow / underflow of det(X'X), which grows like n^p.
-    sign, logdet = np.linalg.slogdet(X.T @ X)
-    if sign <= 0:
+    if not _is_estimable(X):
         return 0.0
+    # Log-determinant avoids overflow / underflow of det(X'X), which grows like n^p.
+    _, logdet = np.linalg.slogdet(X.T @ X)
     return float(np.exp(logdet / p)) / n * 100.0
 
 
 def _a_efficiency(X):
     """A-efficiency (%) from the model matrix X, see :py:func:`a_efficiency`."""
     n, p = X.shape
-    if np.linalg.matrix_rank(X) < p:
+    if not _is_estimable(X):
         return 0.0
 
     trace_val = np.trace(np.linalg.inv(X.T @ X))
@@ -112,7 +128,7 @@ def _a_efficiency(X):
 def _estimation_variance(X):
     """Parameter estimation variances from the model matrix X, see :py:func:`estimation_variance`."""
     p = X.shape[1]
-    if np.linalg.matrix_rank(X) < p:
+    if not _is_estimable(X):
         return np.full(p, np.inf)
 
     return np.diag(np.linalg.inv(X.T @ X))
@@ -141,7 +157,8 @@ def d_efficiency(Y, factors, Y2X):
     Returns
     -------
     d_eff : float
-        D-efficiency as a percentage (0-100+).
+        D-efficiency as a percentage (0-100+). Zero if the model is not
+        estimable.
     """
     return _d_efficiency(_prepare_X(Y, factors, Y2X))
 
@@ -385,7 +402,7 @@ def alias_matrix(Y, factors, Y2X_primary, Y2X_potential):
     """
     X1 = _prepare_X(Y, factors, Y2X_primary)
     X2 = _prepare_X(Y, factors, Y2X_potential)
-    if np.linalg.matrix_rank(X1) < X1.shape[1]:
+    if not _is_estimable(X1):
         return np.full((X1.shape[1], X2.shape[1]), np.nan)
 
     return np.linalg.solve(X1.T @ X1, X1.T @ X2)

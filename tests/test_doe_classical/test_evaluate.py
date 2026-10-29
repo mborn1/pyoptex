@@ -2,12 +2,22 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
+import pytest
 from scipy import stats
 
 from pyoptex._seed import set_seed
 from pyoptex.doe import fixed_structure
-from pyoptex.doe.classical import Factor, central_composite, fractional_factorial, full_factorial, plackett_burman
+from pyoptex.doe.classical import (
+    Factor,
+    box_behnken,
+    central_composite,
+    fractional_factorial,
+    full_factorial,
+    plackett_burman,
+)
 from pyoptex.doe.classical.evaluate import (
+    _is_estimable,
+    _prepare_X,
     a_efficiency,
     alias_matrix,
     average_prediction_variance,
@@ -50,6 +60,17 @@ def _make_three_level_design():
     return Y, factors, Y2X
 
 
+def _main_effects(factors):
+    return model2Y2X(partial_rsm_names({str(f.name): "lin" for f in factors}), factors)
+
+
+def _box_behnken_quadratic(k, n_center):
+    """Box-Behnken design for k factors with the full quadratic model."""
+    factors = [Factor(f"X{i}") for i in range(k)]
+    Y2X = model2Y2X(partial_rsm_names({str(f.name): "quad" for f in factors}), factors)
+    return box_behnken(factors, n_center=n_center), factors, Y2X
+
+
 class TestDEfficiency:
     def test_orthogonal_design(self):
         """A 2^3 with main-effects model is exactly 100% D-efficient."""
@@ -88,6 +109,12 @@ class TestDEfficiency:
         model = pd.DataFrame(list(product([0, 1], repeat=8)), columns=names)
         Y2X = model2Y2X(model, factors)
         np.testing.assert_allclose(d_efficiency(Y, factors, Y2X), 100.0, rtol=1e-10)
+
+    @pytest.mark.parametrize("k", [3, 7])
+    def test_box_behnken_without_center_points_is_zero(self, k):
+        """Without center points the squares of a Box-Behnken design sum to a multiple of the intercept,
+        so the full quadratic model is not estimable (det(X'X) = 0, not a rounding-error positive value)."""
+        assert d_efficiency(*_box_behnken_quadratic(k, n_center=0)) == 0.0
 
 
 class TestAEfficiency:
@@ -357,3 +384,90 @@ class TestDesignInfo:
         assert info["g_efficiency"] == 0.0
         assert info["average_prediction_variance"] == np.inf
         np.testing.assert_array_equal(info["estimation_variance"], np.full(2, np.inf))
+
+
+def _orthogonal_two_level():
+    factors = [Factor(n, levels=[-1, 1]) for n in "ABC"]
+    return full_factorial(factors), factors, _main_effects(factors)
+
+
+def _plackett_burman_48():
+    factors = [Factor(f"X{i}") for i in range(47)]
+    return plackett_burman(factors), factors, _main_effects(factors)
+
+
+def _saturated_all_interactions():
+    names = [f"X{i}" for i in range(8)]
+    factors = [Factor(n) for n in names]
+    Y2X = model2Y2X(pd.DataFrame(list(product([0, 1], repeat=8)), columns=names), factors)
+    return full_factorial(factors), factors, Y2X
+
+
+def _face_centered_ccd():
+    factors = [Factor(n) for n in "ABC"]
+    Y2X = model2Y2X(partial_rsm_names({n: "quad" for n in "ABC"}), factors)
+    return central_composite(factors, alpha="face-centered"), factors, Y2X
+
+
+def _correlated_columns():
+    factors = [Factor("A"), Factor("B")]
+    Y = pd.DataFrame({"A": [-1, -1, 1, 1, 1, -1], "B": [-1, -1, 1, 1, -1, 1]}, dtype=float)
+    return Y, factors, _main_effects(factors)
+
+
+def _identical_columns():
+    factors = [Factor("A"), Factor("B")]
+    Y = pd.DataFrame({"A": [-1, 1, -1, 1], "B": [-1, 1, -1, 1]}, dtype=float)
+    return Y, factors, _main_effects(factors)
+
+
+def _saturated_two_factor_interaction():
+    factors = [Factor("A"), Factor("B")]
+    return full_factorial(factors), factors, model2Y2X(partial_rsm_names({"A": "tfi", "B": "tfi"}), factors)
+
+
+def _resolution_iii():
+    factors = [Factor(n, levels=[-1, 1]) for n in "ABC"]
+    return fractional_factorial(factors, generators={"C": ["A", "B"]}), factors, _main_effects(factors)
+
+
+_ESTIMABILITY_DESIGNS = {
+    "2^3 main effects": _make_simple_design,
+    "rank deficient": _make_rank_deficient_design,
+    "3^2 main effects": _make_three_level_design,
+    "orthogonal two-level": _orthogonal_two_level,
+    "PB48 main effects": _plackett_burman_48,
+    "2^8 all interactions": _saturated_all_interactions,
+    "face-centered CCD quadratic": _face_centered_ccd,
+    "correlated columns": _correlated_columns,
+    "identical columns": _identical_columns,
+    "2^2 saturated": _saturated_two_factor_interaction,
+    "2^(3-1) main effects": _resolution_iii,
+    # The 16-factor BBD is left out: see test_is_estimable_box_behnken_16_factors
+    **{f"BBD {k}": lambda k=k: _box_behnken_quadratic(k, n_center=3) for k in [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
+    **{f"BBD {k} without center points": lambda k=k: _box_behnken_quadratic(k, n_center=0) for k in [3, 7]},
+}
+
+
+@pytest.mark.parametrize("design", _ESTIMABILITY_DESIGNS.values(), ids=_ESTIMABILITY_DESIGNS.keys())
+def test_is_estimable_matches_matrix_rank(design):
+    """The pivoted Cholesky check gives the same answer as the SVD rank, for estimable and singular models."""
+    X = _prepare_X(*design())
+    assert _is_estimable(X) == (np.linalg.matrix_rank(X) == X.shape[1])
+
+
+def test_is_estimable_box_behnken_16_factors():
+    """The 16-factor BBD with the full quadratic model, with the expected outcome stated explicitly: the SVD of
+    np.linalg.matrix_rank crashed in OpenBLAS on certain CI runners for this model matrix (153 columns), so it is
+    not used as the reference here."""
+    # With center points (387 x 153): estimable
+    design = _box_behnken_quadratic(16, n_center=3)
+    assert _is_estimable(_prepare_X(*design))
+    assert np.all(np.isfinite(estimation_variance(*design)))
+
+    # Without center points (384 x 153): every run has 4 factors at +/-1, so the squared columns sum to
+    # 4 x the intercept and the quadratic model is singular
+    design = _box_behnken_quadratic(16, n_center=0)
+    np.testing.assert_array_equal(np.sum(design[0].to_numpy() ** 2, axis=1), 4.0)
+    assert not _is_estimable(_prepare_X(*design))
+    assert d_efficiency(*design) == 0.0
