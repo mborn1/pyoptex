@@ -12,7 +12,7 @@ pp. 319-329, doi:10.1080/00401706.2016.1234979.
 import numpy as np
 
 from ._paley import _paley_conference, _prime_power
-from .utils import _to_dataframe, _validate_factors
+from .utils import _assert_no_mixture, _to_dataframe, _validate_factors
 
 
 def _conference(n):
@@ -85,6 +85,7 @@ def definitive_screening(factors, n_fake=0, n_center=1):
     assert n_fake >= 0, f"n_fake must be non-negative (got {n_fake})"
     assert n_center >= 0, f"n_center must be non-negative (got {n_center})"
 
+    _assert_no_mixture(factors, "definitive screening design")
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a definitive screening design"
 

@@ -6,7 +6,7 @@ import numpy as np
 
 from ...utils.factor import Factor
 from .fractional_factorial import fractional_factorial
-from .utils import BLOCK_COLUMN, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_factors
 
 # Number of center points for uniform precision of a rotatable CCD, keyed by
 # (number of factors, number of cube runs). Box, G. E. P. and Hunter, J. S. (1957),
@@ -146,6 +146,7 @@ def central_composite(factors, alpha=None, n_center=None, cube="full", n_blocks=
     assert k >= 2, f"Central Composite Design requires at least 2 factors (got {k})"
     assert n_blocks >= 1, f"n_blocks must be at least 1 (got {n_blocks})"
 
+    _assert_no_mixture(factors, "CCD")
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a CCD"
 

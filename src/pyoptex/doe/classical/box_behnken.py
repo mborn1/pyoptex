@@ -9,7 +9,7 @@ from itertools import combinations, product
 
 import numpy as np
 
-from .utils import BLOCK_COLUMN, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_factors
 
 # Blocks of the tabulated designs, in the row order of the paper: each tuple
 # lists the factors (1-based) that run a full two-level factorial at +/-1 while
@@ -122,6 +122,7 @@ def box_behnken(factors, n_center=None, n_blocks=1):
     k = len(factors)
     assert k >= 3, f"Box-Behnken designs require at least 3 factors (got {k})"
 
+    _assert_no_mixture(factors, "Box-Behnken design")
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a Box-Behnken design"
 

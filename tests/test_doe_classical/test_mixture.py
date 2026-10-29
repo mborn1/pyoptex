@@ -5,7 +5,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pyoptex.doe.classical import Factor, simplex_centroid, simplex_lattice
+from pyoptex.doe.classical import (
+    Factor,
+    box_behnken,
+    central_composite,
+    definitive_screening,
+    doehlert,
+    fractional_factorial,
+    full_factorial,
+    simplex_centroid,
+    simplex_lattice,
+)
 
 
 def _mixture_factors(q):
@@ -140,3 +150,29 @@ def test_unchanged_without_bounds_and_augment():
     X = _full_blend(simplex_centroid(_mixture_factors(3)))
     assert X.shape == (7, 3)
     np.testing.assert_array_equal(X[:3], np.eye(3))
+
+
+@pytest.mark.parametrize(
+    "design",
+    [
+        full_factorial,
+        lambda f: fractional_factorial(f, generators={"C": ["A", "B"]}),
+        box_behnken,
+        central_composite,
+        definitive_screening,
+        doehlert,
+    ],
+    ids=[
+        "full_factorial",
+        "fractional_factorial",
+        "box_behnken",
+        "central_composite",
+        "definitive_screening",
+        "doehlert",
+    ],
+)
+def test_mixture_factor_raises_in_non_mixture_design(design):
+    """Factorial-type and response surface designs ignore that the components sum to 1."""
+    factors = [Factor("A", type="mixture"), Factor("B"), Factor("C")]
+    with pytest.raises(AssertionError, match="Mixture factor A cannot be used.*simplex_lattice, simplex_centroid"):
+        design(factors)

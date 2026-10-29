@@ -187,6 +187,15 @@ def _assert_no_categorical_center(factors, n_center, design_name):
             )
 
 
+def _assert_no_mixture(factors, design_name):
+    """Mixture components must sum to 1, which factorial-type and response surface designs ignore."""
+    for f in factors:
+        assert not f.is_mixture, (
+            f"Mixture factor {f.name} cannot be used in a {design_name}: mixture components must sum to 1; "
+            f"use simplex_lattice, simplex_centroid or an optimal mixture design"
+        )
+
+
 def _validate_space_filling_factors(factors, design_name):
     """Space-filling designs require continuous, non-mixture factors."""
     _validate_factors(factors)

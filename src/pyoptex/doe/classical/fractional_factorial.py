@@ -9,6 +9,7 @@ import numpy as np
 from ._min_aberration import _MA_GENERATORS
 from .utils import (
     _assert_no_categorical_center,
+    _assert_no_mixture,
     _block_scheme,
     _blocked_dataframe,
     _center_points,
@@ -207,6 +208,7 @@ def fractional_factorial(factors, generators, n_levels=2, n_center=0, n_blocks=1
         The fractional factorial design (denormalized).
     """
     _validate_factors(factors)
+    _assert_no_mixture(factors, "fractional factorial design")
     name2idx = {str(f.name): i for i, f in enumerate(factors)}
     k = len(factors)
 

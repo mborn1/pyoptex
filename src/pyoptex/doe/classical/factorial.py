@@ -6,7 +6,15 @@ from itertools import product
 
 import numpy as np
 
-from .utils import _block_scheme, _blocked_dataframe, _center_points, _levels, _to_dataframe, _validate_factors
+from .utils import (
+    _assert_no_mixture,
+    _block_scheme,
+    _blocked_dataframe,
+    _center_points,
+    _levels,
+    _to_dataframe,
+    _validate_factors,
+)
 
 
 def full_factorial(factors, n_levels=2, n_center=0, n_blocks=1):
@@ -46,6 +54,7 @@ def full_factorial(factors, n_levels=2, n_center=0, n_blocks=1):
         The full factorial design (denormalized).
     """
     _validate_factors(factors)
+    _assert_no_mixture(factors, "full factorial design")
     assert n_levels >= 2, f"n_levels must be at least 2 (got {n_levels})"
     assert n_blocks >= 1, f"n_blocks must be at least 1 (got {n_blocks})"
 

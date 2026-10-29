@@ -9,7 +9,7 @@ for analytical chemistry - review", Talanta 63(4), pp. 1061-1067.
 
 import numpy as np
 
-from .utils import _to_dataframe, _validate_factors
+from .utils import _assert_no_mixture, _to_dataframe, _validate_factors
 
 
 def _regular_simplex(k):
@@ -59,8 +59,9 @@ def doehlert(factors, n_center=1):
     assert k >= 2, f"Doehlert designs require at least 2 factors (got {k})"
     assert n_center >= 0, f"n_center must be non-negative (got {n_center})"
 
+    _assert_no_mixture(factors, "Doehlert design")
     for f in factors:
-        assert f.is_continuous and not f.is_mixture, f"Factor {f.name} must be continuous for a Doehlert design"
+        assert f.is_continuous, f"Factor {f.name} must be continuous for a Doehlert design"
 
     V = _regular_simplex(k)
     shell = np.array([V[i] - V[j] for i in range(k + 1) for j in range(k + 1) if i != j], dtype=np.float64)
