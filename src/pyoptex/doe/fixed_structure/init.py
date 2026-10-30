@@ -6,7 +6,7 @@ import numpy as np
 
 from ..._profile import profile
 from ...utils.design import encode_design
-from ..utils.init import init_single_unconstrained
+from ..utils.init import init_design_region, init_single_unconstrained
 from ._init_cy import __correct_constraints, __init_unconstrained
 
 
@@ -123,7 +123,12 @@ def init_random(params, n=1, complete=False):
 
     # Loop until all are valid
     while np.any(invalid):
-        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
+        if complete:
+            run[invalid] = init_design_region(
+                params.colstart, coords, run[invalid], params.effect_types, params.factors
+            )
+        else:
+            run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
         invalid[invalid] = params.fn.constraints(run[invalid])
 
     return run
