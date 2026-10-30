@@ -5,7 +5,7 @@ Module for all init functions of the cost optimal designs
 import numpy as np
 from tqdm import tqdm
 
-from ..utils.init import full_factorial, init_single_unconstrained
+from ..utils.init import full_factorial, init_design_region, init_single_unconstrained
 
 
 def greedy_cost_minimization(Y, params):
@@ -95,7 +95,12 @@ def init(params, n=1, complete=False):
 
     # Loop until all are valid
     while np.any(invalid):
-        run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
+        if complete:
+            run[invalid] = init_design_region(
+                params.colstart, coords, run[invalid], params.effect_types, params.factors
+            )
+        else:
+            run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
         invalid[invalid] = params.fn.constraints(run[invalid])
 
     return run
