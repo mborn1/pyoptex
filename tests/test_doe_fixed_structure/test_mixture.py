@@ -43,6 +43,7 @@ def test_mixture_region_sampling():
     set_seed(42)
     for factors in (
         [Factor("A", type="mixture", levels=[0.5, 0.8]), Factor("B", type="mixture", levels=[0, 0.1]), Factor("T")],
+        [Factor(f"X{i}", type="mixture", levels=[0, 0.01 if i < 3 else 1]) for i in range(6)],
         [Factor(f"X{i}", type="mixture", levels=[0, 1]) for i in range(3)],
     ):
         Y2X = model2Y2X(partial_rsm_names({str(f.name): "lin" for f in factors}), factors)
