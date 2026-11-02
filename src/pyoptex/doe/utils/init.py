@@ -83,7 +83,9 @@ def init_design_region(colstart, coords, run, effect_types, factors):
         return run
     order = np.argsort(upper - lower)
     widths = (upper - lower)[order]
-    j = int(np.argmin([np.prod(widths[:j]) * rest ** (k - j) / factorial(k - j) for j in range(k + 1)]))
+    fixed = int(np.sum(widths == 0))  # Components with a single level always go in the box part
+    volumes = [np.prod(widths[fixed:j]) * rest ** (k - j) / factorial(k - j) for j in range(fixed, k + 1)]
+    j = fixed + int(np.argmin(volumes))
     box, simplex, m = np.sort(order[:j]), np.sort(order[j:]), k - j
 
     # Rejection sampling
