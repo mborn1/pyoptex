@@ -76,6 +76,7 @@ def test_time_trend_columns():
     period is its own level, so the inner column stays within [-1, 1]."""
     np.testing.assert_array_equal(_time_columns(cov_time_trend(60), 4)[:, 0], np.full(4, -1.0))
     np.testing.assert_allclose(_time_columns(cov_double_time_trend(5, 2), 10)[:, 1], [-1, 0, 0, 1, -1, -1, 0, 0, 1, -1])
+    np.testing.assert_allclose(_time_columns(cov_double_time_trend(5, 2), 10)[:, 0], [-1, -1, -1, -1, 0, 0, 0, 0, 0, 1])
 
     cov_double_time_trend(3, 2)  # Two inner periods per outer period, the second one partial
     with pytest.raises(ValueError, match="must be positive"):
