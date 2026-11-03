@@ -375,10 +375,10 @@ class Aliasing(Metric):
         # Compute aliasing matrix
         Xeff = X[:, self.effects]
         Xa = X[:, self.alias]
-        M = Xeff.T @ Vinv @ Xeff
-        if np.linalg.matrix_rank(M[0]) < M.shape[1]:
+        try:
+            A = np.linalg.solve(Xeff.T @ Vinv @ Xeff, Xeff.T @ Vinv) @ Xa
+        except np.linalg.LinAlgError:
             return -np.inf
-        A = np.linalg.solve(M, Xeff.T @ Vinv) @ Xa
 
         # Multiply by weights
         if self.W is not None:

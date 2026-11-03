@@ -51,17 +51,7 @@ def cov_time_trend(ntime, nruns):
     -------
     cov : func(Y, X)
         The covariance function.
-
-    Raises
-    ------
-    ValueError
-        If `ntime` is smaller than 2: a single time point gives a constant
-        column, aliased with the intercept.
     """
-    if ntime < 2:
-        raise ValueError(
-            f"A time trend needs at least 2 time points (got ntime={ntime}): a single one is aliased with the intercept"
-        )
     assert nruns % ntime == 0, "Number of runs should be divisable by the number of time changes"
 
     # Create the time array
@@ -100,18 +90,7 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
     -------
     cov : func(Y, X)
         The covariance function.
-
-    Raises
-    ------
-    ValueError
-        If `ntime_outer` or `ntime_inner` is smaller than 2: a single time
-        point gives a constant column, aliased with the intercept.
     """
-    if ntime_outer < 2 or ntime_inner < 2:
-        raise ValueError(
-            f"A double time trend needs at least 2 outer and 2 inner time points (got ntime_outer={ntime_outer}, "
-            f"ntime_inner={ntime_inner}): a single one is aliased with the intercept"
-        )
     assert nruns % ntime_outer == 0, "Number of runs should be divisable by the number of time changes"
     assert (nruns // ntime_outer) % ntime_inner == 0, (
         "Number of runs within one outer timestep should be divisable by the number of inner time changes"

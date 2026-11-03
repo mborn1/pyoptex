@@ -109,7 +109,7 @@ def cov_time_trend(time=1, cost_index=0):
     While the design stays within one period (as CODEX's small start design
     may), the time column is zero, so the trend cannot be estimated and the
     criterion gives the design its worst score; the optimization then adds
-    runs until it spans more than one period.
+    runs until it spans more than one period, if the budget allows.
 
     Parameters
     ----------
@@ -123,7 +123,14 @@ def cov_time_trend(time=1, cost_index=0):
     -------
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
+
+    Raises
+    ------
+    ValueError
+        If `time` is not positive.
     """
+    if time <= 0:
+        raise ValueError(f"time must be positive, but is {time}")
 
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
@@ -163,7 +170,8 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     While the design stays within one outer period (as CODEX's small start
     design may), the outer time column is zero, so the trend cannot be
     estimated and the criterion gives the design its worst score; the
-    optimization then adds runs until it spans more than one outer period.
+    optimization then adds runs until it spans more than one outer period,
+    if the budget allows.
 
     Parameters
     ----------
