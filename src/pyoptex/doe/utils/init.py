@@ -8,6 +8,9 @@ import numpy as np
 
 from ._init_cy import init_single_unconstrained_cython_impl
 
+# Candidate runs rejected in a row before the constraints are considered to leave no (or almost no) design region
+MAX_REJECTED_RUNS = 10_000_000
+
 
 def init_single_unconstrained(colstart, coords, run, effect_types):
     """
@@ -35,14 +38,20 @@ def init_single_unconstrained(colstart, coords, run, effect_types):
     return init_single_unconstrained_cython_impl(colstart, coords, np.ascontiguousarray(run), effect_types)
 
 
-def init_design_region(colstart, coords, run, effect_types, factors):
+def init_design_region(
+    colstart: np.ndarray, coords: list, run: np.ndarray, effect_types: np.ndarray, factors: list
+) -> np.ndarray:
     """
     Samples runs from the complete design region: as
     :py:func:`init_single_unconstrained`, but with the mixture components
     drawn uniformly from the mixture region (each between its lowest and
-    highest level, the implied last component at least 0). The mixtures are
-    proposed from the box of the bounds or from the simplex above the lowest
-    levels, whichever is smaller, and rejected if outside the region.
+    highest level, the implied last component at least 0). The narrowest
+    components are proposed uniformly within their bounds and the others
+    uniformly from the simplex of what those leave, with the split that gives
+    the smallest proposal (all in the box, or all in the simplex, are the two
+    extremes). Proposals outside the region are rejected, and in a mixed split
+    a proposal is kept with probability (left / rest)^m, with m the number of
+    simplex components: without that step the samples are not uniform.
 
     Parameters
     ----------
@@ -68,12 +77,12 @@ def init_design_region(colstart, coords, run, effect_types, factors):
         return run
 
     # The region: lower <= x <= upper and sum(x) <= 1 (the implied component at least 0)
-    lower = np.array([np.min(factors[i].levels) for i in mixture], dtype=np.float64)
-    rest = 1 - np.sum(lower)
+    lower = np.array([np.min(factors[i].coords_) for i in mixture], dtype=np.float64)
+    rest = 1 - float(np.sum(lower))
     if rest < -1e-6:  # The tolerance eps of the mixture constraint
         raise ValueError(f"The lowest levels of the mixture components sum to {1 - rest:.10g} > 1")
     rest = max(rest, 0)
-    upper = np.minimum([np.max(factors[i].levels) for i in mixture], lower + rest)
+    upper = np.minimum([np.max(factors[i].coords_) for i in mixture], lower + rest)
 
     # Proposal: the j narrowest components uniformly within their bounds, the others uniformly from the simplex
     # of what those leave, with j such that the proposal is smallest (j = k is the box, j = 0 the simplex)
@@ -94,7 +103,7 @@ def init_design_region(colstart, coords, run, effect_types, factors):
         candidates = np.empty((n, k))
         candidates[:, box] = lower[box] + (upper - lower)[box] * np.random.rand(n, j)
         left = np.maximum(1 - np.sum(candidates[:, box], axis=1) - np.sum(lower[simplex]), 0)
-        if m > 0:  # No Dirichlet draws for the pure box, so it draws exactly as before
+        if m > 0:  # No Dirichlet draws for the pure box, which would use up random numbers
             candidates[:, simplex] = lower[simplex] + left[:, None] * np.random.dirichlet(np.ones(m + 1), n)[:, :m]
         keep = (np.sum(candidates, axis=1) <= 1 + 1e-6) & np.all(candidates <= upper, axis=1)
         if 0 < j < k:

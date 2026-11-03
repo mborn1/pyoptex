@@ -39,12 +39,17 @@ def test_mixture():
 
 def test_mixture_region_sampling():
     """The I-optimal moments sample the mixture region: each component within the range of its levels, the shares
-    summing to 1; without bounds, uniformly on the simplex (4 components, so every share is 1/4 on average)."""
+    summing to 1, and uniformly. Without bounds, every share of 4 components is 1/4 on average. With two components
+    of 0 to 5% next to six of 0 to 100% (narrow ones from their box, the others from the simplex), a narrow share has
+    the uniform mean 0.02369 = integral of x (1 - x - y)^6 / integral of (1 - x - y)^6 over [0, 0.05]^2."""
     set_seed(42)
-    for factors in (
-        [Factor("A", type="mixture", levels=[0.5, 0.8]), Factor("B", type="mixture", levels=[0, 0.1]), Factor("T")],
-        [Factor(f"X{i}", type="mixture", levels=[0, 0.01 if i < 3 else 1]) for i in range(6)],
-        [Factor(f"X{i}", type="mixture", levels=[0, 1]) for i in range(3)],
+    for factors, mean in (
+        (
+            [Factor("A", type="mixture", levels=[0.5, 0.8]), Factor("B", type="mixture", levels=[0, 0.1]), Factor("T")],
+            None,
+        ),
+        ([Factor(f"X{i}", type="mixture", levels=[0, 0.05 if i < 2 else 1]) for i in range(8)], 0.02369),
+        ([Factor(f"X{i}", type="mixture", levels=[0, 1]) for i in range(3)], 0.25),
     ):
         Y2X = model2Y2X(partial_rsm_names({str(f.name): "lin" for f in factors}), factors)
         params = create_parameters(factors, default_fn(factors, Dopt(), Y2X), 20)
@@ -54,4 +59,5 @@ def test_mixture_region_sampling():
         lower = [min(f.levels) for f in factors if f.is_mixture]
         upper = [max(f.levels) for f in factors if f.is_mixture]
         assert np.all((mixture >= lower) & (mixture <= upper)) and np.all(shares[:, -1] >= -1e-6)
-    np.testing.assert_allclose(shares.mean(axis=0), 0.25, atol=0.01)
+        if mean is not None:
+            np.testing.assert_allclose(shares[:, 0].mean(), mean, rtol=0.02)

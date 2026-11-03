@@ -2,10 +2,12 @@
 Module for all init functions of the cost optimal designs
 """
 
+from functools import partial
+
 import numpy as np
 from tqdm import tqdm
 
-from ..utils.init import full_factorial, init_design_region, init_single_unconstrained
+from ..utils.init import MAX_REJECTED_RUNS, full_factorial, init_design_region, init_single_unconstrained
 
 
 def greedy_cost_minimization(Y, params):
@@ -94,14 +96,18 @@ def init(params, n=1, complete=False):
         coords = params.coords
 
     # Loop until all are valid
+    sample = partial(init_design_region, factors=params.factors) if complete else init_single_unconstrained
+    rejected = 0  # Candidate runs rejected in a row
     while np.any(invalid):
-        if complete:
-            run[invalid] = init_design_region(
-                params.colstart, coords, run[invalid], params.effect_types, params.factors
-            )
-        else:
-            run[invalid] = init_single_unconstrained(params.colstart, coords, run[invalid], params.effect_types)
+        n_invalid = np.sum(invalid)
+        run[invalid] = sample(params.colstart, coords, run[invalid], params.effect_types)
         invalid[invalid] = params.fn.constraints(run[invalid])
+        rejected = rejected + n_invalid if np.sum(invalid) == n_invalid else 0
+        if rejected >= MAX_REJECTED_RUNS:
+            raise ValueError(
+                f"No run satisfies the constraints in {MAX_REJECTED_RUNS:,} random runs of the design region: "
+                "check the constraints and the factor levels"
+            )
 
     return run
 
