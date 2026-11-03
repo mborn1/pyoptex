@@ -106,8 +106,10 @@ def cov_time_trend(time=1, cost_index=0):
     cumulative time [0, 1, 2, 3, 4, 5], the added time column
     will be [-1, -1, 0, 0, 1, 1].
 
-    If the design spans a single period, the trend cannot be estimated
-    and the design is scored as infeasible.
+    While the design stays within one period (as CODEX's small start design
+    may), the time column is zero, so the trend cannot be estimated and the
+    criterion gives the design its worst score; the optimization then adds
+    runs until it spans more than one period.
 
     Parameters
     ----------
@@ -158,8 +160,10 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     will be [-1, -1, 0, 0, 1, 1], and inner time column
     [-1, 1, -1, 1, -1, 1].
 
-    If the design spans a single period, the trend cannot be estimated
-    and the design is scored as infeasible.
+    While the design stays within one outer period (as CODEX's small start
+    design may), the outer time column is zero, so the trend cannot be
+    estimated and the criterion gives the design its worst score; the
+    optimization then adds runs until it spans more than one outer period.
 
     Parameters
     ----------
@@ -177,11 +181,22 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     -------
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
+
+    Raises
+    ------
+    ValueError
+        If `time_outer` or `time_inner` is not positive, or if an outer
+        period holds fewer than two inner periods.
     """
-    if time_outer // time_inner < 2:
+    if time_outer <= 0 or time_inner <= 0:
+        raise ValueError(f"time_outer and time_inner must be positive, but are {time_outer} and {time_inner}")
+
+    # Number of inner levels per outer period, a partial last one included
+    n_inner = int(np.ceil(time_outer / time_inner - 1e-9))
+    if n_inner < 2:
         raise ValueError(
-            f"The inner time trend needs at least two inner periods per outer period, but time_outer={time_outer} "
-            f"holds {time_outer // time_inner:g} periods of time_inner={time_inner}"
+            f"The inner trend needs at least two inner periods per outer period, but time_outer={time_outer} "
+            f"holds {n_inner} of time_inner={time_inner}"
         )
 
     # Define the covariance function
@@ -194,13 +209,13 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
             # Define outer time array
             cum_cost = np.cumsum(costs[cost_index][0])
             t_outer = np.floor_divide(cum_cost, time_outer)
-            if cum_cost[-1] > time_outer:
+            if t_outer[-1] > 0:
                 t_outer = t_outer / t_outer[-1] * 2 - 1
 
             # Define inner time array
             t_inner = np.mod(cum_cost, time_outer)
             t_inner = np.floor_divide(t_inner, time_inner)
-            t_inner = t_inner / (np.floor_divide(time_outer, time_inner) - 1) * 2 - 1
+            t_inner = t_inner / (n_inner - 1) * 2 - 1
 
         # Concatenate time array
         Y = np.concatenate((Y, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
