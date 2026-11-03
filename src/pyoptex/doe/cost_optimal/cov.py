@@ -106,6 +106,9 @@ def cov_time_trend(time=1, cost_index=0):
     cumulative time [0, 1, 2, 3, 4, 5], the added time column
     will be [-1, -1, 0, 0, 1, 1].
 
+    If the design spans a single period, the trend cannot be estimated
+    and the design is scored as infeasible.
+
     Parameters
     ----------
     time : float
@@ -128,7 +131,8 @@ def cov_time_trend(time=1, cost_index=0):
         else:
             cum_cost = np.cumsum(costs[cost_index][0])
             t = np.floor_divide(cum_cost, time)
-            t = t / t[-1] * 2 - 1
+            if t[-1] > 0:
+                t = t / t[-1] * 2 - 1
 
         # Concatenate time array
         Y = np.concatenate((Y, t[:, np.newaxis]), axis=1)
@@ -154,6 +158,9 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     will be [-1, -1, 0, 0, 1, 1], and inner time column
     [-1, 1, -1, 1, -1, 1].
 
+    If the design spans a single period, the trend cannot be estimated
+    and the design is scored as infeasible.
+
     Parameters
     ----------
     time_outer : float
@@ -171,6 +178,11 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
     """
+    if time_outer // time_inner < 2:
+        raise ValueError(
+            f"The inner time trend needs at least two inner periods per outer period, but time_outer={time_outer} "
+            f"holds {time_outer // time_inner:g} periods of time_inner={time_inner}"
+        )
 
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
