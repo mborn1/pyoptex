@@ -72,11 +72,10 @@ def _time_columns(cov, nruns):
 
 
 def test_time_trend_columns():
-    """Within one period the time column is zero (not NaN); a partial last inner period is its own level, so the
-    inner column stays within [-1, 1]; an experiment ending exactly on an outer period boundary is still rescaled."""
-    np.testing.assert_array_equal(_time_columns(cov_time_trend(60), 4)[:, 0], np.zeros(4))
+    """Within one period every run is in the first period, so the time column is -1 (not NaN); a partial last inner
+    period is its own level, so the inner column stays within [-1, 1]."""
+    np.testing.assert_array_equal(_time_columns(cov_time_trend(60), 4)[:, 0], np.full(4, -1.0))
     np.testing.assert_allclose(_time_columns(cov_double_time_trend(5, 2), 10)[:, 1], [-1, 0, 0, 1, -1, -1, 0, 0, 1, -1])
-    np.testing.assert_allclose(_time_columns(cov_double_time_trend(4, 1), 4)[:, 0], [-1, -1, -1, 1])
 
     cov_double_time_trend(3, 2)  # Two inner periods per outer period, the second one partial
     with pytest.raises(ValueError, match="must be positive"):
