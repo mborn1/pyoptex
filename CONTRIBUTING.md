@@ -108,16 +108,18 @@ understand Cython. Key rules:
 ## Version and citation
 
 - The version number lives only in `src/pyoptex/__init__.py`.
-- `CITATION.cff` is kept in sync automatically. After a version bump, run
+- `CITATION.cff` is synced with `make sync-citation`; the pre-commit hook
+  only checks that it is in sync. After a version bump, run
   `make sync-citation` and commit the result. Once the tag `v<version>`
   exists, its date is authoritative for `date-released`. Before the tag
   exists (the release is being prepared), pass the release date with
-  `make sync-citation DATE=YYYY-MM-DD`; without a tag and without a date
-  the script stops with an error. If the
-  version is already released but its tag is missing locally, run
-  `git fetch --tags` first. A `--date` that contradicts an existing tag is
-  an error. Without git the tag cannot be looked up, so `--date` is then
-  required (and `--check` checks only the version).
+  `make sync-citation RELEASE_DATE=YYYY-MM-DD`, which the script receives
+  as `--date`; without a tag and without `RELEASE_DATE` the script stops
+  with an error. If the version is already released but its tag is missing
+  locally, run `git fetch --tags` first. A `RELEASE_DATE` that contradicts
+  an existing tag is an error. Without git the tag cannot be looked up, so
+  `RELEASE_DATE` is then required (and `make check-citation` checks only
+  the version).
 
 ## Pull requests
 

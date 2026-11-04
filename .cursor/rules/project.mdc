@@ -24,7 +24,7 @@ venv/            virtualenv (Makefile uses venv/bin/)
 
 ## Key files
 
-- `CITATION.cff` — version and date auto-synced from `src/pyoptex/__init__.py` via `scripts/sync_citation_version.py`. A pre-commit hook enforces this.
+- `CITATION.cff` — version and date synced from `src/pyoptex/__init__.py` with `make sync-citation` (before tagging with `RELEASE_DATE=YYYY-MM-DD`), which runs `scripts/sync_citation_version.py`; the pre-commit hook only checks that it is in sync.
 - `CONTRIBUTING.md` — contributor guide (setup, style, PR workflow).
 - `.github/` — issue/PR templates, Dependabot, CI workflows.
 

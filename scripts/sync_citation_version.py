@@ -117,10 +117,10 @@ def main() -> None:
 
     if release_date is None:
         if git_problem is not None:
-            error(f"{git_problem}; pass --date YYYY-MM-DD")
+            error(f"{git_problem}; pass --date YYYY-MM-DD (with make: make sync-citation RELEASE_DATE=YYYY-MM-DD)")
         error(
             f"No tag v{version} found locally. If this version is already released, run `git fetch --tags`; "
-            "if it is not tagged yet, pass --date YYYY-MM-DD."
+            "if it is not tagged yet, pass --date YYYY-MM-DD (with make: make sync-citation RELEASE_DATE=YYYY-MM-DD)."
         )
 
     if cff_version == version and cff_date == release_date:
