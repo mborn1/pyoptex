@@ -98,6 +98,10 @@ class MixedLMModel(OlsModel):
             The dependency matrix of size (N, N) with N the number
             of terms in the encoded model (output from Y2X). Term i depends on term j
             if dep(i, j) = true.
+        labels : None or np.array(1d)
+            The term group of each column of X, see
+            :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`.
+            If None, every column is its own group.
         V : np.array(2d)
             The observation variance-covariance matrix.
         """

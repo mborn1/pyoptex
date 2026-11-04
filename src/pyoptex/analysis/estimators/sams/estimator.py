@@ -2,6 +2,7 @@
 Module for the SAMS regressor.
 """
 
+import warnings
 from functools import reduce
 
 import numpy as np
@@ -13,7 +14,7 @@ from tqdm import tqdm
 
 from ....utils.comp import timeout
 from ....utils.design import obs_var_from_Zs
-from ....utils.model import identityY2X, model2encnames, sample_model_dep_onebyone
+from ....utils.model import _term_groups, identityY2X, model2encnames, sample_model_dep_onebyone
 from ...mixins.fit_mixin import MultiRegressionMixin
 from .accept import ExponentialAccept
 from .bnb.sams_bnb import SamsBnB
@@ -39,6 +40,15 @@ class SamsRegressor(MultiRegressionMixin):
     .. note::
         A more detailed guide on SAMS can be found at :ref:`a_cust_sams`.
 
+    .. note::
+        SAMS samples models as term groups: the columns of one model term,
+        such as the dummy columns of a categorical main effect or interaction,
+        are added and removed together, and `model_size` counts term groups.
+        The groups are derived from a `Y2X` created with
+        :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`. For any other
+        `Y2X`, every column is its own group, and a categorical factor raises a
+        warning that its dummy columns are sampled separately.
+
     Attributes
     ----------
     dependencies : np.array(2d)
@@ -53,9 +63,13 @@ class SamsRegressor(MultiRegressionMixin):
         the normalized, encoded model matrix. This model must itself fulfill the
         heredity constraints.
     model_size : int
-        The size of the overfitted models. Defaults to the number of runs
-        divided by three. The overfitted model includes the forced model,
-        and its size must thus be larger than the forced model.
+        The number of term groups in the overfitted models. Defaults to the
+        number of term groups that gives about N / 3 columns (N the number of
+        runs) at the average size of the non-forced groups: at least one more
+        than the forced term groups, and at most as many as fit in fewer than
+        N columns when the largest groups are taken. The overfitted model
+        includes the forced term groups, and its size must thus be larger than
+        their number.
     nb_models : int or 'all'
         The number of unique models to accept during the sams procedure.
         If 'all' then all possible models are fitted.
@@ -185,9 +199,13 @@ class SamsRegressor(MultiRegressionMixin):
             the normalized, encoded model matrix. This model must itself fulfill the
             heredity constraints.
         model_size : int
-            The size of the overfitted models. Defaults to the number of runs
-            divided by three. The overfitted model includes the forced model,
-            and its size must thus be larger than the forced model.
+            The number of term groups in the overfitted models. Defaults to the
+            number of term groups that gives about N / 3 columns (N the number of
+            runs) at the average size of the non-forced groups: at least one more
+            than the forced term groups, and at most as many as fit in fewer than
+            N columns when the largest groups are taken. The overfitted model
+            includes the forced term groups, and its size must thus be larger than
+            their number.
         nb_models : int or 'all'
             Th number of unique models to accept during the sams procedure.
             If 'all', then all possible models will be fitted.
@@ -276,9 +294,8 @@ class SamsRegressor(MultiRegressionMixin):
             The output variable.
         """
         super()._regr_params(X, y)
-        self._model_size = self.model_size if self.model_size is not None else int(len(X) / 3)
 
-        # Set some default values (the BnB sizes are set in _fit, once the term groups are known)
+        # Set some default values (the model size and BnB sizes are set in _fit, once the term groups are known)
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
 
     def _validate_fit(self, X, y):
@@ -303,14 +320,9 @@ class SamsRegressor(MultiRegressionMixin):
 
         # TODO: validate forced_model hereditary
 
-        # Validate SAMS inputs
-        if self.model_size is not None:
-            if self.forced_model is None:
-                assert self.model_size > 0, "The overfitted model size must be a positive number"
-            else:
-                assert self.model_size > len(self.forced_model), (
-                    "The overfitted model size must be at least one larger than the forced model"
-                )
+        # Validate SAMS inputs (the forced model is compared in term groups, in _fit)
+        if self.model_size is not None and self.forced_model is None:
+            assert self.model_size > 0, "The overfitted model size must be a positive number"
         assert self.nb_models == "all" or self.nb_models > 0, (
             'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
         )
@@ -498,10 +510,16 @@ class SamsRegressor(MultiRegressionMixin):
             )
 
         else:
-            # Compute the number of term groups for each (a categorical factor counts as one)
+            # Count the factors of each order as the entropy formula sees them: a categorical factor counts once
+            # when its main-effect columns (right after the intercept in the partial response surface model)
+            # form one term group, and once per dummy column otherwise
             model_counts = {e: 0 for e in ("quad", "tfi", "lin")}
-            for mt in self.entropy_model_order.values():
-                model_counts[mt] += 1
+            start = 1
+            for f, et in zip(self._factors, self.effect_types_, strict=True):
+                ncols = 1 if et == 1 else et - 1
+                one_group = len(np.unique(self.sams_model_.labels[start : start + ncols])) == 1
+                model_counts[self.entropy_model_order[str(f.name)]] += 1 if one_group else ncols
+                start += ncols
             model_counts = [model_counts.get(e, 0) for e in ("quad", "tfi", "lin")]
 
             # Compute entropy (based on model order)
@@ -527,12 +545,42 @@ class SamsRegressor(MultiRegressionMixin):
         if self.mode is not None:
             assert self.dependencies.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
+        # Term groups from the model of Y2X: the columns of a term (e.g. the dummy columns of a categorical factor)
+        labels = _term_groups(self._Y2X, self._factors)
+        categorical = [str(f.name) for f in self._factors if not f.is_continuous]
+        if labels is None and categorical:
+            warnings.warn(
+                f"The dummy columns of the categorical factors {categorical} are sampled separately, because Y2X "
+                "was not built with model2Y2X, so its term groups are unknown",
+                UserWarning,
+                stacklevel=3,
+            )
+
         # Compute SAMS results
+        kwargs = dict(forced=self.forced_model, mode=self.mode, dep=self.dependencies, labels=labels)
         if len(self._re) == 0:
-            self.sams_model_ = OlsModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies)
+            self.sams_model_ = OlsModel(X, y, **kwargs)
         else:
             V = obs_var_from_Zs(self.Zs_, len(X), self._est_ratios)
-            self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
+            self.sams_model_ = MixedLMModel(X, y, V=V, **kwargs)
+
+        # Model size in term groups: by default about N / 3 columns at the average size of the non-forced groups
+        if self.model_size is None:
+            n_forced = len(self.sams_model_.forced)
+            sizes = np.array([len(g) for g in self.sams_model_.term_groups])
+            free = np.delete(sizes, self.sams_model_.forced)
+            n_free = round((len(X) / 3 - np.sum(sizes[self.sams_model_.forced])) / free.mean()) if free.size else 0
+            self._model_size = max(n_forced + n_free, n_forced + 1)
+
+            # At most as many groups as check_size allows: the largest groups stay below N columns
+            cap = int(np.sum(np.cumsum(np.sort(sizes)[::-1]) < len(X)))
+            self._model_size = min(self._model_size, cap)
+        else:
+            self._model_size = self.model_size
+        assert self._model_size > len(self.sams_model_.forced), (
+            f"The overfitted model size ({self._model_size} term groups) must be at least one larger than the "
+            f"{len(self.sams_model_.forced)} forced term groups"
+        )
 
         # BnB submodel sizes are in term groups, starting after the forced groups
         nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb

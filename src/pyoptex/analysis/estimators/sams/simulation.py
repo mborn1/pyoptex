@@ -7,6 +7,9 @@ from tqdm import tqdm as tqdm_
 
 from .accept import ExponentialAccept
 
+# Accepted proposals in a row that duplicate a stored model before unique sampling stops
+MAX_DUPLICATES = 10_000
+
 
 def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01, allow_duplicate=False, tqdm=True):
     """
@@ -37,9 +40,16 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         'model' (np.int64, size `model_size`): the term group indices of the model,
         'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
         not in the model, and 'metric' (np.float64). Results contains `nb_models` elements.
+
+    Raises
+    ------
+    ValueError
+        Without duplicates, if 10,000 accepted proposals in a row duplicate a
+        stored model: fewer than `nb_models` unique models exist.
     """
     # Initialize variables
     model_it = 0
+    duplicates = 0  # Accepted proposals in a row that duplicate a stored model
     if accept_fn is None:
         accept_fn = ExponentialAccept()
     accept_fn.reset()
@@ -93,7 +103,17 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
 
                     # Increase progress
                     model_it += 1
+                    duplicates = 0
                     pbar.update(1)
+
+                else:
+                    duplicates += 1
+                    if duplicates >= MAX_DUPLICATES:
+                        raise ValueError(
+                            f"No new unique model in {MAX_DUPLICATES:,} accepted samples (found {model_it}): "
+                            f"fewer than nb_models={nb_models} unique models of {model_size} term groups exist. "
+                            "Lower nb_models or allow duplicates."
+                        )
 
                 # Decrease temperature
                 accept_fn.accepted()

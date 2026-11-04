@@ -638,16 +638,6 @@ def order_dependencies(model, factors):
     * :math:`x_0 x_1`: depends on both :math:`x_0` and :math:`x_1`, which both depend on the intercept.
     * :math:`x_0^2 x_1` : depends on both :math:`x_0^2` and :math:`x_1`, which depend on :math:`x_0` and the intercept.
 
-    The encoded columns originating from one precoded term (e.g. the
-    dummy columns of a multi-level categorical factor, or of an
-    interaction involving one) are marked as mutually dependent. This
-    creates a codependency in the dependency matrix, which the SAMS
-    sampler interprets as a term group that must enter and leave the
-    model together. The same mechanism can be used manually: setting
-    dep[i, j] = dep[j, i] = True forces terms i and j to be sampled
-    as a unit, which is useful for nested or otherwise codependent
-    factors.
-
     Parameters
     ----------
     model : pd.DataFrame
@@ -659,8 +649,8 @@ def order_dependencies(model, factors):
     -------
     dep : np.array(2d)
         The dependency matrix of size (N, N) with N the number
-        of columns in the encoded model. Term i depends on term j
-        if dep(i, j) = true. Codependencies indicate term groups.
+        of terms in the encoded model. Term i depends on term j
+        if dep(i, j) = true.
     """
     # Validation
     assert isinstance(model, pd.DataFrame), "Model must be a dataframe"
@@ -681,7 +671,8 @@ def order_dependencies(model, factors):
 
     # Compute the possible dependencies
     eye = np.expand_dims(np.eye(modelenc.shape[1]), 1)
-    all_dep = np.expand_dims(modelenc, 0) - eye  # all_dep[:, i] are all possible dependencies for term i
+    model = np.expand_dims(modelenc, 0)
+    all_dep = model - eye  # all_dep[:, i] are all possible dependencies for term i
 
     # Valid dependencies
     all_dep_valid = np.where(np.all(all_dep >= 0, axis=2))
@@ -696,19 +687,32 @@ def order_dependencies(model, factors):
     dep = np.zeros((modelenc.shape[0], modelenc.shape[0]), dtype=np.bool_)
     dep[from_terms, to_terms] = True
 
-    # Stamp mutual dependency within each dummy block so the
-    # encoded terms of one precoded term form a cycle (= travel together)
-    cols_per_factor = np.where(effect_types > 1, effect_types - 1, 1)
-    start = 0
-    for row in range(model.shape[0]):
-        n_encoded = int(np.prod(cols_per_factor[model[row] == 1]))
-        if n_encoded > 1:
-            block = np.arange(start, start + n_encoded)
-            dep[np.ix_(block, block)] = True
-            dep[block, block] = False  # no self-loops
-        start += n_encoded
-
     return dep
+
+
+def _term_groups(Y2X: object, factors: list) -> np.ndarray | None:
+    """
+    The term group of every column of the model matrix of `Y2X`: the columns
+    of one model term, such as the dummy columns of a categorical main effect
+    or interaction, have the same power for every factor and share a label,
+    numbered in column order. Only possible for a Y2X from
+    :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`; otherwise None.
+    """
+    if not (isinstance(Y2X, partial) and Y2X.func is x2fx and "modelenc" in Y2X.keywords):
+        return None
+    modelenc = Y2X.keywords["modelenc"]
+
+    # The power of each factor in each column: add up the dummy columns of each categorical factor
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
+    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types > 1, effect_types - 1, 1))))
+    if colstart[-1] != modelenc.shape[1]:
+        return None
+    powers = np.add.reduceat(modelenc, colstart[:-1], axis=1)
+
+    # Columns with identical powers are one group, numbered by their first column
+    _, first, inverse = np.unique(powers, axis=0, return_index=True, return_inverse=True)
+    labels: np.ndarray = np.argsort(np.argsort(first))[inverse.reshape(-1)]
+    return labels
 
 
 def term2strong(term, dep):
