@@ -65,10 +65,7 @@ def _within_budget(cost_Y, max_cost, rtol=BUDGET_RTOL, atol=BUDGET_ATOL):
     within : bool
         Whether all costs are within their budget.
     """
-    return all(
-        c <= m + atol + rtol * abs(m)
-        for c, m in zip(cost_Y.tolist(), max_cost.tolist())
-    )
+    return all(c <= m + atol + rtol * abs(m) for c, m in zip(cost_Y.tolist(), max_cost.tolist(), strict=True))
 
 
 def obs_var_Zs(Yenc, colstart, grouped_cols=None):
