@@ -2,8 +2,8 @@
 
 date-released is the release date. Once the tag v<version> exists, its date is authoritative (the tag date of
 an annotated tag, the commit date of a lightweight tag), and a --date that contradicts it is an error.
-Before the tag exists (the release is being prepared), date-released is --date YYYY-MM-DD if given,
-otherwise today's date.
+Before the tag exists (the release is being prepared), update mode requires --date YYYY-MM-DD; if the version
+is already released but its tag is missing locally, run `git fetch --tags`.
 
 Without git the tag cannot be looked up: update mode then requires --date, and --check checks only the
 version. --check only reports mismatches, with the same date as update mode would write.
@@ -75,7 +75,7 @@ def main() -> None:
     parser.add_argument(
         "--date",
         type=date.fromisoformat,
-        help="release date YYYY-MM-DD, for a release without a tag v<version> yet (default: today)",
+        help="release date YYYY-MM-DD, required while there is no tag v<version> yet",
     )
     args = parser.parse_args()
 
@@ -109,14 +109,19 @@ def main() -> None:
         elif git_problem is not None:
             print(f"CITATION.cff version is in sync ({version}); {git_problem}, so date-released not checked")
         else:
-            print(f"CITATION.cff version is in sync ({version}); no tag v{version} yet, date-released not checked")
+            print(
+                f"CITATION.cff version is in sync ({version}); no tag v{version} found locally (run `git fetch --tags` "
+                "if this version is already released), so date-released not checked"
+            )
         return
 
     if release_date is None:
         if git_problem is not None:
             error(f"{git_problem}; pass --date YYYY-MM-DD")
-        release_date = date.today().isoformat()
-        print(f"Note: no tag v{version} yet, so date-released is today ({release_date}); pass --date to set it")
+        error(
+            f"No tag v{version} found locally. If this version is already released, run `git fetch --tags`; "
+            "if it is not tagged yet, pass --date YYYY-MM-DD."
+        )
 
     if cff_version == version and cff_date == release_date:
         print(f"CITATION.cff already at version {version}, date-released {release_date}")
