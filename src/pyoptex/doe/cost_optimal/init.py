@@ -142,6 +142,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
         # Create a full factorial design
         Y = full_factorial(params.colstart, params.coords)
+        n_combinations = len(Y)
 
         # Permute to randomize
         if tries < max_tries:
@@ -149,6 +150,13 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
 
         # Drop impossible combinations
         Y = Y[~params.fn.constraints(Y)]
+
+        # Check that the constraints leave runs
+        if len(Y) == 0:
+            raise ValueError(
+                f"No run satisfies the constraints (checked all {n_combinations} level combinations). "
+                "Check the constraints and the factor levels."
+            )
 
         # Define a maximum size (for feasibility)
         if max_size is not None:
@@ -186,8 +194,8 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
             if reverse:
-                # Check if within budget
-                if np.all(cost_Y <= max_cost):
+                # Check the model first: a rank-deficient model is not a budget problem
+                if np.linalg.matrix_rank(X) < X.shape[1]:
                     # Determine which column causes rank deficiency
                     for i in range(1, X.shape[1] + 1):
                         if np.linalg.matrix_rank(X[:, :i]) < i:

@@ -92,7 +92,7 @@ def partial_rsm_names(effects):
 ################################################
 
 
-def encode_model(model, effect_types):
+def encode_model(model, effect_types, col_names=None):
     """
     Encodes the model according to the effect types.
     Each continuous variable is encoded as a single column,
@@ -106,12 +106,30 @@ def encode_model(model, effect_types):
     effect_types : np.array(1d)
         An array indicating whether the effect is continuous (=1)
         or categorical (with >1 levels).
+    col_names : list(str) or None
+        The names of the model columns, used in the error message.
 
     Returns
     -------
     model : np.array(2d)
         The newly encoded model.
+
+    Raises
+    ------
+    ValueError
+        If a categorical factor has a model entry other than 0 or 1,
+        such as the 2 of a quadratic term.
     """
+    # A categorical factor can only be present (1) or absent (0) in a term
+    for i in np.flatnonzero(effect_types > 1):
+        invalid = np.setdiff1d(model[:, i], [0, 1])
+        if invalid.size > 0:
+            name = col_names[i] if col_names is not None else f"in column {i}"
+            raise ValueError(
+                f"Factor {name} is categorical, so its model entries must be 0 or 1 (got {invalid[0]}). "
+                f"For partial_rsm_names, use tfi or lin for categorical factors."
+            )
+
     # Number of columns required for encoding
     cols = np.where(effect_types > 1, effect_types - 1, effect_types)
 
@@ -184,7 +202,7 @@ def model2Y2X(model, factors):
     model = model[col_names].to_numpy()
 
     # Encode model
-    modelenc = encode_model(model, effect_types)
+    modelenc = encode_model(model, effect_types, col_names)
 
     # Create transformation function for polynomial models
     Y2X = partial(x2fx, modelenc=modelenc)
@@ -452,7 +470,7 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
     model = model[[*col_names, mcomp]].to_numpy()
 
     # Encode model
-    modelenc = encode_model(model, effect_types)
+    modelenc = encode_model(model, effect_types, [*col_names, mcomp])
 
     # Define Y2X
     def Y2X(Y):

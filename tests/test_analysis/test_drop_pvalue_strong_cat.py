@@ -36,7 +36,7 @@ def test_drop_pvalue_strong_cat():
     assert list(data.shape) == ref["data_shape"]
     np.testing.assert_allclose(data["Y"].mean(), ref["data_Y_mean"], rtol=1e-10)
 
-    model = partial_rsm_names({str(f.name): "quad" for f in factors})
+    model = partial_rsm_names({"A": "tfi", "B": "quad", "C": "quad"})
     Y2X = model2Y2X(model, factors)
     assert list(model.shape) == ref["model_shape"]
     assert model.values.tolist() == ref["model_values"]

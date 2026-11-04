@@ -46,7 +46,7 @@ log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 
 # Create the model
-model = partial_rsm_names({str(f.name): "quad" for f in factors})
+model = partial_rsm_names({"A": "tfi", "B": "quad", "C": "quad"})
 Y2X = model2Y2X(model, factors)
 log_checkpoint("model_shape", list(model.shape))
 log_checkpoint("model_values", model.values.tolist())

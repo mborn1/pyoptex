@@ -25,11 +25,12 @@ def find_python_scripts(directory: Path) -> list[Path]:
     """
     scripts = []
     for root, dirs, files in os.walk(directory):
-        # Skip __pycache__ and other common directories to avoid
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        # Skip hidden directories and helpers (names starting with _, e.g. __pycache__ and _no_show)
+        dirs[:] = [d for d in dirs if not d.startswith((".", "_"))]
 
         for file in files:
-            if file.endswith(".py") and file != "run_all.py":
+            # Skip this script and helpers such as _log_checkpoint.py
+            if file.endswith(".py") and file != "run_all.py" and not file.startswith("_"):
                 script_path = Path(root) / file
                 scripts.append(script_path)
 
@@ -49,14 +50,26 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
     """
     start_time = time.time()
 
+    # UTF-8 output on every platform (the default on Windows is the ANSI code page; PYTHONIOENCODING
+    # too, since an inherited value would override UTF-8 mode for the standard streams),
+    # and _no_show first on the path, whose sitecustomize makes plotly's fig.show() a no-op
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    no_show = str(Path(__file__).parent / "_no_show")
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (no_show, env.get("PYTHONPATH")) if p)
+
     try:
         # Run the script with subprocess
         result = subprocess.run(
             [sys.executable, script_path.name],  # Use just the filename
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             cwd=script_path.parent,  # Run from script's directory
+            env=env,
         )
 
         execution_time = time.time() - start_time
@@ -66,7 +79,8 @@ def run_script(script_path: Path, timeout: int = 300) -> tuple[bool, str, float]
         else:
             error_msg = f"Script failed with return code {result.returncode}\n"
             if result.stderr:
-                error_msg += f"STDERR: {result.stderr}\n"
+                # The tail, so a traceback is not hidden behind progress bars
+                error_msg += f"STDERR: {result.stderr[-2000:]}\n"
             if result.stdout:
                 error_msg += f"STDOUT: {result.stdout}"
             return False, error_msg, execution_time
