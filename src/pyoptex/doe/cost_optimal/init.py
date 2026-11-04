@@ -193,7 +193,9 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         costs = params.fn.cost(Y, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (_within_budget(cost_Y, max_cost) or not force_cost_feasible)
+        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (
+            _within_budget(cost_Y, max_cost) or not force_cost_feasible
+        )
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
@@ -330,7 +332,9 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
         costs = params.fn.cost(Y, params)
         cost_Y = np.array([np.sum(c) for c, _, _ in costs])
         max_cost = np.array([m for _, m, _ in costs])
-        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (_within_budget(cost_Y, max_cost) or not force_cost_feasible)
+        feasible = (np.linalg.matrix_rank(X) >= X.shape[1]) and (
+            _within_budget(cost_Y, max_cost) or not force_cost_feasible
+        )
 
         # Raise an error if no feasible design can be found
         if tries >= max_tries and not feasible:
