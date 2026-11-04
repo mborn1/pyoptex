@@ -61,3 +61,6 @@ def test_mixture_region_sampling():
         assert np.all((mixture >= lower) & (mixture <= upper)) and np.all(shares[:, -1] >= -1e-6)
         if mean is not None:
             np.testing.assert_allclose(shares[:, 0].mean(), mean, rtol=0.02)
+
+    # The last set is uniform on the simplex of 4 shares: mean square 1/10 (a less spread distribution gives less)
+    np.testing.assert_allclose(np.mean(shares**2, axis=0), 0.1, rtol=0.03)
