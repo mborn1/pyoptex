@@ -1,6 +1,7 @@
 """
 Module for the interface to run the CODEX algorithm
 """
+
 import warnings
 
 import numpy as np
