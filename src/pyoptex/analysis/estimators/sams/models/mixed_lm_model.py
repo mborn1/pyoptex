@@ -112,6 +112,8 @@ class MixedLMModel(OlsModel):
             self.y = np.squeeze(sqrtV_inverted @ np.expand_dims(self.y, 1))
             self.X = sqrtV_inverted @ self.X
 
-            # Compute the intercept variance
-            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))  # noqa: F841
-            self.ss_intercept = np.var(self.y) * len(self.y)
+            # Compute the intercept variance (residual sum of squares of the intercept-only model)
+            intercept = sqrtV_inverted @ np.ones((len(self.X), 1))
+            w = intercept[:, 0]
+            null_residual = self.y - (w @ self.y) / (w @ w) * w
+            self.ss_intercept = float(null_residual @ null_residual)
