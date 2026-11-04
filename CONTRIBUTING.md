@@ -112,8 +112,8 @@ understand Cython. Key rules:
   `make sync-citation` and commit the result. Once the tag `v<version>`
   exists, its date is authoritative for `date-released`. Before the tag
   exists (the release is being prepared), pass the release date with
-  `venv/bin/python scripts/sync_citation_version.py --date YYYY-MM-DD`;
-  without a tag and without `--date` the script stops with an error. If the
+  `make sync-citation DATE=YYYY-MM-DD`; without a tag and without a date
+  the script stops with an error. If the
   version is already released but its tag is missing locally, run
   `git fetch --tags` first. A `--date` that contradicts an existing tag is
   an error. Without git the tag cannot be looked up, so `--date` is then
