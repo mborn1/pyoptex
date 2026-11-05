@@ -41,27 +41,23 @@ class SamsBnB(BnB):
     Attributes
     ----------
     model_size : int
-        The size of the overfitted models.
+        The size of the submodels to search, in term groups.
     models : np.array(2d)
-        The returned results from the SAMS simulation.
-        A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-        and one scalar ('metric', np.float64).
+        The sampled models from the SAMS simulation as term group indices,
+        one row per model (the 'model' field of the results).
     nterms : int
-        The total number of fixed effects in the encoded, normalized
-        model matrix (=X.shape[1] after encoding and normalization).
+        The number of term groups.
         No element in models should be larger than or equal to this value.
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
     dependencies : np.array(2d)
-        The dependency matrix of size (N, N) with N the number
-        of terms in the encoded model (output from Y2X). Term i depends on term j
-        if dep(i, j) = true.
+        The dependency matrix of size (G, G) with G the number of
+        term groups. Group i depends on group j if dep(i, j) = true.
     forced_model : np.array(1d)
-        The terms which were forced to be in the simulation models
+        The term groups which were forced to be in the simulation models
         as an integer array. Often the intercept.
     kill : np.array(1d)
-        A boolean array of which terms should not be investigated as
+        A boolean array of which term groups should not be investigated as
         they cannot be in the top performing models. Updated during the
         algorithm.
     spm : :py:class:`scipy.sparse.csc_array`
@@ -77,24 +73,20 @@ class SamsBnB(BnB):
         Parameters
         ----------
         model_size : int
-            The size of the overfitted models.
+            The size of the submodels to search, in term groups.
         models : np.array(2d)
-            The returned results from the SAMS simulation.
-            A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
-            and one scalar ('metric', np.float64).
+            The sampled models from the SAMS simulation as term group indices,
+            one row per model (the 'model' field of the results).
         nterms : int
-            The total number of fixed effects in the encoded, normalized
-            model matrix (=X.shape[1] after encoding and normalization).
+            The number of term groups.
             No element in models should be larger than or equal to this value.
         mode : None or 'weak' or 'strong'
             The heredity mode during sampling.
         dependencies : np.array(2d)
-            The dependency matrix of size (N, N) with N the number
-            of terms in the encoded model (output from Y2X). Term i depends on term j
-            if dep(i, j) = true.
+            The dependency matrix of size (G, G) with G the number of
+            term groups. Group i depends on group j if dep(i, j) = true.
         forced_model : None or np.array(1d)
-            The terms which were forced to be in the simulation models
+            The term groups which were forced to be in the simulation models
             as an integer array. Often the intercept.
         """
 

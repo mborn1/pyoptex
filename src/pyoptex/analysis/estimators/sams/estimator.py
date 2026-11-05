@@ -66,7 +66,7 @@ class SamsRegressor(MultiRegressionMixin):
     model_size : int
         The number of term groups in the overfitted models. Defaults to the
         number of term groups that gives about N / 3 columns (N the number of
-        runs) at the average size of the non-forced groups: at least one more
+        runs) at the average size of the non-forced groups: at least three more
         than the forced term groups, at most as many as fit in fewer than
         N columns when the largest groups are taken, and at most the forced
         groups plus half of the free groups (rounded up), where the number of
@@ -103,10 +103,11 @@ class SamsRegressor(MultiRegressionMixin):
         calculations.
     nterms_bnb : None or int or iterable(int)
         The fixed sizes of submodels to apply the branch-and-bound algorithm
-        on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-        as recommended by the original paper. If an int, every size from
-        one until the specified number is tested. If an iterable, only the
-        values from the iterable are tested.
+        on, in term groups including the forced term groups. If None, every size
+        from one more than the forced term groups to `model_size` - 2 (inclusive)
+        is tested as recommended by the original paper. If an int, every size from
+        one more than the forced term groups until the specified number (exclusive)
+        is tested. If an iterable, only the values from the iterable are tested.
     bnb_timeout : int
         The maximum number of seconds to run the branch-and-bound algorithm for.
         Clear submodels in the raster plot will not require much time in
@@ -203,7 +204,7 @@ class SamsRegressor(MultiRegressionMixin):
         model_size : int
             The number of term groups in the overfitted models. Defaults to the
             number of term groups that gives about N / 3 columns (N the number of
-            runs) at the average size of the non-forced groups: at least one more
+            runs) at the average size of the non-forced groups: at least three more
             than the forced term groups, at most as many as fit in fewer than
             N columns when the largest groups are taken, and at most the forced
             groups plus half of the free groups (rounded up), where the number of
@@ -240,10 +241,11 @@ class SamsRegressor(MultiRegressionMixin):
             calculations.
         nterms_bnb : None or int or iterable(int)
             The fixed sizes of submodels to apply the branch-and-bound algorithm
-            on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-            as recommended by the original paper. If an int, every size from
-            one until the specified number is tested. If an iterable, only the
-            values from the iterable are tested.
+            on, in term groups including the forced term groups. If None, every size
+            from one more than the forced term groups to `model_size` - 2 (inclusive)
+            is tested as recommended by the original paper. If an int, every size from
+            one more than the forced term groups until the specified number (exclusive)
+            is tested. If an iterable, only the values from the iterable are tested.
         bnb_timeout : int
             The maximum number of seconds to run the branch-and-bound algorithm for.
             Clear submodels in the raster plot will not require much time in
@@ -353,7 +355,7 @@ class SamsRegressor(MultiRegressionMixin):
             assert np.issubdtype(self.forced_model.dtype, np.integer), "The forced model must be an integer array"
         assert self.max_cluster >= 3, "The maximum number of clusters for auto selection must be larger than three"
         if self.ncluster is not None:
-            assert self.ncluster == "auto" or isinstance(self.ncluster, int), (
+            assert self.ncluster == "auto" or isinstance(self.ncluster, (int, np.integer)), (
                 'ncluster must be None, "auto" or an integer'
             )
             if self.ncluster != "auto":
@@ -448,10 +450,9 @@ class SamsRegressor(MultiRegressionMixin):
         Parameters
         ----------
         models : list(np.array(1d))
-            The list of models
+            The list of models, as term group indices.
         nterms : int
-            The total number of fixed effects in the encoded, normalized
-            model matrix (=X.shape[1] after encoding and normalization).
+            The number of term groups (`sams_model_.n_term_groups`).
 
         Returns
         -------
@@ -500,15 +501,14 @@ class SamsRegressor(MultiRegressionMixin):
             The entropies of these models.
         """
         if self.entropy_model_order is None or self.mode != "weak":
-            # Compute approximated entropies (the samplers take None when nothing is forced)
-            forced = self.sams_model_.forced if self.sams_model_.forced.size > 0 else None
+            # Compute approximated entropies (the forced groups are an empty array when nothing is forced)
             entropy = entropies_approx(
                 submodels,
                 freqs,
                 self._model_size,
                 self.sams_model_.dep,  # submodels are in group space
                 self.mode,
-                forced,
+                self.sams_model_.forced,
                 self.entropy_sampling_N,
                 self.entropy_sampler,
             )
@@ -530,6 +530,21 @@ class SamsRegressor(MultiRegressionMixin):
             entropy = entropies(submodels, freqs, self._model_size, model_counts)
 
         return entropy
+
+    def _too_small_message(self):
+        """
+        The reason for too few models after sampling, naming the number of unique sampled models.
+
+        Returns
+        -------
+        message : str
+            The message.
+        """
+        n_unique = len(np.unique(self.results_["model"], axis=0))
+        return (
+            f"there are {n_unique} unique models of {self._model_size} term groups, so the model space is too "
+            "small for SAMS. Use a smaller model_size or fit the models directly."
+        )
 
     def _fit(self, X, y):
         """
@@ -576,7 +591,7 @@ class SamsRegressor(MultiRegressionMixin):
             sizes = np.array([len(g) for g in self.sams_model_.term_groups])
             free = np.delete(sizes, self.sams_model_.forced)
             n_free = round((len(X) / 3 - np.sum(sizes[self.sams_model_.forced])) / free.mean()) if free.size else 0
-            self._model_size = max(n_forced + n_free, n_forced + 1)
+            self._model_size = max(n_forced + n_free, n_forced + 3)  # Leaves a branch-and-bound size by default
 
             # At most as many groups as check_size allows: the largest groups stay below N columns
             cap = int(np.sum(np.cumsum(np.sort(sizes)[::-1]) < len(X)))
@@ -586,16 +601,21 @@ class SamsRegressor(MultiRegressionMixin):
             self._model_size = min(self._model_size, n_forced + math.ceil(free.size / 2))
         else:
             self._model_size = self.model_size
-        assert self._model_size > len(self.sams_model_.forced), (
-            f"The overfitted model size ({self._model_size} term groups) must be at least one larger than the "
-            f"{len(self.sams_model_.forced)} forced term groups"
-        )
+        self.sams_model_.check_size(self._model_size)
 
         # BnB submodel sizes are in term groups, starting after the forced groups
         nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
         self._nterms_bnb = (
             range(len(self.sams_model_.forced) + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
         )
+        if len(self._nterms_bnb) == 0:
+            raise ValueError(
+                f"No branch-and-bound submodel sizes for model_size={self._model_size} and "
+                f"nterms_bnb={self.nterms_bnb}: the sizes run from one more than the "
+                f"{len(self.sams_model_.forced)} forced term groups up to nterms_bnb (exclusive, by default "
+                f"model_size - 1). Use a model_size of at least {len(self.sams_model_.forced) + 3} term groups "
+                "or a larger nterms_bnb."
+            )
 
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
         if self.nb_models == "all":
@@ -614,19 +634,16 @@ class SamsRegressor(MultiRegressionMixin):
         idx = np.argsort(self.results_["metric"])
         results = self.results_[idx]
 
-        # The skip estimation and clustering need enough models
-        n_min = self.ncluster if isinstance(self.ncluster, int) else self.max_cluster
-        too_small = (
-            f"there are {len(np.unique(results['model'], axis=0))} unique models of {self._model_size} term groups, "
-            "so the model space is too small for SAMS. Use a smaller model_size or fit the models directly."
-        )
+        # Cannot skip all models
         if isinstance(self.skipn, int) and self.skipn >= len(results):
-            raise ValueError(f"Cannot skip skipn={self.skipn} of the {len(results)} sampled models: {too_small}")
-        if len(results) < n_min:
-            raise ValueError(f"Only {len(results)} models were sampled, fewer than {n_min}: {too_small}")
+            raise ValueError(
+                f"Cannot skip skipn={self.skipn} of the {len(results)} sampled models: {self._too_small_message()}"
+            )
 
-        # Skip bad part of the data
-        if self.skipn == "auto":
+        # Skip bad part of the data (the change point detection needs at least three models)
+        if self.skipn == "auto" and len(results) < 3:
+            self._skipn = 0
+        elif self.skipn == "auto":
             # Compute the difference in derivative
             slope = np.diff(results["metric"])
             bkps = rpt.KernelCPD(kernel="linear", min_size=0).fit_predict(slope, pen=np.var(slope) * 1000)
@@ -642,9 +659,12 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             self._skipn = self.skipn
         results = results[self._skipn :]
-        if len(results) < n_min:
+        if len(results) == 0:
+            raise ValueError(f"No models remain after skipping {self._skipn}: {self._too_small_message()}")
+        if isinstance(self.ncluster, (int, np.integer)) and len(results) < self.ncluster:
             raise ValueError(
-                f"Only {len(results)} models remain after skipping {self._skipn}, fewer than {n_min}: {too_small}"
+                f"Only {len(results)} models remain after skipping {self._skipn}, fewer than "
+                f"ncluster={self.ncluster}: {self._too_small_message()}"
             )
 
         # Possibly cluster
@@ -667,15 +687,19 @@ class SamsRegressor(MultiRegressionMixin):
 
             # Auto detect the number of clusters
             if self.ncluster == "auto":
-                # Fit kmeans
-                kmeans_dists = np.zeros(self.max_cluster)
-                for nc in range(1, self.max_cluster + 1):
+                # Fit kmeans (at most one cluster per model)
+                max_cluster = min(self.max_cluster, len(results))
+                kmeans_dists = np.zeros(max_cluster)
+                for nc in range(1, max_cluster + 1):
                     kmeans = KMeans(n_init="auto", n_clusters=nc).fit(results_cluster)
                     kmeans_dists[nc - 1] = kmeans.inertia_
 
-                # Elbow rule for cluster selection
-                kmeans_elbow = np.diff(kmeans_dists, n=2)
-                ncluster = np.argmax(kmeans_elbow) + 2
+                # Elbow rule for cluster selection, which needs at least three values
+                if max_cluster < 3:
+                    ncluster = 1
+                else:
+                    kmeans_elbow = np.diff(kmeans_dists, n=2)
+                    ncluster = np.argmax(kmeans_elbow) + 2
             else:
                 # Force the number of clusters
                 ncluster = self.ncluster

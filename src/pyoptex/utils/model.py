@@ -948,7 +948,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
     no_dep = np.flatnonzero(~np.any(dep, axis=1))
 
     # Check for a forced model
-    if forced is not None:
+    if forced is not None and forced.size > 0:
         # Set forced model as the beginning of each sample
         out[:, : forced.size] = forced
         start = forced.size

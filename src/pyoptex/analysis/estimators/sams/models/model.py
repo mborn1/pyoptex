@@ -149,6 +149,10 @@ class Model:
         model_size : int
             The number of term groups per model.
         """
+        assert model_size > len(self.forced), (
+            f"model_size={model_size} must be larger than the {len(self.forced)} forced term groups, "
+            "as every model includes them"
+        )
         assert model_size <= self.n_term_groups, (
             f"model_size={model_size} exceeds the {self.n_term_groups} term groups available"
         )
