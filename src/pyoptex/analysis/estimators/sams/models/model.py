@@ -2,7 +2,6 @@
 Module for the SAMS base model.
 """
 
-import math
 from collections import namedtuple
 from itertools import combinations
 
@@ -141,7 +140,7 @@ class Model:
             return np.array([], dtype=np.int64)
         return np.concatenate([self.term_groups[g] for g in model])
 
-    def check_size(self, model_size: int, nb_models: int | None = None, allow_duplicate: bool = True) -> None:
+    def check_size(self, model_size: int) -> None:
         """
         Validate that models of `model_size` term groups can be sampled and fitted.
 
@@ -149,10 +148,6 @@ class Model:
         ----------
         model_size : int
             The number of term groups per model.
-        nb_models : None or int
-            The number of models to sample. Only checked when duplicates are not allowed.
-        allow_duplicate : bool
-            Whether duplicate models may be stored.
         """
         assert model_size <= self.n_term_groups, (
             f"model_size={model_size} exceeds the {self.n_term_groups} term groups available"
@@ -165,17 +160,6 @@ class Model:
             f"model_size={model_size} term groups can expand to {max_coeff_size} "
             f"columns, which exceeds the {self.X.shape[0]} runs available"
         )
-
-        # Without duplicates, more models than exist would never finish. This is an upper bound only:
-        # heredity can leave fewer models, which simulate_sams detects from the duplicate proposals
-        if nb_models is not None and not allow_duplicate:
-            n_forced = len(self.forced)
-            n_unique = math.comb(self.n_term_groups - n_forced, model_size - n_forced)
-            if nb_models > n_unique:
-                raise ValueError(
-                    f"Cannot sample {nb_models} unique models: at most {n_unique} models of {model_size} term groups "
-                    f"exist. Use a smaller nb_models or allow duplicates."
-                )
 
     def _sort(self, model):
         """

@@ -2,6 +2,7 @@
 Module containing the simulation function for SAMS.
 """
 
+import math
 import warnings
 
 import numpy as np
@@ -47,6 +48,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     Warns
     -----
     UserWarning
+        Without duplicates, if `nb_models` exceeds the number of term group
+        combinations: `nb_models` is lowered to that number.
+    UserWarning
         Without duplicates, if 10,000 accepted proposals in a row duplicate a
         stored model: fewer than `nb_models` unique models exist, and only
         the unique models found are returned.
@@ -58,8 +62,21 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         accept_fn = ExponentialAccept()
     accept_fn.reset()
 
-    # Validate the model size and number of models
-    model.check_size(model_size, nb_models, allow_duplicate)
+    # Validate the model size
+    model.check_size(model_size)
+
+    # Without duplicates, at most this many models exist. This is an upper bound only:
+    # heredity can leave fewer models, which the duplicate stop below detects
+    if not allow_duplicate:
+        n_forced = len(model.forced)
+        n_unique = math.comb(model.n_term_groups - n_forced, model_size - n_forced)
+        if nb_models > n_unique:
+            warnings.warn(
+                f"At most {n_unique} unique models of {model_size} term groups exist, fewer than "
+                f"nb_models={nb_models}. Lowering nb_models to {n_unique}.",
+                stacklevel=2,
+            )
+            nb_models = n_unique
 
     # Initialize model storage
     n_cols = model.X.shape[1]
