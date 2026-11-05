@@ -2,6 +2,8 @@
 Module containing the simulation function for SAMS.
 """
 
+import warnings
+
 import numpy as np
 from tqdm import tqdm as tqdm_
 
@@ -39,13 +41,15 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
         A numpy array with a special datatype where each element contains
         'model' (np.int64, size `model_size`): the term group indices of the model,
         'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
-        not in the model, and 'metric' (np.float64). Results contains `nb_models` elements.
+        not in the model, and 'metric' (np.float64). Results contains `nb_models` elements,
+        or fewer without duplicates when fewer unique models exist.
 
-    Raises
-    ------
-    ValueError
+    Warns
+    -----
+    UserWarning
         Without duplicates, if 10,000 accepted proposals in a row duplicate a
-        stored model: fewer than `nb_models` unique models exist.
+        stored model: fewer than `nb_models` unique models exist, and only
+        the unique models found are returned.
     """
     # Initialize variables
     model_it = 0
@@ -109,11 +113,13 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                 else:
                     duplicates += 1
                     if duplicates >= MAX_DUPLICATES:
-                        raise ValueError(
-                            f"No new unique model in {MAX_DUPLICATES:,} accepted samples (found {model_it}): "
-                            f"fewer than nb_models={nb_models} unique models of {model_size} term groups exist. "
-                            "Lower nb_models or allow duplicates."
+                        warnings.warn(
+                            f"No new unique model in {MAX_DUPLICATES:,} accepted samples: only {model_it} unique "
+                            f"models of {model_size} term groups exist, fewer than nb_models={nb_models}. "
+                            f"Continuing with these {model_it} models.",
+                            stacklevel=2,
                         )
+                        return results[:model_it]
 
                 # Decrease temperature
                 accept_fn.accepted()
