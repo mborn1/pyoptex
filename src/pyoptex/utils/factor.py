@@ -47,6 +47,12 @@ class FactorMixin:
             # Define default coordinates as positive
             levels = self.levels if self.levels is not None else np.array([0, 0.5, 1])
 
+            # Levels are fractions; NaN fails both comparisons
+            fractions = np.asarray(levels, dtype=np.float64)
+            assert np.all((fractions >= 0) & (fractions <= 1)), (
+                f"Mixture levels are fractions between 0 and 1, but factor {self.name} has levels {levels}"
+            )
+
             # Transform to a new factor
             params = self._asdict()
             params["type"] = "cont_mixture"
