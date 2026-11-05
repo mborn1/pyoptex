@@ -2,6 +2,7 @@
 Module for the SAMS regressor.
 """
 
+import math
 import warnings
 from functools import reduce
 
@@ -66,10 +67,11 @@ class SamsRegressor(MultiRegressionMixin):
         The number of term groups in the overfitted models. Defaults to the
         number of term groups that gives about N / 3 columns (N the number of
         runs) at the average size of the non-forced groups: at least one more
-        than the forced term groups, and at most as many as fit in fewer than
-        N columns when the largest groups are taken. The overfitted model
-        includes the forced term groups, and its size must thus be larger than
-        their number.
+        than the forced term groups, at most as many as fit in fewer than
+        N columns when the largest groups are taken, and at most the forced
+        groups plus half of the free groups (rounded up), where the number of
+        different models is largest. The overfitted model includes the forced
+        term groups, and its size must thus be larger than their number.
     nb_models : int or 'all'
         The number of unique models to accept during the sams procedure.
         If 'all' then all possible models are fitted.
@@ -202,10 +204,11 @@ class SamsRegressor(MultiRegressionMixin):
             The number of term groups in the overfitted models. Defaults to the
             number of term groups that gives about N / 3 columns (N the number of
             runs) at the average size of the non-forced groups: at least one more
-            than the forced term groups, and at most as many as fit in fewer than
-            N columns when the largest groups are taken. The overfitted model
-            includes the forced term groups, and its size must thus be larger than
-            their number.
+            than the forced term groups, at most as many as fit in fewer than
+            N columns when the largest groups are taken, and at most the forced
+            groups plus half of the free groups (rounded up), where the number of
+            different models is largest. The overfitted model includes the forced
+            term groups, and its size must thus be larger than their number.
         nb_models : int or 'all'
             Th number of unique models to accept during the sams procedure.
             If 'all', then all possible models will be fitted.
@@ -497,14 +500,15 @@ class SamsRegressor(MultiRegressionMixin):
             The entropies of these models.
         """
         if self.entropy_model_order is None or self.mode != "weak":
-            # Compute approximated entropies
+            # Compute approximated entropies (the samplers take None when nothing is forced)
+            forced = self.sams_model_.forced if self.sams_model_.forced.size > 0 else None
             entropy = entropies_approx(
                 submodels,
                 freqs,
                 self._model_size,
                 self.sams_model_.dep,  # submodels are in group space
                 self.mode,
-                self.sams_model_.forced,
+                forced,
                 self.entropy_sampling_N,
                 self.entropy_sampler,
             )
@@ -539,9 +543,10 @@ class SamsRegressor(MultiRegressionMixin):
             The normalized output variable.
         """
         # Some final validation
-        assert np.all(self.forced_model < self.n_encoded_features_), (
-            "The forced model must have integers smaller than the number of parameters in X"
-        )
+        if self.forced_model is not None:
+            assert np.all(self.forced_model < self.n_encoded_features_), (
+                "The forced model must have integers smaller than the number of parameters in X"
+            )
         if self.mode is not None:
             assert self.dependencies.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
@@ -556,8 +561,9 @@ class SamsRegressor(MultiRegressionMixin):
                 stacklevel=3,
             )
 
-        # Compute SAMS results
-        kwargs = dict(forced=self.forced_model, mode=self.mode, dep=self.dependencies, labels=labels)
+        # Compute SAMS results (the dependencies are only used with heredity)
+        dep = self.dependencies if self.mode is not None else None
+        kwargs = dict(forced=self.forced_model, mode=self.mode, dep=dep, labels=labels)
         if len(self._re) == 0:
             self.sams_model_ = OlsModel(X, y, **kwargs)
         else:
@@ -575,6 +581,9 @@ class SamsRegressor(MultiRegressionMixin):
             # At most as many groups as check_size allows: the largest groups stay below N columns
             cap = int(np.sum(np.cumsum(np.sort(sizes)[::-1]) < len(X)))
             self._model_size = min(self._model_size, cap)
+
+            # At most the forced groups plus half of the free groups, where the number of different models is largest
+            self._model_size = min(self._model_size, n_forced + math.ceil(free.size / 2))
         else:
             self._model_size = self.model_size
         assert self._model_size > len(self.sams_model_.forced), (
@@ -605,6 +614,17 @@ class SamsRegressor(MultiRegressionMixin):
         idx = np.argsort(self.results_["metric"])
         results = self.results_[idx]
 
+        # The skip estimation and clustering need enough models
+        n_min = self.ncluster if isinstance(self.ncluster, int) else self.max_cluster
+        too_small = (
+            f"there are {len(np.unique(results['model'], axis=0))} unique models of {self._model_size} term groups, "
+            "so the model space is too small for SAMS. Use a smaller model_size or fit the models directly."
+        )
+        if isinstance(self.skipn, int) and self.skipn >= len(results):
+            raise ValueError(f"Cannot skip skipn={self.skipn} of the {len(results)} sampled models: {too_small}")
+        if len(results) < n_min:
+            raise ValueError(f"Only {len(results)} models were sampled, fewer than {n_min}: {too_small}")
+
         # Skip bad part of the data
         if self.skipn == "auto":
             # Compute the difference in derivative
@@ -622,6 +642,10 @@ class SamsRegressor(MultiRegressionMixin):
         else:
             self._skipn = self.skipn
         results = results[self._skipn :]
+        if len(results) < n_min:
+            raise ValueError(
+                f"Only {len(results)} models remain after skipping {self._skipn}, fewer than {n_min}: {too_small}"
+            )
 
         # Possibly cluster
         if self.ncluster is None:

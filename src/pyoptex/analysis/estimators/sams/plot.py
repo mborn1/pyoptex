@@ -91,17 +91,10 @@ def plot_raster(results, terms, skipn=0, metric_name="metric", forced=None, rast
         cluster_thresholds = []
         skips = [skipn] if skipn > 0 else []
 
-    # Create the raster
+    # Create the raster from the coefficients, ignoring the forced terms
+    raster = np.nan_to_num(results["coeff"], nan=0.0)
     if forced is not None:
-        # Force uniqueness for speedup
-        forced = np.unique(forced)
-
-        # Set the coefficients
-        raster = np.nan_to_num(results["coeff"], nan=0.0)
         raster[:, forced] = 0.0
-    else:
-        # Set the coefficients
-        raster = np.nan_to_num(results["coeff"], nan=0.0)
 
     # Normalize the coefficients based on absolute value
     raster /= np.expand_dims(np.max(np.abs(raster), 1), 1)

@@ -131,9 +131,8 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                     duplicates += 1
                     if duplicates >= MAX_DUPLICATES:
                         warnings.warn(
-                            f"No new unique model in {MAX_DUPLICATES:,} accepted samples: only {model_it} unique "
-                            f"models of {model_size} term groups exist, fewer than nb_models={nb_models}. "
-                            f"Continuing with these {model_it} models.",
+                            f"No new unique model in {MAX_DUPLICATES:,} accepted samples: continuing with the "
+                            f"{model_it} unique models found (fewer than nb_models={nb_models}).",
                             stacklevel=2,
                         )
                         return results[:model_it]

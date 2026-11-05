@@ -694,9 +694,9 @@ def _term_groups(Y2X: object, factors: list) -> np.ndarray | None:
     """
     The term group of every column of the model matrix of `Y2X`: the columns
     of one model term, such as the dummy columns of a categorical main effect
-    or interaction, have the same power for every factor and share a label,
-    numbered in column order. Only possible for a Y2X from
-    :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`; otherwise None.
+    or interaction, have the same power for every factor and share a label.
+    Only possible for a Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`;
+    otherwise None.
     """
     if not (isinstance(Y2X, partial) and Y2X.func is x2fx and "modelenc" in Y2X.keywords):
         return None
@@ -709,9 +709,9 @@ def _term_groups(Y2X: object, factors: list) -> np.ndarray | None:
         return None
     powers = np.add.reduceat(modelenc, colstart[:-1], axis=1)
 
-    # Columns with identical powers are one group, numbered by their first column
-    _, first, inverse = np.unique(powers, axis=0, return_index=True, return_inverse=True)
-    labels: np.ndarray = np.argsort(np.argsort(first))[inverse.reshape(-1)]
+    # Columns with identical powers are one group
+    _, inverse = np.unique(powers, axis=0, return_inverse=True)
+    labels: np.ndarray = inverse.reshape(-1)
     return labels
 
 
