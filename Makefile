@@ -15,19 +15,21 @@ TEST_ENV := \
 	NPY_DISABLE_CPU_FEATURES=X86_V4,AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR \
 	OPENBLAS_CORETYPE=HASWELL
 
-.PHONY: lint format typecheck test test-cov build docs pre-commit all help
+.PHONY: lint format typecheck test test-cov build docs pre-commit all help sync-citation check-citation
 
 help:
 	@echo "Available targets:"
-	@echo "  lint        Run ruff linter over src/ and tests/"
-	@echo "  format      Run ruff formatter over src/ and tests/"
-	@echo "  typecheck   Run mypy type checker over src/pyoptex/"
-	@echo "  test        Run pytest"
-	@echo "  test-cov    Run pytest with coverage report"
-	@echo "  build       Build distribution wheels"
-	@echo "  docs        Build Sphinx HTML docs"
-	@echo "  pre-commit  Run all pre-commit hooks on all files"
-	@echo "  all         Run lint, typecheck, and test"
+	@echo "  lint            Run ruff linter over src/ and tests/"
+	@echo "  format          Run ruff formatter over src/ and tests/"
+	@echo "  typecheck       Run mypy type checker over src/pyoptex/"
+	@echo "  test            Run pytest"
+	@echo "  test-cov        Run pytest with coverage report"
+	@echo "  build           Build distribution wheels"
+	@echo "  docs            Build Sphinx HTML docs"
+	@echo "  pre-commit      Run all pre-commit hooks on all files"
+	@echo "  sync-citation   Sync CITATION.cff (before tagging: RELEASE_DATE=YYYY-MM-DD)"
+	@echo "  check-citation  Check that CITATION.cff matches __init__.py and the tag"
+	@echo "  all             Run lint, typecheck, and test"
 
 lint:
 	$(RUFF) check src/ tests/
@@ -55,5 +57,11 @@ docs:
 
 pre-commit:
 	$(PRECOMMIT) run --all-files
+
+sync-citation:
+	$(PYTHON) scripts/sync_citation_version.py $(if $(RELEASE_DATE),--date $(RELEASE_DATE))
+
+check-citation:
+	$(PYTHON) scripts/sync_citation_version.py --check
 
 all: lint typecheck test
