@@ -931,7 +931,7 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
         The size of the model to sample.
     n_samples : int
         The number of samples to draw.
-    forced : np.array(1d)
+    forced : None or np.array(1d)
         A model which must be included at all times.
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
@@ -941,26 +941,19 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
     model : np.array(2d)
         The sampled model which is an array of integers of size (n_samples, size).
     """
+    # No forced model is an empty one
+    if forced is None:
+        forced = np.zeros(0, dtype=np.int64)
+
     # The output
     out = np.zeros((n_samples, size), dtype=np.int64)
 
     # No dep
     no_dep = np.flatnonzero(~np.any(dep, axis=1))
 
-    # Check for a forced model
-    if forced is not None and forced.size > 0:
-        # Set forced model as the beginning of each sample
-        out[:, : forced.size] = forced
-        start = forced.size
-    else:
-        # Sample the initial value
-        if mode is None:
-            # Any value is possible
-            out[:, 0] = np.random.choice(np.arange(len(dep)), out.shape[0])
-        else:
-            # Only no dependency terms are possible
-            out[:, 0] = np.random.choice(no_dep, out.shape[0])
-        start = 1
+    # Set forced model as the beginning of each sample
+    out[:, : forced.size] = forced
+    start = forced.size
 
     if mode is None:
         # Loop to generate a sample
@@ -980,8 +973,8 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[:, no_dep] = True
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
-            # Random sampling
-            out[:, i] = choice_bool(valids, axis=0)
+            # Random sampling (the transpose of an empty model is not C-contiguous)
+            out[:, i] = choice_bool(np.ascontiguousarray(valids), axis=0)
 
     elif mode == "strong":
         # Compute total number of dependencies
@@ -994,8 +987,8 @@ def sample_model_dep_onebyone(dep, size, n_samples=1, forced=None, mode=None):
             valids[:, no_dep] = True
             valids[np.repeat(np.arange(out.shape[0]), i), out[:, :i].flatten()] = False
 
-            # Random sampling
-            out[:, i] = choice_bool(valids, axis=0)
+            # Random sampling (the transpose of an empty model is not C-contiguous)
+            out[:, i] = choice_bool(np.ascontiguousarray(valids), axis=0)
 
     else:
         raise ValueError('Mode not recognized, must be either None, "weak" or "strong"')
@@ -1026,7 +1019,7 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
         The size of the model to sample.
     n_samples : int
         The number of samples to draw.
-    forced : np.array(1d)
+    forced : None or np.array(1d)
         A model which must be included at all times.
     mode : None or 'weak' or 'strong'
         The heredity mode during sampling.
@@ -1038,6 +1031,10 @@ def sample_model_dep_random(dep, size, n_samples=1, forced=None, mode=None):
     """
     # Validate the mode
     assert mode != "strong", "Mode must be None or weak"
+
+    # No forced model is an empty one
+    if forced is None:
+        forced = np.zeros(0, dtype=np.int64)
 
     # Return a one-by-one sampler if the mode is None
     if mode is None:
