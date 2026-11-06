@@ -61,3 +61,9 @@ def test_sams_generic_all():
     )
     regr.fit(data.drop(columns=["Y", "pred"]), data["Y"])
     assert len(regr.models_) > 0
+
+    # Same data without a forced model: heredity puts the intercept in every model, so it is not selected on its own
+    regr = SamsRegressor(factors, Y2X, dependencies=dependencies, mode="weak", model_size=6, nb_models="all", skipn=0.7)
+    regr.fit(data.drop(columns=["Y", "pred"]), data["Y"])
+    assert np.isfinite(regr.entropies_).all()
+    assert all(m.tolist() != [0] for m in regr.models_)

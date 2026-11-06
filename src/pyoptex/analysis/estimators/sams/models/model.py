@@ -40,6 +40,8 @@ class Model:
         Models are sampled, mutated and returned as term group indices.
     """
 
+    _single_columns: bool  # Every term group is a single column, so expand returns the model unchanged
+
     def __init__(self, X, y, forced=None, mode="weak", dep=None, labels=None):
         """
         Initialize of the base model in the SAMS algorithm.
@@ -102,6 +104,9 @@ class Model:
         self.labels = np.argsort(np.argsort(first))[inverse.reshape(-1)]
         self.term_groups = [np.flatnonzero(self.labels == g) for g in range(n_groups)]
 
+        # With one column per group, group g is column g
+        self._single_columns = n_groups == X.shape[1]
+
         # Collapse dep to group level (within-group edges dropped)
         dep_g = np.zeros((n_groups, n_groups), dtype=np.bool_)
         src, dst = np.nonzero(dep)
@@ -136,6 +141,8 @@ class Model:
         columns : np.array(1d)
             The column indices of X in these term groups.
         """
+        if self._single_columns:
+            return model
         if len(model) == 0:
             return np.array([], dtype=np.int64)
         return np.concatenate([self.term_groups[g] for g in model])

@@ -696,7 +696,7 @@ def _term_groups(Y2X: object, factors: list) -> np.ndarray | None:
     of one model term, such as the dummy columns of a categorical main effect
     or interaction, have the same power for every factor and share a label.
     Only possible for a Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`;
-    otherwise None.
+    otherwise None. Raises a ValueError if the factors do not match the model of that Y2X.
     """
     if not (isinstance(Y2X, partial) and Y2X.func is x2fx and "modelenc" in Y2X.keywords):
         return None
@@ -706,7 +706,10 @@ def _term_groups(Y2X: object, factors: list) -> np.ndarray | None:
     effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
     colstart = np.concatenate(([0], np.cumsum(np.where(effect_types > 1, effect_types - 1, 1))))
     if colstart[-1] != modelenc.shape[1]:
-        return None
+        raise ValueError(
+            f"The factors do not match the model of Y2X: they encode to {colstart[-1]} columns, but the encoded "
+            f"model of Y2X has {modelenc.shape[1]}"
+        )
     powers = np.add.reduceat(modelenc, colstart[:-1], axis=1)
 
     # Columns with identical powers are one group
