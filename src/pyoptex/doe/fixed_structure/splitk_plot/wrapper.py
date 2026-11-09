@@ -167,12 +167,14 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
     # Extract parameter arrays
     col_names = [str(f.name) for f in factors]
-    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    effect_levels = np.array([f.re.level for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors], dtype=np.int64)
+    effect_levels = np.array([f.re.level for f in factors], dtype=np.int64)
     coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
-    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
+    colstart = np.concatenate(
+        ([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))), dtype=np.int64
+    )
 
     # Alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
