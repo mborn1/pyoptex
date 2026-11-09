@@ -12,7 +12,7 @@ make lint            # ruff
 make format          # ruff format
 make typecheck       # mypy
 make test            # pytest
-make check-citation  # CITATION.cff version matches __init__.py
+make check-citation  # CITATION.cff matches __init__.py (version) and the tag or RELEASE_DATE (date)
 make all             # lint + typecheck + test
 ```
 
@@ -21,7 +21,8 @@ make all             # lint + typecheck + test
 - Run the verification checklist after every substantive change.
 - Do not change `setup.py` extension definitions without ensuring the CI wheel build still works (`python-publish.yml`, cibuildwheel).
 - Modify `.pyx` files only if you understand Cython (see `cython.mdc`).
-- Version lives only in `src/pyoptex/__init__.py`. `CITATION.cff` is synced with `make sync-citation` (before tagging with `RELEASE_DATE=YYYY-MM-DD`); the pre-commit hook only checks that it is in sync.
+- Version lives only in `src/pyoptex/__init__.py`.
+- `CITATION.cff`: version from `src/pyoptex/__init__.py`, date-released from tag `v<version>` (before tagging: `RELEASE_DATE`). See 'Version and citation' in CONTRIBUTING.md.
 - Add tests in `tests/` for new public API; run `venv/bin/python examples/run_all.py` to validate examples.
 - Changelog is kept in GitHub Releases, not in a file.
 - Never commit `.env`, tokens, or credentials.

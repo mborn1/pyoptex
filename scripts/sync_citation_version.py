@@ -5,8 +5,9 @@ an annotated tag, the commit date of a lightweight tag), and a --date that contr
 Before the tag exists (the release is being prepared), update mode requires --date YYYY-MM-DD; if the version
 is already released but its tag is missing locally, run `git fetch --tags`.
 
-Without git the tag cannot be looked up: update mode then requires --date, and --check checks only the
-version. --check only reports mismatches, with the same date as update mode would write.
+Without git the tag cannot be looked up: update mode then requires --date. --check only reports mismatches,
+with the same date as update mode would write: without a tag (or without git) and without --date, it checks
+only the version.
 """
 
 import argparse

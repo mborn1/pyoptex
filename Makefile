@@ -62,6 +62,6 @@ sync-citation:
 	$(PYTHON) scripts/sync_citation_version.py $(if $(RELEASE_DATE),--date $(RELEASE_DATE))
 
 check-citation:
-	$(PYTHON) scripts/sync_citation_version.py --check
+	$(PYTHON) scripts/sync_citation_version.py --check $(if $(RELEASE_DATE),--date $(RELEASE_DATE))
 
 all: lint typecheck test

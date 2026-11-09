@@ -118,8 +118,11 @@ understand Cython. Key rules:
   with an error. If the version is already released but its tag is missing
   locally, run `git fetch --tags` first. A `RELEASE_DATE` that contradicts
   an existing tag is an error. Without git the tag cannot be looked up, so
-  `RELEASE_DATE` is then required (and `make check-citation` checks only
-  the version).
+  `RELEASE_DATE` is then required.
+- `make check-citation` checks the version, and `date-released` against the
+  tag or, before tagging, against `make check-citation RELEASE_DATE=YYYY-MM-DD`.
+  Without a tag (or without git) and without `RELEASE_DATE`, it checks only
+  the version.
 
 ## Pull requests
 
