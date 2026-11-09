@@ -617,7 +617,6 @@ class SamsRegressor(MultiRegressionMixin):
             # At most the forced groups plus half of the free groups, where the number of different models is largest
             self._model_size = min(self._model_size, n_forced + math.ceil(free.size / 2))
 
-            # At least three more than the forced groups, which leaves a branch-and-bound size, within the groups
             if n_forced + 3 > cap:
                 raise ValueError(
                     f"The default model_size is at least {n_forced + 3} term groups (three more than the {n_forced} "
@@ -625,6 +624,8 @@ class SamsRegressor(MultiRegressionMixin):
                     "so the model space is too small for SAMS with these runs. Set model_size and nterms_bnb, "
                     "or fit the models directly."
                 )
+
+            # At least three more than the forced groups, which leaves a branch-and-bound size, within the groups
             self._model_size = min(max(self._model_size, n_forced + 3), self.sams_model_.n_term_groups)
         else:
             self._model_size = self.model_size
@@ -632,6 +633,12 @@ class SamsRegressor(MultiRegressionMixin):
             raise ValueError(
                 f"model_size={self._model_size} includes all term groups: {self._too_small_message(n_unique=1)}"
             )
+
+        # BnB submodel sizes are in term groups, starting after the forced groups
+        nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
+        self._nterms_bnb = (
+            range(len(self.sams_model_.forced) + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
+        )
 
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
         if self.nb_models == "all":
@@ -645,19 +652,6 @@ class SamsRegressor(MultiRegressionMixin):
                 allow_duplicate=self.allow_duplicate_sample,
                 tqdm=self.tqdm,
             )
-
-        # Groups in every sampled model (with heredity and no forced model, the intercept) are forced as well, only
-        # internally: as a submodel on their own they would have frequency 1 and an undefined entropy
-        counts = np.bincount(self.results_["model"].ravel(), minlength=self.sams_model_.n_term_groups)
-        in_every_model = np.flatnonzero(counts == len(self.results_))
-        self.sams_model_.forced = np.union1d(self.sams_model_.forced, in_every_model)
-
-        # BnB submodel sizes are in term groups, starting after the forced groups
-        n_forced = len(self.sams_model_.forced)
-        nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
-        self._nterms_bnb = (
-            range(n_forced + 1, nterms_bnb) if isinstance(nterms_bnb, int) else [s for s in nterms_bnb if s > n_forced]
-        )
 
         # Sort the results
         idx = np.argsort(self.results_["metric"])

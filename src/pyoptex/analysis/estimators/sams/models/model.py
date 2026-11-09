@@ -31,7 +31,8 @@ class Model:
     term_groups : list(np.array(1d))
         The column indices of X in each term group.
     forced : np.array(1d)
-        The term groups that must be included in the model.
+        The term groups that must be included in the model, including the intercept with heredity (the only group
+        without dependencies).
     mode : None or 'weak' or 'strong'
         The heredity model during sampling.
     dep : np.array(2d)
@@ -39,8 +40,6 @@ class Model:
         number of term groups. Group i depends on group j if dep(i, j) = true.
         Models are sampled, mutated and returned as term group indices.
     """
-
-    _single_columns: bool  # Every term group is a single column, so expand returns the model unchanged
 
     def __init__(self, X, y, forced=None, mode="weak", dep=None, labels=None):
         """
@@ -55,7 +54,8 @@ class Model:
         forced : np.array(1d)
             Column indices of X that must be included in the model.
             Internally converted to term group indices; forcing any
-            column of a group forces the whole group.
+            column of a group forces the whole group. With heredity, the
+            intercept (the only group without dependencies) is forced as well.
         mode : None or 'weak' or 'strong'
             The heredity model during sampling.
         dep : np.array(2d)
@@ -114,8 +114,12 @@ class Model:
         dep_g[self.labels[src[mask]], self.labels[dst[mask]]] = True
         self.dep = dep_g
 
-        # Map forced from column indices to group indices
+        # Map forced from column indices to group indices. With heredity, a single group without dependencies (the
+        # intercept) is in every model, so it is forced as well
         self.forced = np.unique(self.labels[forced])
+        roots = np.flatnonzero(~dep_g.any(axis=1))
+        if mode is not None and len(roots) == 1:
+            self.forced = np.union1d(self.forced, roots)
 
         # Store
         self.X = X
