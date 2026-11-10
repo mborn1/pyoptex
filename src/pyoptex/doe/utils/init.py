@@ -81,15 +81,14 @@ def init_design_region(
     rest = 1 - float(np.sum(lower))
     if rest < -1e-6:  # The tolerance eps of the mixture constraint
         raise ValueError(f"The lowest levels of the mixture components sum to {1 - rest:.10g} > 1")
-    rest = max(rest, 0)
+    if rest <= 1e-6:  # Within the tolerance, the lowest levels fill the mixture: the region is a single point
+        run[:, colstart[mixture]] = lower
+        return run
     upper = np.minimum([np.max(factors[i].coords_) for i in mixture], lower + rest)
 
     # Proposal: the j narrowest components uniformly within their bounds, the others uniformly from the simplex
     # of what those leave, with j such that the proposal is smallest (j = k is the box, j = 0 the simplex)
     k, n = len(mixture), len(run)
-    if rest == 0:
-        run[:, colstart[mixture]] = lower
-        return run
     order = np.argsort(upper - lower)
     widths = (upper - lower)[order]
     fixed = int(np.sum(widths == 0))  # Components with a single level always go in the box part
@@ -101,15 +100,23 @@ def init_design_region(
 
     # Rejection sampling
     x = np.empty((0, k))
+    proposed = 0
     while len(x) < n:
+        if len(x) == 0 and proposed >= MAX_REJECTED_RUNS:
+            raise ValueError(
+                f"No mixture in {MAX_REJECTED_RUNS:,} random proposals lies in the mixture region: "
+                "check the levels of the mixture components"
+            )
+        proposed += n
         candidates = np.empty((n, k))
         candidates[:, box] = lower[box] + (upper - lower)[box] * np.random.rand(n, j)
         left = np.maximum(1 - np.sum(candidates[:, box], axis=1) - np.sum(lower[simplex]), 0)
         if m > 0:  # No Dirichlet draws for the pure box, which would use up random numbers
             candidates[:, simplex] = lower[simplex] + left[:, None] * np.random.dirichlet(np.ones(m + 1), n)[:, :m]
         keep = (np.sum(candidates, axis=1) <= 1 + 1e-6) & np.all(candidates <= upper, axis=1)
-        if 0 < j < k:
+        if fixed < j < k:
             # The simplex part is denser where less is left: keep it with probability (left / rest)^m to stay uniform
+            # (not needed when the box only holds single-level components, which leave all of rest)
             keep &= np.random.rand(n) < (left / rest) ** m
         x = np.concatenate((x, candidates[keep]))
     run[:, colstart[mixture]] = x[:n]

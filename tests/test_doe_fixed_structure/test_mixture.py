@@ -44,15 +44,26 @@ def test_mixture_region_sampling():
     the uniform mean 0.02369 = integral of x (1 - x - y)^6 / integral of (1 - x - y)^6 over [0, 0.05]^2. The mixed
     set uses 200,000 samples, so that an error of one in the exponent of the acceptance step (about 1%) is detected."""
     set_seed(42)
-    for factors, n, mean, rtol in (
+
+    # Levels built with np.arange can end just above 1 in floating point (1 + 2e-16 here)
+    Factor("A", type="mixture", levels=np.arange(0.4, 1.01, 0.2))
+
+    for factors, n, mean, rtol, mean_square in (
         (
             [Factor("A", type="mixture", levels=[0.5, 0.8]), Factor("B", type="mixture", levels=[0, 0.1]), Factor("T")],
             20000,
             None,
             None,
+            None,
         ),
-        ([Factor(f"X{i}", type="mixture", levels=[0, 0.05 if i < 2 else 1]) for i in range(8)], 200000, 0.02369, 0.005),
-        ([Factor(f"X{i}", type="mixture", levels=[0, 1]) for i in range(3)], 20000, 0.25, 0.02),
+        (
+            [Factor(f"X{i}", type="mixture", levels=[0, 0.05 if i < 2 else 1]) for i in range(8)],
+            200000,
+            0.02369,
+            0.005,
+            None,
+        ),
+        ([Factor(f"X{i}", type="mixture", levels=[0, 1]) for i in range(3)], 20000, 0.25, 0.02, 0.1),
     ):
         Y2X = model2Y2X(partial_rsm_names({str(f.name): "lin" for f in factors}), factors)
         params = create_parameters(factors, default_fn(factors, Dopt(), Y2X), 20)
@@ -64,6 +75,6 @@ def test_mixture_region_sampling():
         assert np.all((mixture >= lower) & (mixture <= upper)) and np.all(shares[:, -1] >= -1e-6)
         if mean is not None:
             np.testing.assert_allclose(shares[:, 0].mean(), mean, rtol=rtol)
-
-    # The last set is uniform on the simplex of 4 shares: mean square 1/10 (a less spread distribution gives less)
-    np.testing.assert_allclose(np.mean(shares**2, axis=0), 0.1, rtol=0.03)
+        if mean_square is not None:
+            # Uniform on the simplex of 4 shares: mean square 1/10 (a less spread distribution gives less)
+            np.testing.assert_allclose(np.mean(shares**2, axis=0), mean_square, rtol=0.03)

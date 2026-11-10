@@ -47,12 +47,6 @@ class FactorMixin:
             # Define default coordinates as positive
             levels = self.levels if self.levels is not None else np.array([0, 0.5, 1])
 
-            # Levels are fractions; NaN fails both comparisons
-            fractions = np.asarray(levels, dtype=np.float64)
-            assert np.all((fractions >= 0) & (fractions <= 1)), (
-                f"Mixture levels are fractions between 0 and 1, but factor {self.name} has levels {levels}"
-            )
-
             # Transform to a new factor
             params = self._asdict()
             params["type"] = "cont_mixture"
@@ -71,6 +65,14 @@ class FactorMixin:
             "quan",
             "quantitative",
         ], f"The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}"
+
+        # Mixture levels are fractions, within the tolerance of the mixture constraint; NaN and no levels fail
+        if self.is_mixture:
+            fractions = np.asarray(self.levels, dtype=np.float64)
+            assert np.all((fractions >= -1e-6) & (fractions <= 1 + 1e-6)), (
+                f"Mixture levels are fractions between 0 and 1, but factor {self.name} has levels {self.levels}"
+            )
+
         if self.is_continuous:
             assert isinstance(self.min, (float, int)), (
                 f"Factor {self.name} must have an integer or float minimum, but is {self.min}"
