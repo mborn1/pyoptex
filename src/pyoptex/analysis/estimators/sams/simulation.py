@@ -71,21 +71,19 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     model.check_size(model_size)
 
     # Without duplicates, at most this many models exist. With heredity this is an upper bound: a small model
-    # space is counted exactly, a larger one is ended by the duplicate stop below
+    # space is listed and fitted completely when nb_models covers it, a larger one is ended by the duplicate stop
     if not allow_duplicate:
         n_forced = len(model.forced)
         n_unique = math.comb(model.n_term_groups - n_forced, model_size - n_forced)
-        if model.mode is not None and nb_models < n_unique <= MAX_ENUMERATE:
-            n_unique = len(model.all(model_size))
-
-        # A small model space that nb_models covers is fitted completely
-        if nb_models >= n_unique and n_unique <= MAX_ENUMERATE:
-            warnings.warn(
-                f"{n_unique} unique models of {model_size} term groups exist, no more than nb_models={nb_models}: "
-                "fitting all of them.",
-                stacklevel=2,
-            )
-            return simulate_all(model, model_size, tqdm=tqdm)
+        if n_unique <= MAX_ENUMERATE and (model.mode is not None or nb_models >= n_unique):
+            models = model.all(model_size)
+            if nb_models >= len(models):
+                warnings.warn(
+                    f"{len(models)} unique models of {model_size} term groups exist, no more than "
+                    f"nb_models={nb_models}: fitting all of them.",
+                    stacklevel=2,
+                )
+                return simulate_all(model, model_size, tqdm=tqdm, models=models)
         if nb_models > n_unique:
             warnings.warn(
                 f"At most {n_unique} unique models of {model_size} term groups exist, fewer than "
@@ -151,7 +149,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
                             f"{model_it} unique models found (fewer than nb_models={nb_models}).",
                             stacklevel=2,
                         )
-                        return results[:model_it]
+                        return results[:model_it].copy()
 
                 # Decrease temperature
                 accept_fn.accepted()
@@ -163,7 +161,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     return results
 
 
-def simulate_all(model, model_size, tqdm=True):
+def simulate_all(model, model_size, tqdm=True, models=None):
     """
     Sample and fits all possible models.
 
@@ -175,6 +173,9 @@ def simulate_all(model, model_size, tqdm=True):
         The total size of each overfitted model.
     tqdm : bool
         Whether to use tqdm to track the progress.
+    models : None or np.array(2d)
+        The models to fit, if already listed by :py:func:`simulate_sams`. By
+        default, every model of `model_size` term groups (after checking the size).
 
     Returns
     -------
@@ -184,11 +185,10 @@ def simulate_all(model, model_size, tqdm=True):
         'coeff' (np.float64, one per column of X): the coefficients, NaN for columns
         not in the model, and 'metric' (np.float64). Results contains one element per model.
     """
-    # Validate the model size
-    model.check_size(model_size)
-
-    # Generate all possible model combinations
-    models = model.all(model_size)
+    # Validate the model size and generate all possible model combinations
+    if models is None:
+        model.check_size(model_size)
+        models = model.all(model_size)
     nb_models = len(models)
 
     # Initialize model storage

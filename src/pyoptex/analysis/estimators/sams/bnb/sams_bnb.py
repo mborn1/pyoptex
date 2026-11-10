@@ -305,7 +305,8 @@ class SamsBnB(BnB):
         in_results : bool
             Whether the node is in the results or not.
         """
-        return any(np.all(results[i][0] == node[0]) for i in range(len(results)))
+        # Compare sorted: the greedy initial results are sorted, the nodes start with the forced groups
+        return any(np.array_equal(np.sort(results[i][0]), np.sort(node[0])) for i in range(len(results)))
 
     def preloop(self, top_results, top_scores):
         """
