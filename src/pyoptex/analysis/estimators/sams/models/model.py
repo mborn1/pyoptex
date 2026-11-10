@@ -354,12 +354,12 @@ class Model:
         models : np.array(2d)
             The list of all feasible models.
         """
+        # Every model holds the forced groups: combine them with the free groups
+        free = np.setdiff1d(np.arange(self.n_term_groups), self.forced)
         models = []
-        for model in combinations(range(self.n_term_groups), model_size):
-            model = np.array(model)
-            if np.all(permitted_dep_add(model, self.mode, self.dep, model)) and np.all(
-                np.isin(self.forced, model, assume_unique=True)
-            ):
+        for combination in combinations(free, model_size - len(self.forced)):
+            model = np.sort(np.concatenate((self.forced, combination))).astype(np.int64)
+            if np.all(permitted_dep_add(model, self.mode, self.dep, model)):
                 models.append(model)
         return np.array(models)
 

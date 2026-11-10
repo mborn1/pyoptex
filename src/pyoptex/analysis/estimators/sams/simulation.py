@@ -13,8 +13,8 @@ from .accept import ExponentialAccept
 # Accepted proposals in a row that duplicate a stored model before unique sampling stops
 MAX_DUPLICATES = 10_000
 
-# Largest number of term group combinations to enumerate for a complete fit of a small model space
-MAX_ENUMERATE = 100_000
+# Largest number of combinations of the free term groups to enumerate in a small model space
+MAX_ENUMERATE = 10_000
 
 
 def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01, allow_duplicate=False, tqdm=True):
@@ -52,9 +52,9 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     -----
     UserWarning
         Without duplicates, if `nb_models` covers every possible model: with
-        at most 100,000 term group combinations all models are fitted (as
-        :py:func:`simulate_all`), otherwise `nb_models` is lowered to the
-        number of combinations.
+        at most 10,000 combinations of the free term groups all models are
+        fitted (as :py:func:`simulate_all`), otherwise `nb_models` is lowered
+        to the number of combinations.
     UserWarning
         Without duplicates, if 10,000 accepted proposals in a row duplicate a
         stored model: the search stops and only the unique models found are
@@ -70,22 +70,22 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     # Validate the model size
     model.check_size(model_size)
 
-    # Without duplicates, a small model space is fitted completely when nb_models covers it
-    if not allow_duplicate and math.comb(model.n_term_groups, model_size) <= MAX_ENUMERATE:
-        n_unique = len(model.all(model_size))
-        if nb_models >= n_unique:
+    # Without duplicates, at most this many models exist. With heredity this is an upper bound: a small model
+    # space is counted exactly, a larger one is ended by the duplicate stop below
+    if not allow_duplicate:
+        n_forced = len(model.forced)
+        n_unique = math.comb(model.n_term_groups - n_forced, model_size - n_forced)
+        if model.mode is not None and nb_models < n_unique <= MAX_ENUMERATE:
+            n_unique = len(model.all(model_size))
+
+        # A small model space that nb_models covers is fitted completely
+        if nb_models >= n_unique and n_unique <= MAX_ENUMERATE:
             warnings.warn(
                 f"{n_unique} unique models of {model_size} term groups exist, no more than nb_models={nb_models}: "
                 "fitting all of them.",
                 stacklevel=2,
             )
             return simulate_all(model, model_size, tqdm=tqdm)
-
-    # Larger spaces have at most this many models, an upper bound with heredity (the duplicate stop below ends
-    # the search when fewer exist)
-    elif not allow_duplicate:
-        n_forced = len(model.forced)
-        n_unique = math.comb(model.n_term_groups - n_forced, model_size - n_forced)
         if nb_models > n_unique:
             warnings.warn(
                 f"At most {n_unique} unique models of {model_size} term groups exist, fewer than "

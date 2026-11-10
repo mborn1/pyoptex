@@ -648,17 +648,16 @@ class SamsRegressor(MultiRegressionMixin):
             )
 
         # BnB submodel sizes are in term groups, starting after the forced groups
+        n_forced = len(self.sams_model_.forced)
         nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
-        self._nterms_bnb = (
-            range(len(self.sams_model_.forced) + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
-        )
-        if len(self._nterms_bnb) == 0:
-            n_forced = len(self.sams_model_.forced)
+        self._nterms_bnb = range(n_forced + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
+        if len(self._nterms_bnb) == 0 or min(self._nterms_bnb) <= n_forced:
             raise ValueError(
-                f"No branch-and-bound submodel sizes for model_size={self._model_size} and "
-                f"nterms_bnb={self.nterms_bnb}: they run from one more than the {n_forced} forced term groups "
-                "up to nterms_bnb (exclusive, by default model_size - 1). Use a model_size of at least "
-                f"{n_forced + 3} term groups or a larger nterms_bnb."
+                f"The branch-and-bound submodel sizes must be larger than the {n_forced} forced term groups (with "
+                f"heredity, the intercept is forced), but model_size={self._model_size} and "
+                f"nterms_bnb={self.nterms_bnb} give the sizes {list(self._nterms_bnb)}. By default the sizes run "
+                f"from {n_forced + 1} up to model_size - 2: use a model_size of at least {n_forced + 3} term groups, "
+                f"or nterms_bnb sizes above {n_forced}."
             )
 
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
