@@ -2,7 +2,7 @@
 Module containing all the generic initialization functions
 """
 
-from math import factorial
+from math import lgamma
 
 import numpy as np
 
@@ -93,8 +93,10 @@ def init_design_region(
     order = np.argsort(upper - lower)
     widths = (upper - lower)[order]
     fixed = int(np.sum(widths == 0))  # Components with a single level always go in the box part
-    volumes = [np.prod(widths[fixed:j]) * rest ** (k - j) / factorial(k - j) for j in range(fixed, k + 1)]
-    j = fixed + int(np.argmin(volumes))
+    log_volumes = [
+        np.sum(np.log(widths[fixed:j])) + (k - j) * np.log(rest) - lgamma(k - j + 1) for j in range(fixed, k + 1)
+    ]
+    j = fixed + int(np.argmin(log_volumes))
     box, simplex, m = np.sort(order[:j]), np.sort(order[j:]), k - j
 
     # Rejection sampling
