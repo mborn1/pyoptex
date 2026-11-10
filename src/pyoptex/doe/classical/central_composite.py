@@ -2,7 +2,10 @@
 Module for Central Composite Design (CCD) generation.
 """
 
+from collections.abc import Mapping, Sequence
+
 import numpy as np
+import pandas as pd
 
 from ...utils.factor import Factor
 from .fractional_factorial import fractional_factorial
@@ -68,7 +71,13 @@ def _cube_generators(factors, cube):
     raise ValueError(f"Unknown cube type '{cube}'. Use 'full', 'half', or a dict of generators.")
 
 
-def central_composite(factors, alpha=None, n_center=None, cube="full", n_blocks=1):
+def central_composite(
+    factors: Sequence[Factor],
+    alpha: float | str | None = None,
+    n_center: int | tuple[int, int] | None = None,
+    cube: str | Mapping[str, Sequence[str] | Mapping[str, int]] = "full",
+    n_blocks: int = 1,
+) -> pd.DataFrame:
     """
     Generate a Central Composite Design (CCD).
 

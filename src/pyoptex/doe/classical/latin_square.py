@@ -6,13 +6,17 @@ Graeco-Latin squares); Fisher & Yates, "Statistical Tables for Biological,
 Agricultural and Medical Research" (randomization of Latin squares).
 """
 
-import numpy as np
+from collections.abc import Sequence
 
+import numpy as np
+import pandas as pd
+
+from ...utils.factor import Factor
 from ._paley import _galois_field, _prime_power
 from .utils import _to_dataframe, _validate_factors
 
 
-def latin_square(factors):
+def latin_square(factors: Sequence[Factor]) -> pd.DataFrame:
     """
     Generate a Latin square design, or a (hyper-)Graeco-Latin square.
 

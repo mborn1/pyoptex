@@ -2,10 +2,14 @@
 Module for Latin Hypercube Sampling design generation.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import pdist
 from scipy.stats import qmc
 
+from ...utils.factor import Factor
 from .utils import _qmc_engine, _space_filling_dataframe, _validate_space_filling_factors
 
 
@@ -31,7 +35,7 @@ def _maximin_lhs(n, k, iterations):
     return best_design
 
 
-def latin_hypercube(factors, n, iterations=100, method="maximin"):
+def latin_hypercube(factors: Sequence[Factor], n: int, iterations: int = 100, method: str = "maximin") -> pd.DataFrame:
     """
     Generate a Latin Hypercube design.
 

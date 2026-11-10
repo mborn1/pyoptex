@@ -2,6 +2,7 @@
 Shared helpers for classical design generation.
 """
 
+from collections.abc import Sequence
 from itertools import combinations, product
 from math import comb
 
@@ -348,7 +349,9 @@ def _blocked_dataframe(design, labels, center, factors, confounded=None):
     return Y
 
 
-def randomize(Y, block_column=BLOCK_COLUMN, shuffle_blocks=False):
+def randomize(
+    Y: pd.DataFrame, block_column: str | Sequence[str] | None = BLOCK_COLUMN, shuffle_blocks: bool = False
+) -> pd.DataFrame:
     """
     Randomize the run order of a design.
 

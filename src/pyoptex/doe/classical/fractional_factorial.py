@@ -2,10 +2,13 @@
 Module for fractional factorial design generation (L^(k-p)).
 """
 
+from collections.abc import Mapping, Sequence
 from itertools import product
 
 import numpy as np
+import pandas as pd
 
+from ...utils.factor import Factor
 from ._min_aberration import _MA_GENERATORS
 from .utils import (
     _assert_no_categorical_center,
@@ -68,7 +71,9 @@ def _alias_key(coefs, L):
     return (L, tuple((n, coefs[n] * inv % L) for n in names))
 
 
-def min_aberration_generators(factors, n_runs=None, resolution=None):
+def min_aberration_generators(
+    factors: Sequence[Factor], n_runs: int | None = None, resolution: int | None = None
+) -> dict[str, list[str]]:
     """
     Generators of the minimum aberration two-level fractional factorial.
 
@@ -117,12 +122,14 @@ def min_aberration_generators(factors, n_runs=None, resolution=None):
 
     # Available designs for k factors: (n_runs, resolution, generators), plus the
     # full factorial when it is within the catalogue's range of up to 128 runs
-    available = [(n, res, gens) for (kk, n), (res, gens) in _MA_GENERATORS.items() if kk == k]
+    available: list[tuple[int, float, list[tuple[int, ...]]]] = [
+        (n, res, gens) for (kk, n), (res, gens) in _MA_GENERATORS.items() if kk == k
+    ]
     if 2**k <= 128:
         available.append((2**k, np.inf, []))
     available.sort(key=lambda d: d[0])
 
-    if n_runs is not None:
+    if resolution is None:
         match = [d for d in available if d[0] == n_runs]
         assert len(match) > 0, (
             f"No catalogued fractional factorial for {k} factors in {n_runs} runs; "
@@ -141,7 +148,13 @@ def min_aberration_generators(factors, n_runs=None, resolution=None):
     return {names[p + i]: [names[j] for j in gen] for i, gen in enumerate(gens)}
 
 
-def fractional_factorial(factors, generators, n_levels=2, n_center=0, n_blocks=1):
+def fractional_factorial(
+    factors: Sequence[Factor],
+    generators: Mapping[str, Sequence[str] | Mapping[str, int]],
+    n_levels: int = 2,
+    n_center: int = 0,
+    n_blocks: int = 1,
+) -> pd.DataFrame:
     """
     Generate a regular fractional factorial design.
 
@@ -231,7 +244,7 @@ def fractional_factorial(factors, generators, n_levels=2, n_center=0, n_blocks=1
     for j, bname in enumerate(base_names):
         design_idx[:, name2idx[bname]] = base_design[:, j]
 
-    alias_keys = {}
+    alias_keys: dict[tuple[int, tuple], str] = {}
     for gen_name, defining in generators.items():
         gen_col = name2idx[gen_name]
         L = int(nlevels[gen_col])
@@ -273,12 +286,12 @@ def fractional_factorial(factors, generators, n_levels=2, n_center=0, n_blocks=1
             # corresponds to the index sum shifted by (m - 1), which restores the
             # correct sign for an even number of defining factors. Each negative
             # coefficient flips the sign once more.
-            col = sum(design_idx[:, name2idx[d]] for d in coefs)
+            col = sum((design_idx[:, name2idx[d]] for d in coefs), np.zeros(nruns, dtype=np.int64))
             col = (col + len(coefs) - 1) % 2
             if sum(c < 0 for c in coefs.values()) % 2 == 1:
                 col = 1 - col
         else:
-            col = sum(c * design_idx[:, name2idx[d]] for d, c in coefs.items()) % L
+            col = sum((c * design_idx[:, name2idx[d]] for d, c in coefs.items()), np.zeros(nruns, dtype=np.int64)) % L
         design_idx[:, gen_col] = col
 
     design = np.zeros((nruns, k), dtype=np.float64)

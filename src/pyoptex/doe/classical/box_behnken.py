@@ -5,10 +5,13 @@ Designs from Table 4 of Box & Behnken (1960), "Some new three level designs
 for the study of quantitative variables", Technometrics 2(4), pp. 455-475.
 """
 
+from collections.abc import Sequence
 from itertools import combinations, product
 
 import numpy as np
+import pandas as pd
 
+from ...utils.factor import Factor
 from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_factors
 
 # Blocks of the tabulated designs, in the row order of the paper: each tuple
@@ -16,7 +19,7 @@ from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_fa
 # the others are held at 0. For 11 factors each block runs the half fraction of
 # the 2^5 with x1 x2 x3 x4 x5 = +1 (16 runs instead of 32).
 # fmt: off
-_BBD_BLOCKS = {
+_BBD_BLOCKS: dict[int, list[tuple[int, ...]]] = {
     3: [(1, 2), (1, 3), (2, 3)],
     4: [(1, 2), (3, 4), (1, 4), (2, 3), (1, 3), (2, 4)],
     5: [(1, 2), (3, 4), (2, 5), (1, 3), (4, 5), (2, 3), (1, 4), (3, 5), (1, 5), (2, 4)],
@@ -75,7 +78,7 @@ def _block_runs(k, block, half_fraction):
     return runs
 
 
-def box_behnken(factors, n_center=None, n_blocks=1):
+def box_behnken(factors: Sequence[Factor], n_center: int | None = None, n_blocks: int = 1) -> pd.DataFrame:
     """
     Generate a Box-Behnken response surface design.
 

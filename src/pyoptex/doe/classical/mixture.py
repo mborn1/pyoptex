@@ -9,10 +9,13 @@ is specified with q - 1 mixture factors; the last component is implied as
 one minus the sum of the others and is not a column of the design.
 """
 
+from collections.abc import Sequence
 from itertools import combinations, combinations_with_replacement
 
 import numpy as np
+import pandas as pd
 
+from ...utils.factor import Factor
 from .utils import _to_dataframe, _validate_factors
 
 
@@ -60,7 +63,7 @@ def _to_mixture_dataframe(z, factors, last_min, augment, design_name):
     return _to_dataframe(design[:, :-1], factors)
 
 
-def simplex_lattice(factors, m, last_min=0.0, augment=False):
+def simplex_lattice(factors: Sequence[Factor], m: int, last_min: float = 0.0, augment: bool = False) -> pd.DataFrame:
     """
     Generate a {q, m} simplex lattice design.
 
@@ -107,7 +110,7 @@ def simplex_lattice(factors, m, last_min=0.0, augment=False):
     return _to_mixture_dataframe(z, factors, last_min, augment, "simplex lattice design")
 
 
-def simplex_centroid(factors, last_min=0.0, augment=False):
+def simplex_centroid(factors: Sequence[Factor], last_min: float = 0.0, augment: bool = False) -> pd.DataFrame:
     """
     Generate a simplex centroid design.
 

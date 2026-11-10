@@ -9,8 +9,12 @@ model selection for definitive screening designs", Technometrics 59(3),
 pp. 319-329, doi:10.1080/00401706.2016.1234979.
 """
 
-import numpy as np
+from collections.abc import Sequence
 
+import numpy as np
+import pandas as pd
+
+from ...utils.factor import Factor
 from ._paley import _paley_conference, _prime_power
 from .utils import _assert_no_mixture, _to_dataframe, _validate_factors
 
@@ -34,7 +38,7 @@ def _conference(n):
     return None
 
 
-def definitive_screening(factors, n_fake=0, n_center=1):
+def definitive_screening(factors: Sequence[Factor], n_fake: int = 0, n_center: int = 1) -> pd.DataFrame:
     """
     Generate a definitive screening design (DSD).
 

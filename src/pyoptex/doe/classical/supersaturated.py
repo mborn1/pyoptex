@@ -5,6 +5,11 @@ Construction from Lin (1993), "A new class of supersaturated designs",
 Technometrics 35(1), pp. 28-31.
 """
 
+from collections.abc import Sequence
+
+import pandas as pd
+
+from ...utils.factor import Factor
 from .plackett_burman import _pb_matrix
 from .utils import _levels, _to_dataframe, _two_level_normalized, _validate_factors
 
@@ -25,7 +30,7 @@ def _ssd_matrix(N):
     return mat[mat[:, 0] > 0, 1:]
 
 
-def supersaturated(factors):
+def supersaturated(factors: Sequence[Factor]) -> pd.DataFrame:
     """
     Generate a two-level supersaturated screening design.
 

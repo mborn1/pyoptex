@@ -13,9 +13,12 @@ orthogonality (L36b, L54, L64, L64b); these are corrected and documented at
 the arrays concerned.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
+from ...utils.factor import Factor
 from .utils import BLOCK_COLUMN, _levels, _to_dataframe, _validate_factors
 
 # fmt: off
@@ -231,7 +234,7 @@ _ARRAYS = {
 }
 
 
-def taguchi(name, factors, columns=None):
+def taguchi(name: str, factors: Sequence[Factor], columns: Sequence[int] | None = None) -> pd.DataFrame:
     """
     Generate a Taguchi orthogonal array design.
 
@@ -325,7 +328,7 @@ def taguchi(name, factors, columns=None):
     return _to_dataframe(design, factors)
 
 
-def crossed_array(inner, outer):
+def crossed_array(inner: pd.DataFrame, outer: pd.DataFrame) -> pd.DataFrame:
     """
     Cross an inner (control) design with an outer (noise) design.
 

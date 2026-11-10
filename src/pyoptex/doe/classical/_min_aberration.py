@@ -16,7 +16,7 @@ minus 27", which does not reproduce the word length pattern printed next to it,
 """
 
 # fmt: off
-_MA_GENERATORS = {
+_MA_GENERATORS: dict[tuple[int, int], tuple[int, list[tuple[int, ...]]]] = {
     (3, 4): (3, [(0, 1)]),  # 3-1.1
     (4, 8): (4, [(0, 1, 2)]),  # 4-1.1
     (5, 8): (3, [(1, 2), (0, 1, 2)]),  # 5-2.1

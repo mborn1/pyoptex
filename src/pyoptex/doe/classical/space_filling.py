@@ -7,12 +7,16 @@ generator, so :py:func:`set_seed <pyoptex._seed.set_seed>` makes them
 reproducible.
 """
 
+from collections.abc import Sequence
+
+import pandas as pd
 from scipy.stats import qmc
 
+from ...utils.factor import Factor
 from .utils import _qmc_engine, _space_filling_dataframe, _validate_space_filling_factors
 
 
-def sobol(factors, n, scramble=True):
+def sobol(factors: Sequence[Factor], n: int, scramble: bool = True) -> pd.DataFrame:
     """
     Generate a Sobol' sequence design.
 
@@ -41,7 +45,7 @@ def sobol(factors, n, scramble=True):
     return _space_filling_dataframe(unit, factors)
 
 
-def halton(factors, n, scramble=True):
+def halton(factors: Sequence[Factor], n: int, scramble: bool = True) -> pd.DataFrame:
     """
     Generate a Halton sequence design.
 
@@ -70,7 +74,7 @@ def halton(factors, n, scramble=True):
     return _space_filling_dataframe(unit, factors)
 
 
-def uniform(factors, n):
+def uniform(factors: Sequence[Factor], n: int) -> pd.DataFrame:
     """
     Generate a uniform design.
 

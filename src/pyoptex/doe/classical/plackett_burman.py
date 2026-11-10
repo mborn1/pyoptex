@@ -7,8 +7,12 @@ Sizes 52 and 60 from Paley, R. E. A. C. (1933), "On orthogonal matrices",
 Journal of Mathematics and Physics 12, pp. 311-320.
 """
 
-import numpy as np
+from collections.abc import Sequence
 
+import numpy as np
+import pandas as pd
+
+from ...utils.factor import Factor
 from ._min_aberration import _MA_GENERATORS
 from ._paley import _paley_hadamard
 from .utils import (
@@ -195,7 +199,7 @@ def _power_of_two_error(k, n_runs, default_n):
     )
 
 
-def plackett_burman(factors, n_runs=None, n_center=0):
+def plackett_burman(factors: Sequence[Factor], n_runs: int | None = None, n_center: int = 0) -> pd.DataFrame:
     """
     Generate a Plackett-Burman screening design.
 

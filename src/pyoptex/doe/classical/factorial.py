@@ -2,10 +2,13 @@
 Module for full factorial design generation.
 """
 
+from collections.abc import Sequence
 from itertools import product
 
 import numpy as np
+import pandas as pd
 
+from ...utils.factor import Factor
 from .utils import (
     _assert_no_mixture,
     _block_scheme,
@@ -17,7 +20,7 @@ from .utils import (
 )
 
 
-def full_factorial(factors, n_levels=2, n_center=0, n_blocks=1):
+def full_factorial(factors: Sequence[Factor], n_levels: int = 2, n_center: int = 0, n_blocks: int = 1) -> pd.DataFrame:
     """
     Generate a full factorial design using all factor levels.
 

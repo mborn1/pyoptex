@@ -7,8 +7,12 @@ ranges as in Ferreira et al. (2004), "Doehlert matrix: a chemometric tool
 for analytical chemistry - review", Talanta 63(4), pp. 1061-1067.
 """
 
-import numpy as np
+from collections.abc import Sequence
 
+import numpy as np
+import pandas as pd
+
+from ...utils.factor import Factor
 from .utils import _assert_no_mixture, _to_dataframe, _validate_factors
 
 
@@ -25,7 +29,7 @@ def _regular_simplex(k):
     return V
 
 
-def doehlert(factors, n_center=1):
+def doehlert(factors: Sequence[Factor], n_center: int = 1) -> pd.DataFrame:
     """
     Generate a Doehlert (uniform shell) design.
 

@@ -2,13 +2,16 @@
 Module for the fold-over of two-level designs.
 """
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
+from ...utils.factor import Factor
 from .utils import BLOCK_COLUMN, _validate_factors
 
 
-def foldover(Y, factors, fold=None):
+def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | None = None) -> pd.DataFrame:
     """
     Append the fold-over (mirror image) of a design.
 
