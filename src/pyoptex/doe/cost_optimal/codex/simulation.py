@@ -174,7 +174,8 @@ def simulate(params, nsims=100, validate=False):
         interrupted = True
         print("Interrupted: optimizing and returning current results...")
 
-    # Final optimization (the optimizers change the state in place, so keep a copy to fall back on)
+    # Final optimization. The optimizers change the state in place, so a second interrupt returns a copy from
+    # after the last completed optimizer call
     previous = best_state
     try:
         optimized = True
@@ -188,7 +189,7 @@ def simulate(params, nsims=100, validate=False):
     except KeyboardInterrupt:
         interrupted = True
         best_state = previous
-        print("Interrupted again: returning the results before the last final optimization step")
+        print("Interrupted again: returning the results of the last completed final optimization step")
 
     # Final validation
     try:
