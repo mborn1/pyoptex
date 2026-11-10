@@ -8,6 +8,7 @@ pytestmark = pytest.mark.filterwarnings("ignore:Metric is .*:UserWarning")
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.cost_optimal import Factor
 from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
+from pyoptex.doe.cost_optimal.codex.optimization import Optimizer
 from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
 from pyoptex.doe.cost_optimal.cov import cov_time_trend
 from pyoptex.doe.cost_optimal.metric import Iopt
@@ -62,3 +63,43 @@ def test_codex():
     np.testing.assert_allclose(state.metric, ref["metric"], rtol=1e-6)
     assert len(state.Y) == ref["n_experiments"]
     assert_frame_equal(Y, {"shape": ref["Y_shape"], "columns": ref["Y_columns"], "data": ref["Y_values"]})
+
+
+class _InterruptOptimizer(Optimizer):
+    """A final optimizer interrupted by the user (as a second Ctrl+C during the final optimization)."""
+
+    def _call(self, state, params):
+        raise KeyboardInterrupt
+
+
+def test_codex_interrupt_during_final_optimization():
+    """An interruption during the final optimization returns the design from before that step."""
+    set_seed(42)
+
+    factors = [
+        Factor(
+            "A1",
+            type="categorical",
+            levels=["L1", "L2", "L3", "L4"],
+            coords=np.array([[-1, -1, -1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
+            ratio=[0.1, 1, 10],
+        ),
+        Factor("E", type="continuous", grouped=False),
+        Factor("F", type="continuous", grouped=False, levels=[2, 3, 4, 5], min=2, max=5),
+        Factor("G", type="continuous", grouped=False),
+    ]
+    model = partial_rsm_names({"A1": "tfi", "E": "tfi", "F": "quad", "G": "tfi"})
+    Y2X = model2Y2X(model, factors)
+    metric = Iopt(cov=cov_time_trend(time=60))
+    cost_fn = parallel_worker_cost({"A1": 2 * 60, "E": 1, "F": 1, "G": 1}, factors, 3 * 4 * 60, 5)
+
+    nsims = 10
+    fn = default_fn(nsims, factors, cost_fn, metric, Y2X, final_optimizers=[_InterruptOptimizer()])
+    params = create_parameters(factors, fn)
+
+    try:
+        Y, state = create_cost_optimal_codex_design(params, nsims=nsims, nreps=1, validate=True)
+    except KeyboardInterrupt:
+        pytest.fail("A second interruption escaped simulate")
+
+    assert len(Y) == len(state.Y) > 0
