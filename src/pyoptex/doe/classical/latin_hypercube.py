@@ -3,6 +3,7 @@ Module for Latin Hypercube Sampling design generation.
 """
 
 import numpy as np
+from scipy.spatial.distance import pdist
 from scipy.stats import qmc
 
 from .utils import _qmc_engine, _space_filling_dataframe, _validate_space_filling_factors
@@ -21,9 +22,7 @@ def _maximin_lhs(n, k, iterations):
             high = (perm + 1) / n
             design[:, j] = np.random.uniform(low, high)
 
-        dists = np.sum((design[:, np.newaxis, :] - design[np.newaxis, :, :]) ** 2, axis=2)
-        np.fill_diagonal(dists, np.inf)
-        min_dist = np.min(dists)
+        min_dist = pdist(design, "sqeuclidean").min() if n > 1 else np.inf
 
         if min_dist > best_min_dist:
             best_min_dist = min_dist
