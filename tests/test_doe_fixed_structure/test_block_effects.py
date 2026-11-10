@@ -46,3 +46,20 @@ def test_block_effects_with_factor_random_effects(factor_effects, block_effects)
     params = create_parameters(factors, default_fn(factors, Dopt(), Y2X), NRUNS, block_effects=block_effects)
 
     np.testing.assert_allclose(np.linalg.inv(params.Vinv[0]), _expected_V(factor_effects + block_effects), atol=1e-10)
+
+
+def test_block_effect_with_several_ratios():
+    """Without factor random effects, a block effect with several ratios gives one covariance per ratio."""
+    ratios = [0.5, 1, 2]
+    factors = [Factor("A"), Factor("B")]
+    model = partial_rsm_names({str(f.name): "lin" for f in factors})
+    Y2X = model2Y2X(model, factors)
+    params = create_parameters(
+        factors, default_fn(factors, Dopt(), Y2X), NRUNS, block_effects=[RandomEffect(_groups(3), ratio=ratios)]
+    )
+
+    assert len(params.Vinv) == len(ratios)
+    for Vinv, ratio in zip(params.Vinv, ratios, strict=True):
+        np.testing.assert_allclose(
+            np.linalg.inv(Vinv), _expected_V([RandomEffect(_groups(3), ratio=ratio)]), atol=1e-10
+        )
