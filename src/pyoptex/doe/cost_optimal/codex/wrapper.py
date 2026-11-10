@@ -250,11 +250,11 @@ def create_cost_optimal_codex_design(params, nreps=10, nsims=7500, validate=True
     """
     assert nreps > 0, "Must specify at least one repetition for the algorithm"
 
+    # Create the first state (an interrupt before it has a state stops as a plain KeyboardInterrupt)
+    best_state, interrupted = simulate(params, nsims=nsims, validate=validate)
+
     # Simulation
     try:
-        # Create the first state
-        best_state, interrupted = simulate(params, nsims=nsims, validate=validate)
-
         # If not yet interrupted, run the rest of the repetitions
         if not interrupted:
             for _ in range(nreps - 1):
