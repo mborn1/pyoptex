@@ -1,0 +1,23 @@
+name: Question
+description: Ask a question about using PyOptEx
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about how to use PyOptEx? Ask away!
+        For general DoE concepts, see the [documentation](https://pyoptex.readthedocs.io/en/latest/).
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Any relevant code, design setup, or background that helps us answer.

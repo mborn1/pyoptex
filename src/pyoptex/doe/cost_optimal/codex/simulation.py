@@ -10,6 +10,7 @@ from ....utils.design import obs_var_from_Zs
 from ..utils import State, obs_var_Zs
 from ..validation import validate_state
 
+
 def copy_state(s):
     """
     Creates a deep copy of a State object to prevent aliasing of its mutable arrays.
