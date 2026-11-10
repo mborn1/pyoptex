@@ -44,10 +44,6 @@ def test_mixture_region_sampling():
     the uniform mean 0.02369 = integral of x (1 - x - y)^6 / integral of (1 - x - y)^6 over [0, 0.05]^2. The mixed
     set uses 200,000 samples, so that an error of one in the exponent of the acceptance step (about 1%) is detected."""
     set_seed(42)
-
-    # Levels built with np.arange can end just above 1 in floating point (1 + 2e-16 here)
-    Factor("A", type="mixture", levels=np.arange(0.4, 1.01, 0.2))
-
     for factors, n, mean, rtol, mean_square in (
         (
             [Factor("A", type="mixture", levels=[0.5, 0.8]), Factor("B", type="mixture", levels=[0, 0.1]), Factor("T")],

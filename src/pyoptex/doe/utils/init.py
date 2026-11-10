@@ -104,8 +104,8 @@ def init_design_region(
     while len(x) < n:
         if len(x) == 0 and proposed >= MAX_REJECTED_RUNS:
             raise ValueError(
-                f"No mixture in {MAX_REJECTED_RUNS:,} random proposals lies in the mixture region: "
-                "check the levels of the mixture components"
+                f"Fewer than one in {MAX_REJECTED_RUNS:,} random proposals lies in the mixture region, which is too "
+                "small to sample: check the levels of the mixture components"
             )
         proposed += n
         candidates = np.empty((n, k))
