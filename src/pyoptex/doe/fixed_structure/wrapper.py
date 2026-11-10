@@ -165,7 +165,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     if len(block_effects) > 0:
         # beZs = np.array([np.unique(np.array(be.Z, dtype=np.int64), return_inverse=True)[1] for be in block_effects])
         beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
-        V += np.array(
+        V = V + np.array(
             [obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) for r in be_ratios], dtype=np.float64
         )
 
