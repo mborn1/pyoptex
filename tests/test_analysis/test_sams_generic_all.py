@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from pyoptex._seed import set_seed
 from pyoptex.analysis import SamsRegressor
@@ -44,12 +45,41 @@ def test_sams_generic_all():
     assert len(regr.models_) == ref["nb_models"]
     assert [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))] == ref["model_formulas"]
     assert [m.tolist() for m in regr.models_] == ref["selected_models"]
+    np.testing.assert_allclose(regr.entropies_, ref["entropies"], rtol=1e-10)
 
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)
         assert regr.models_[i].tolist() == ref[f"models_{i}"]
 
+    # An nb_models above the number of models fits all of them, as nb_models="all"
+    regr_many = SamsRegressor(
+        factors,
+        Y2X,
+        dependencies=dependencies,
+        mode="weak",
+        forced_model=np.array([0], np.int64),
+        model_size=6,
+        nb_models=10**6,
+        skipn=0.7,
+    )
+    with pytest.warns(UserWarning, match="fitting all of them"):
+        regr_many.fit(data.drop(columns="Y"), data["Y"])
+    np.testing.assert_allclose(np.sort(regr_many.results_["metric"]), np.sort(regr.results_["metric"]))
+
     data["pred"] = regr.predict(data.drop(columns="Y"))
     np.testing.assert_allclose(data["pred"].mean(), ref["pred_mean"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].std(), ref["pred_std"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].values, ref["predictions"], rtol=1e-10)
+
+    # Same data with mode=None and no dependencies
+    regr = SamsRegressor(
+        factors, Y2X, mode=None, forced_model=np.array([0], np.int64), model_size=6, nb_models="all", skipn=0.7
+    )
+    regr.fit(data.drop(columns=["Y", "pred"]), data["Y"])
+    assert len(regr.models_) > 0
+
+    # Same data without a forced model: heredity puts the intercept in every model, so it is not selected on its own
+    regr = SamsRegressor(factors, Y2X, dependencies=dependencies, mode="weak", model_size=6, nb_models="all", skipn=0.7)
+    regr.fit(data.drop(columns=["Y", "pred"]), data["Y"])
+    assert np.isfinite(regr.entropies_).all()
+    assert all(m.tolist() != [0] for m in regr.models_)
