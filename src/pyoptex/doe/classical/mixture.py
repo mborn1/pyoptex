@@ -9,7 +9,7 @@ is specified with q - 1 mixture factors; the last component is implied as
 one minus the sum of the others and is not a column of the design.
 """
 
-from itertools import combinations, product
+from itertools import combinations, combinations_with_replacement
 
 import numpy as np
 
@@ -102,7 +102,7 @@ def simplex_lattice(factors, m, last_min=0.0, augment=False):
     assert m >= 1, f"m must be at least 1 (got {m})"
     q = len(factors) + 1
 
-    parts = [p for p in product(range(m + 1), repeat=q) if sum(p) == m]
+    parts = [tuple(np.bincount(c, minlength=q)) for c in combinations_with_replacement(range(q), m)]
     z = np.array(sorted(parts, reverse=True), dtype=np.float64) / m
     return _to_mixture_dataframe(z, factors, last_min, augment, "simplex lattice design")
 
