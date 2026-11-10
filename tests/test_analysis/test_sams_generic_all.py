@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from pyoptex._seed import set_seed
 from pyoptex.analysis import SamsRegressor
@@ -49,6 +50,21 @@ def test_sams_generic_all():
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)
         assert regr.models_[i].tolist() == ref[f"models_{i}"]
+
+    # An nb_models above the number of models fits all of them, as nb_models="all"
+    regr_many = SamsRegressor(
+        factors,
+        Y2X,
+        dependencies=dependencies,
+        mode="weak",
+        forced_model=np.array([0], np.int64),
+        model_size=6,
+        nb_models=10**6,
+        skipn=0.7,
+    )
+    with pytest.warns(UserWarning, match="fitting all of them"):
+        regr_many.fit(data.drop(columns="Y"), data["Y"])
+    np.testing.assert_allclose(np.sort(regr_many.results_["metric"]), np.sort(regr.results_["metric"]))
 
     data["pred"] = regr.predict(data.drop(columns="Y"))
     np.testing.assert_allclose(data["pred"].mean(), ref["pred_mean"], rtol=1e-10)

@@ -131,6 +131,16 @@ class Model:
         """The number of term groups."""
         return len(self.term_groups)
 
+    @property
+    def max_model_size(self) -> int:
+        """
+        The largest model size, in term groups, at which every model has fewer
+        columns than runs: the forced groups plus the largest free groups.
+        """
+        sizes = np.array([len(g) for g in self.term_groups])
+        columns = np.sum(sizes[self.forced]) + np.cumsum(np.sort(np.delete(sizes, self.forced))[::-1])
+        return len(self.forced) + int(np.sum(columns < self.X.shape[0]))
+
     def expand(self, model: np.ndarray) -> np.ndarray:
         """
         Expand term group indices to column indices of X.
@@ -168,12 +178,10 @@ class Model:
             f"model_size={model_size} exceeds the {self.n_term_groups} term groups available"
         )
 
-        # Worst-case number of coefficients for model_size groups
-        group_sizes = np.sort([len(g) for g in self.term_groups])[::-1]
-        max_coeff_size = int(np.sum(group_sizes[:model_size]))
-        assert max_coeff_size < self.X.shape[0], (
-            f"model_size={model_size} term groups can expand to {max_coeff_size} "
-            f"columns, which exceeds the {self.X.shape[0]} runs available"
+        assert model_size <= self.max_model_size, (
+            f"model_size={model_size} term groups can expand to as many columns as the {self.X.shape[0]} runs "
+            f"available: at most {self.max_model_size} term groups (the forced and the largest free groups) "
+            "always fit in fewer columns"
         )
 
     def _sort(self, model):

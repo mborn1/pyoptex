@@ -555,12 +555,20 @@ class SamsRegressor(MultiRegressionMixin):
         """
         if n_unique is None:
             n_unique = len(np.unique(self.results_["model"], axis=0))
+        # The number of possible models is largest at about half of the free term groups, within the runs, and the
+        # branch-and-bound needs at least three more than the forced term groups
         n_forced = len(self.sams_model_.forced)
         n_half = n_forced + math.ceil((self.sams_model_.n_term_groups - n_forced) / 2)
-        return (
+        n_suggest = max(min(n_half, self.sams_model_.max_model_size), n_forced + 3)
+        message = (
             f"the number of unique models of {self._model_size} term groups is {n_unique}, so the model space is "
-            "too small for SAMS. The number of possible models is largest at about half of the free term groups: "
-            f"use a model_size near {n_half}, a smaller skipn or a smaller ncluster, or fit the models directly."
+            "too small for SAMS"
+        )
+        if n_suggest >= self.sams_model_.n_term_groups or n_suggest > self.sams_model_.max_model_size:
+            return f"{message}, with these runs and term groups. Fit the models directly."
+        return (
+            f"{message}. Use a model_size near {n_suggest}, a smaller skipn or a smaller ncluster, "
+            "or fit the models directly."
         )
 
     def _fit(self, X, y):
@@ -610,23 +618,28 @@ class SamsRegressor(MultiRegressionMixin):
             n_free = round((len(X) / 3 - np.sum(sizes[self.sams_model_.forced])) / free.mean()) if free.size else 0
             self._model_size = n_forced + n_free
 
-            # At most as many groups as check_size allows: the largest groups stay below N columns
-            cap = int(np.sum(np.cumsum(np.sort(sizes)[::-1]) < len(X)))
-            self._model_size = min(self._model_size, cap)
+            # At most as many groups as always fit in fewer columns than runs
+            self._model_size = min(self._model_size, self.sams_model_.max_model_size)
 
             # At most the forced groups plus half of the free groups, where the number of different models is largest
             self._model_size = min(self._model_size, n_forced + math.ceil(free.size / 2))
 
-            if n_forced + 3 > cap:
+            # At least three more than the forced groups, which leaves a branch-and-bound size, and fewer than all
+            floor = n_forced + 3
+            if floor >= self.sams_model_.n_term_groups:
                 raise ValueError(
-                    f"The default model_size is at least {n_forced + 3} term groups (three more than the {n_forced} "
-                    f"forced), but the largest {n_forced + 3} term groups do not fit in fewer than the {len(X)} runs, "
+                    f"The default model_size is at least {floor} term groups (three more than the {n_forced} forced) "
+                    f"and fewer than all, but the model has {self.sams_model_.n_term_groups} term groups, too few "
+                    "for SAMS. Fit the models directly."
+                )
+            if floor > self.sams_model_.max_model_size:
+                raise ValueError(
+                    f"The default model_size is at least {floor} term groups (three more than the {n_forced} forced), "
+                    f"but only {self.sams_model_.max_model_size} always fit in fewer columns than the {len(X)} runs, "
                     "so the model space is too small for SAMS with these runs. Set model_size and nterms_bnb, "
                     "or fit the models directly."
                 )
-
-            # At least three more than the forced groups, which leaves a branch-and-bound size, within the groups
-            self._model_size = min(max(self._model_size, n_forced + 3), self.sams_model_.n_term_groups)
+            self._model_size = max(self._model_size, floor)
         else:
             self._model_size = self.model_size
         if self._model_size == self.sams_model_.n_term_groups:
@@ -639,6 +652,14 @@ class SamsRegressor(MultiRegressionMixin):
         self._nterms_bnb = (
             range(len(self.sams_model_.forced) + 1, nterms_bnb) if isinstance(nterms_bnb, int) else nterms_bnb
         )
+        if len(self._nterms_bnb) == 0:
+            n_forced = len(self.sams_model_.forced)
+            raise ValueError(
+                f"No branch-and-bound submodel sizes for model_size={self._model_size} and "
+                f"nterms_bnb={self.nterms_bnb}: they run from one more than the {n_forced} forced term groups "
+                "up to nterms_bnb (exclusive, by default model_size - 1). Use a model_size of at least "
+                f"{n_forced + 3} term groups or a larger nterms_bnb."
+            )
 
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
         if self.nb_models == "all":
@@ -684,9 +705,10 @@ class SamsRegressor(MultiRegressionMixin):
         results = results[self._skipn :]
         if len(results) == 0:
             raise ValueError(f"No models remain after skipping {self._skipn}: {self._too_small_message()}")
-        if isinstance(self.ncluster, (int, np.integer)) and len(results) < self.ncluster:
+        n_distinct = len(np.unique(results["model"], axis=0))
+        if isinstance(self.ncluster, (int, np.integer)) and n_distinct < self.ncluster:
             raise ValueError(
-                f"Only {len(results)} models remain after skipping {self._skipn}, fewer than "
+                f"Only {n_distinct} distinct models remain after skipping {self._skipn}, fewer than "
                 f"ncluster={self.ncluster}: {self._too_small_message()}"
             )
 
@@ -711,7 +733,7 @@ class SamsRegressor(MultiRegressionMixin):
             # Auto detect the number of clusters
             if self.ncluster == "auto":
                 # Fit kmeans (at most one cluster per distinct model)
-                max_cluster = min(self.max_cluster, len(np.unique(results["model"], axis=0)))
+                max_cluster = min(self.max_cluster, n_distinct)
                 kmeans_dists = np.zeros(max_cluster)
                 for nc in range(1, max_cluster + 1):
                     kmeans = KMeans(n_init="auto", n_clusters=nc).fit(results_cluster)
@@ -763,19 +785,13 @@ class SamsRegressor(MultiRegressionMixin):
             freq = np.concatenate(f_)
             self.entropies_ = np.concatenate(e_)
 
-        # No submodels: an empty range of sizes, or a timeout on the first size
+        # No submodels: a timeout on the first size, or sizes of nterms_bnb that the models do not have
         if len(submodels) == 0:
-            n_forced = len(self.sams_model_.forced)
-            fixes = [f"a model_size of at least {n_forced + 3} term groups", "a larger nterms_bnb"]
-            reason = ""
-            if timed_out:
-                reason = f" within bnb_timeout={self.bnb_timeout} seconds"
-                fixes.append("a larger bnb_timeout")
+            reason = f" within bnb_timeout={self.bnb_timeout} seconds" if timed_out else ""
             raise ValueError(
                 f"The branch-and-bound found no submodels{reason} for model_size={self._model_size} and "
-                f"nterms_bnb={self.nterms_bnb}. The submodel sizes run from one more than the {n_forced} forced "
-                "term groups up to nterms_bnb (exclusive, by default model_size - 1). Use "
-                f"{', '.join(fixes[:-1])} or {fixes[-1]}."
+                f"nterms_bnb={self.nterms_bnb}. Use a larger bnb_timeout, or submodel sizes from "
+                f"{len(self.sams_model_.forced) + 1} up to {self._model_size - 1}."
             )
 
         # Sort models according to entropy
