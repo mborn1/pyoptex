@@ -95,6 +95,17 @@ def no_cov(Y, X, Zs, Vinv, costs, random=False):
     return Y, X, Zs, Vinv
 
 
+def _scale_levels(t):
+    """
+    Scales the time levels 0, ..., t[-1] to [-1, 1]. If every run is in the
+    first period, the column is constant -1: the trend is aliased with the
+    intercept.
+    """
+    if t[-1] > 0:
+        return t / t[-1] * 2 - 1
+    return np.full_like(t, -1.0, dtype=np.float64)
+
+
 def cov_time_trend(time=1, cost_index=0):
     """
     Covariance function to account for time trends.
@@ -105,6 +116,12 @@ def cov_time_trend(time=1, cost_index=0):
     For example, if time is 2 and we have runs with
     cumulative time [0, 1, 2, 3, 4, 5], the added time column
     will be [-1, -1, 0, 0, 1, 1].
+
+    While the design stays within one period (as CODEX's small start design
+    may), every run is in the first period, so the time column is constant
+    (-1) and aliased with the intercept: the trend cannot be estimated, and
+    the optimization adds runs until it spans more than one period, if the
+    budget allows.
 
     Parameters
     ----------
@@ -118,7 +135,14 @@ def cov_time_trend(time=1, cost_index=0):
     -------
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
+
+    Raises
+    ------
+    ValueError
+        If `time` is not positive.
     """
+    if not time > 0:
+        raise ValueError(f"time must be positive, but is {time}")
 
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
@@ -127,8 +151,7 @@ def cov_time_trend(time=1, cost_index=0):
             t = np.random.rand(Y.shape[0]) * 2 - 1
         else:
             cum_cost = np.cumsum(costs[cost_index][0])
-            t = np.floor_divide(cum_cost, time)
-            t = t / t[-1] * 2 - 1
+            t = _scale_levels(np.floor_divide(cum_cost, time))
 
         # Concatenate time array
         Y = np.concatenate((Y, t[:, np.newaxis]), axis=1)
@@ -154,6 +177,12 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     will be [-1, -1, 0, 0, 1, 1], and inner time column
     [-1, 1, -1, 1, -1, 1].
 
+    While the design stays within one outer period (as CODEX's small start
+    design may), every run is in the first outer period, so the outer time
+    column is constant (-1) and aliased with the intercept: the trend cannot
+    be estimated, and the optimization adds runs until it spans more than one
+    outer period, if the budget allows.
+
     Parameters
     ----------
     time_outer : float
@@ -170,7 +199,23 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
     -------
     cov : func(Y, X, Zs, Vinv, costs)
         The covariance function.
+
+    Raises
+    ------
+    ValueError
+        If `time_outer` or `time_inner` is not positive, or if an outer
+        period holds fewer than two inner periods.
     """
+    if not (time_outer > 0 and time_inner > 0):
+        raise ValueError(f"time_outer and time_inner must be positive, but are {time_outer} and {time_inner}")
+
+    # Number of inner levels per outer period, a partial last one included
+    n_inner = int(np.ceil(time_outer / time_inner - 1e-9))
+    if n_inner < 2:
+        raise ValueError(
+            f"The inner trend needs at least two inner periods per outer period, but time_outer={time_outer} "
+            f"holds {n_inner} of time_inner={time_inner}"
+        )
 
     # Define the covariance function
     def _cov(Y, X, Zs, Vinv, costs, random=False):
@@ -181,14 +226,12 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
         else:
             # Define outer time array
             cum_cost = np.cumsum(costs[cost_index][0])
-            t_outer = np.floor_divide(cum_cost, time_outer)
-            if cum_cost[-1] > time_outer:
-                t_outer = t_outer / t_outer[-1] * 2 - 1
+            t_outer = _scale_levels(np.floor_divide(cum_cost, time_outer))
 
             # Define inner time array
             t_inner = np.mod(cum_cost, time_outer)
             t_inner = np.floor_divide(t_inner, time_inner)
-            t_inner = t_inner / (np.floor_divide(time_outer, time_inner) - 1) * 2 - 1
+            t_inner = t_inner / (n_inner - 1) * 2 - 1
 
         # Concatenate time array
         Y = np.concatenate((Y, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
