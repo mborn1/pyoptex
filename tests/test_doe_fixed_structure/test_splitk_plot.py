@@ -80,6 +80,6 @@ def test_splitk_plot_initial_design_estimable_with_covariates():
 
     fn = default_fn(factors, Iopt(cov=cov), Y2X)
     params = create_parameters(factors, fn)
-    Y, state = create_splitk_plot_design(params, n_tries=3)
+    _, state = create_splitk_plot_design(params, n_tries=3)
 
     assert np.isfinite(state.metric)
