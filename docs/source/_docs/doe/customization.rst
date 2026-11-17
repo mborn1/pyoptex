@@ -406,8 +406,8 @@ Cost-optimal design
 The cost-optimal covariate function is pretty similar to the above. Let us
 reconsider the example of a time trend.
 
->>> ntime = 60
->>> 
+>>> time = 60
+>>>
 >>> def cov(Y, X, Zs, Vinv, costs, random=False):
 >>>     # Define time array
 >>>     if random:
@@ -415,7 +415,8 @@ reconsider the example of a time trend.
 >>>     else:
 >>>         cum_cost = np.cumsum(costs[0][0])
 >>>         t = np.floor_divide(cum_cost, time)
->>>         t = t / t[-1] * 2 - 1
+>>>         # All runs in the first period: a constant column, aliased with the intercept
+>>>         t = t / t[-1] * 2 - 1 if t[-1] > 0 else np.full_like(t, -1.0)
 >>>
 >>>     # Concatenate time array
 >>>     Y = np.concatenate((Y, t[:, np.newaxis]), axis=1)

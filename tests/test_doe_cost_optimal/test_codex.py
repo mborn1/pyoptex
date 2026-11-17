@@ -9,7 +9,7 @@ from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.cost_optimal import Factor
 from pyoptex.doe.cost_optimal.codex import create_cost_optimal_codex_design, create_parameters, default_fn
 from pyoptex.doe.cost_optimal.cost import parallel_worker_cost
-from pyoptex.doe.cost_optimal.cov import cov_time_trend
+from pyoptex.doe.cost_optimal.cov import cov_double_time_trend, cov_time_trend
 from pyoptex.doe.cost_optimal.metric import Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 from tests._helpers import assert_frame_equal, load_reference
@@ -62,3 +62,23 @@ def test_codex():
     np.testing.assert_allclose(state.metric, ref["metric"], rtol=1e-6)
     assert len(state.Y) == ref["n_experiments"]
     assert_frame_equal(Y, {"shape": ref["Y_shape"], "columns": ref["Y_columns"], "data": ref["Y_values"]})
+
+
+def _time_columns(cov, nruns):
+    """The covariate columns that `cov` adds to a design of `nruns` runs of unit cost each."""
+    Y = X = np.zeros((nruns, 1))
+    _, X, _, _ = cov(Y, X, None, None, [(np.ones(nruns), nruns, np.arange(nruns))])
+    return X[:, 1:]
+
+
+def test_time_trend_columns():
+    """Within one period every run is in the first period, so the time column is -1 (not NaN); a partial last inner
+    period is its own level, so the inner column stays within [-1, 1]."""
+    np.testing.assert_array_equal(_time_columns(cov_time_trend(60), 4)[:, 0], np.full(4, -1.0))
+    np.testing.assert_allclose(_time_columns(cov_double_time_trend(5, 2), 10)[:, 1], [-1, 0, 0, 1, -1, -1, 0, 0, 1, -1])
+    np.testing.assert_allclose(_time_columns(cov_double_time_trend(5, 2), 10)[:, 0], [-1, -1, -1, -1, 0, 0, 0, 0, 0, 1])
+    np.testing.assert_array_equal(_time_columns(cov_double_time_trend(5, 2), 4)[:, 0], np.full(4, -1.0))
+
+    cov_double_time_trend(3, 2)  # Two inner periods per outer period, the second one partial
+    with pytest.raises(ValueError, match="must be positive"):
+        cov_double_time_trend(4, 0)
