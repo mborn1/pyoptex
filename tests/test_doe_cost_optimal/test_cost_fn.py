@@ -5,7 +5,14 @@ import pandas as pd
 
 from pyoptex.doe.cost_optimal import Factor
 from pyoptex.doe.cost_optimal.codex import create_parameters
-from pyoptex.doe.cost_optimal.cost import combine_costs, cost_fn, fixed_runs_cost, parallel_worker_cost
+from pyoptex.doe.cost_optimal.cost import (
+    combine_costs,
+    cost_fn,
+    fixed_runs_cost,
+    level_parallel_worker_cost,
+    level_single_worker_cost,
+    parallel_worker_cost,
+)
 from pyoptex.utils.design import encode_design
 
 FACTORS = [
@@ -65,3 +72,27 @@ def test_cost_functions_picklable():
             np.testing.assert_array_equal(rc, c)
             assert rm == m
             np.testing.assert_array_equal(ri, i)
+
+
+def test_level_worker_costs():
+    """Per-run costs: execution cost, plus the level costs, plus the change from the previous run (from-to matrix)."""
+    factors = [
+        Factor("A", type="categorical", levels=["L1", "L2", "L3"]),
+        Factor("T", type="continuous", levels=[20, 40, 60], min=20, max=60),
+    ]
+    transition_costs = {"A": np.array([[0, 3, 7], [1, 0, 4], [2, 6, 0]]), "T": 5}
+    level_costs = {"T": np.array([0, 2, 5])}
+
+    # A: L1 -> L3 -> L1 -> L1 (7, then 2 back), T: 20 -> 20 -> 60 -> 40 (normalized -1, -1, 1, 0)
+    params = create_parameters(factors, None)
+    Y = np.array([[0.0, -1.0], [2.0, -1.0], [0.0, 1.0], [0.0, 0.0]])
+    Yenc = encode_design(Y, params.effect_types, coords=params.coords)
+
+    # Execution cost 1, level costs 0, 0, 5, 2, and the changes: none, A 7, max(A 2, T 5) or 2 + 5, T 5
+    parallel = level_parallel_worker_cost(transition_costs, factors, 100, 1, level_costs)
+    single = level_single_worker_cost(transition_costs, factors, 100, 1, level_costs)
+    np.testing.assert_allclose(parallel(Yenc, params)[0][0], [1, 8, 11, 8])
+    np.testing.assert_allclose(single(Yenc, params)[0][0], [1, 8, 13, 8])
+
+    # Picklable for multiprocessing
+    ForkingPickler.dumps(parallel)
