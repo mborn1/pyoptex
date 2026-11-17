@@ -524,11 +524,9 @@ and categorical factors alike. On top of that, each level can add extra executio
 
 The :py:func:`level_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.level_parallel_worker_cost>` and
 :py:func:`level_single_worker_cost <pyoptex.doe.cost_optimal.cost.level_single_worker_cost>` functions
-take, per factor, a table with the cost of every change: row i, column j is the cost of changing from
-level i to level j, in the order of the factor's levels. A single number gives the same cost for every
-change, and factors that are left out cost nothing to change. Optionally, each level adds its own cost
-to the execution of a run. For a fixed cost per change, see :ref:`qc_codex`; for a cost that grows
-linearly with the size of the change, see :ref:`cost_scaled`.
+take, per factor, a table where row i, column j is the cost of changing from level i to level j, in the
+order of the factor's levels. A single number gives the same cost for every change, and factors that are
+left out cost nothing to change. For a fixed cost per change, see :ref:`qc_codex`.
 
 >>> factors = [
 >>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3']),

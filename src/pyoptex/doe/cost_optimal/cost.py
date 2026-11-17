@@ -667,21 +667,16 @@ def level_parallel_worker_cost(
     two consecutive runs in parallel. The total transition
     cost is the most expensive of the factors' transition costs.
 
-    Create a transition cost function for a problem where
-    only a single worker can work on the transition between
-    two consecutive runs. The total transition cost is the
-    sum of the factors' transition costs.
-
     Each factor's transition cost is read from a table with a
-    cost for every pair of levels (from row to column), so the
-    cost of a change can follow any pattern: it need not grow
-    with the size of the change, can differ per direction, and
-    can differ per pair of categorical levels. Optionally, each
-    level also adds its own cost to the execution of a run.
+    cost for every combination of from-level and to-level, for
+    costs that follow no formula in the levels, and for
+    categorical factors whose changes cost different amounts.
+    Optionally, each level also adds its own cost to the
+    execution of a run.
     For a fixed cost per change, see
-    :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
+    :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
-    :py:func:`scaled_single_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_single_worker_cost>`.
+    :py:func:`scaled_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_parallel_worker_cost>`.
 
     Parameters
     ----------
@@ -725,11 +720,11 @@ def level_single_worker_cost(
     sum of the factors' transition costs.
 
     Each factor's transition cost is read from a table with a
-    cost for every pair of levels (from row to column), so the
-    cost of a change can follow any pattern: it need not grow
-    with the size of the change, can differ per direction, and
-    can differ per pair of categorical levels. Optionally, each
-    level also adds its own cost to the execution of a run.
+    cost for every combination of from-level and to-level, for
+    costs that follow no formula in the levels, and for
+    categorical factors whose changes cost different amounts.
+    Optionally, each level also adds its own cost to the
+    execution of a run.
     For a fixed cost per change, see
     :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
