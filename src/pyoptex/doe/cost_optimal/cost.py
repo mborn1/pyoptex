@@ -2,6 +2,7 @@
 Module containing all the cost functions of the cost optimal designs
 """
 
+from collections.abc import Callable, Sequence
 from functools import partial, wraps
 
 import numba
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from ...utils.design import decode_design
+from .utils import Factor
 
 
 def _fn_no_params(f, Y, params):
@@ -548,6 +550,217 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
         return [(cc, max_cost, np.arange(len(Y)))]
 
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
+
+
+def _level_cost(
+    transition_costs: dict[str, float | np.ndarray],
+    factors: Sequence[Factor],
+    max_cost: float,
+    execution_cost: float,
+    level_costs: dict[str, np.ndarray] | None,
+    parallel: bool,
+) -> Callable:
+    """
+    Create a transition cost function from tables with a cost for every
+    pair of levels, per factor. The cost of a run is
+
+        C = execution_cost + l1 + l2 + ... + max(t1, t2, ...)   (parallel)
+        C = execution_cost + l1 + l2 + ... + t1 + t2 + ...      (single worker)
+
+    with lf the level cost of factor f at its level in this run, and tf
+    the table's cost of changing factor f from its level in the previous
+    run to its level in this run (zero for the first run).
+    Shared by :py:func:`level_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.level_parallel_worker_cost>`
+    and :py:func:`level_single_worker_cost <pyoptex.doe.cost_optimal.cost.level_single_worker_cost>`;
+    see those for the other parameters.
+
+    Parameters
+    ----------
+    parallel : bool
+        Whether the change between two runs costs the most expensive
+        factor change (parallel workers) or the sum of the factor
+        changes (a single worker).
+
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    level_costs = {} if level_costs is None else level_costs
+    names = [str(f.name) for f in factors]
+    for argument, costs in (("transition_costs", transition_costs), ("level_costs", level_costs)):
+        unknown = [name for name in costs if name not in names]
+        assert len(unknown) == 0, f"The {argument} contain factors {unknown} that are not among the factors {names}"
+
+    # The levels of each factor: categorical factors by index, continuous factors by their normalized coordinates
+    nlevels = np.array([len(f.levels) if f.is_categorical else len(f.coords_) for f in factors], dtype=np.int64)
+    max_levels = int(np.max(nlevels))
+    is_continuous = np.array([f.is_continuous for f in factors])
+    coords = np.zeros((len(factors), max_levels), dtype=np.float64)
+    transitions = np.zeros((len(factors), max_levels, max_levels), dtype=np.float64)
+    run_costs = np.zeros((len(factors), max_levels), dtype=np.float64)
+    for i, (f, name, k) in enumerate(zip(factors, names, nlevels, strict=True)):
+        if f.is_continuous:
+            coords[i, :k] = np.asarray(f.coords_)[:, 0]
+
+        # The cost of changing from level a (row) to level b (column), without the diagonal
+        if name in transition_costs:
+            t = transition_costs[name]
+            t = np.full((k, k), t, dtype=np.float64) if np.ndim(t) == 0 else np.array(t, dtype=np.float64)
+            assert t.shape == (k, k), (
+                f"The transition costs of factor {name} must be a ({k}, {k}) matrix, one row and column per level, "
+                f"but have shape {t.shape}"
+            )
+            np.fill_diagonal(t, 0)
+            assert np.all(np.isfinite(t) & (t >= 0)), (
+                f"The transition costs of factor {name} must be non-negative and finite, but are {t.tolist()}"
+            )
+            transitions[i, :k, :k] = t
+
+        # The extra execution cost of a run at each level
+        if name in level_costs:
+            c = np.array(level_costs[name], dtype=np.float64)
+            assert c.shape == (k,), f"The level costs of factor {name} must have one cost per level ({k}), but are {c}"
+            assert np.all(np.isfinite(c) & (c >= 0)), (
+                f"The level costs of factor {name} must be non-negative and finite, but are {c.tolist()}"
+            )
+            run_costs[i, :k] = c
+
+    @numba.njit
+    def _cost(Y):
+        # The level of every run and factor: the index of a categorical factor, the nearest level of a continuous one
+        levels = np.zeros(Y.shape, dtype=np.int64)
+        for i in range(Y.shape[0]):
+            for j in range(Y.shape[1]):
+                if is_continuous[j]:
+                    levels[i, j] = np.argmin(np.abs(coords[j, : nlevels[j]] - Y[i, j]))
+                else:
+                    levels[i, j] = int(Y[i, j])
+
+        # The execution cost and level costs of each run, plus the change from the previous run
+        cc = np.full(len(Y), float(execution_cost))
+        for i in range(len(Y)):
+            change = 0.0
+            for j in range(Y.shape[1]):
+                cc[i] += run_costs[j, levels[i, j]]
+                if i > 0:
+                    c = transitions[j, levels[i - 1, j], levels[i, j]]
+                    change = max(change, c) if parallel else change + c
+            cc[i] += change
+
+        return [(cc, max_cost, np.arange(len(Y)))]
+
+    fn: Callable = cost_fn(_cost, denormalize=False, decoded=True, contains_params=False, dataframe=False)
+    return fn
+
+
+def level_parallel_worker_cost(
+    transition_costs: dict[str, float | np.ndarray],
+    factors: Sequence[Factor],
+    max_cost: float,
+    execution_cost: float = 1,
+    level_costs: dict[str, np.ndarray] | None = None,
+) -> Callable:
+    """
+    Create a transition cost function for a problem where
+    multiple workers can work on the transition between
+    two consecutive runs in parallel. The total transition
+    cost is the most expensive of the factors' transition costs.
+
+    Create a transition cost function for a problem where
+    only a single worker can work on the transition between
+    two consecutive runs. The total transition cost is the
+    sum of the factors' transition costs.
+
+    Each factor's transition cost is read from a table with a
+    cost for every pair of levels (from row to column), so the
+    cost of a change can follow any pattern: it need not grow
+    with the size of the change, can differ per direction, and
+    can differ per pair of categorical levels. Optionally, each
+    level also adds its own cost to the execution of a run.
+    For a fixed cost per change, see
+    :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
+    for a cost that grows linearly with the size of the change, see
+    :py:func:`scaled_single_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_single_worker_cost>`.
+
+    Parameters
+    ----------
+    transition_costs : dict(str, np.array(2d) or float)
+        A dictionary mapping the factor name to its transition costs:
+        a (k, k) table for a factor with k levels, where element
+        (i, j) is the cost of changing from level i to level j, in
+        the order of the factor's levels; the diagonal is ignored.
+        A float gives the same cost for every change. Factors that
+        are left out cost nothing to change.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    execution_cost : float
+        The (base) execution cost of a run.
+    level_costs : None or dict(str, np.array(1d))
+        A dictionary mapping the factor name to the extra execution
+        cost of a run at each of its levels, in the order of the
+        factor's levels.
+
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    return _level_cost(transition_costs, factors, max_cost, execution_cost, level_costs, parallel=True)
+
+
+def level_single_worker_cost(
+    transition_costs: dict[str, float | np.ndarray],
+    factors: Sequence[Factor],
+    max_cost: float,
+    execution_cost: float = 1,
+    level_costs: dict[str, np.ndarray] | None = None,
+) -> Callable:
+    """
+    Create a transition cost function for a problem where
+    only a single worker can work on the transition between
+    two consecutive runs. The total transition cost is the
+    sum of the factors' transition costs.
+
+    Each factor's transition cost is read from a table with a
+    cost for every pair of levels (from row to column), so the
+    cost of a change can follow any pattern: it need not grow
+    with the size of the change, can differ per direction, and
+    can differ per pair of categorical levels. Optionally, each
+    level also adds its own cost to the execution of a run.
+    For a fixed cost per change, see
+    :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
+    for a cost that grows linearly with the size of the change, see
+    :py:func:`scaled_single_worker_cost <pyoptex.doe.cost_optimal.cost.scaled_single_worker_cost>`.
+
+    Parameters
+    ----------
+    transition_costs : dict(str, np.array(2d) or float)
+        A dictionary mapping the factor name to its transition costs:
+        a (k, k) table for a factor with k levels, where element
+        (i, j) is the cost of changing from level i to level j, in
+        the order of the factor's levels; the diagonal is ignored.
+        A float gives the same cost for every change. Factors that
+        are left out cost nothing to change.
+    factors : list(:py:class:`Factor <pyoptex.doe.cost_optimal.utils.Factor>`)
+        The factors for the design.
+    max_cost : float
+        The budget available for this cost function.
+    execution_cost : float
+        The (base) execution cost of a run.
+    level_costs : None or dict(str, np.array(1d))
+        A dictionary mapping the factor name to the extra execution
+        cost of a run at each of its levels, in the order of the
+        factor's levels.
+
+    Returns
+    -------
+    cost_fn : func(Y, params)
+        The cost function.
+    """
+    return _level_cost(transition_costs, factors, max_cost, execution_cost, level_costs, parallel=False)
 
 
 def _fixed_runs(Y, max_runs):
