@@ -142,6 +142,10 @@ def cost_fn(*args, **kwargs):
 ############################################################
 
 
+def _combined(Y, params, costs):
+    return [c for cf in costs for c in cf(Y, params)]
+
+
 def combine_costs(costs):
     """
     Combine multiple cost functions together.
@@ -156,9 +160,9 @@ def combine_costs(costs):
     cost_fn : func(Y, params)
         The combined cost function for the simulation algorithm.
     """
-
-    def _cost(Y, params):
-        return [c for cf in costs for c in cf(Y, params)]
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    costs = tuple(costs)
+    _cost = wraps(_combined)(partial(_combined, costs=costs))
 
     # pylint: disable=line-too-long
     _cost.__doc__ = "This is a combined cost function of:\n* " + "\n* ".join(cf.__name__ for cf in costs)
@@ -546,6 +550,10 @@ def scaled_single_worker_cost(transition_costs, factors, max_cost, execution_cos
     return cost_fn(_cost, denormalize=False, decoded=False, contains_params=False)
 
 
+def _fixed_runs(Y, max_runs):
+    return [(np.ones(len(Y)), max_runs, np.arange(len(Y)))]
+
+
 def fixed_runs_cost(max_runs):
     """
     Cost function to deal with a fixed maximum number of experiments.
@@ -562,10 +570,8 @@ def fixed_runs_cost(max_runs):
     cost_fn : func(Y, params)
         The cost function.
     """
-
-    def _cost_fn(Y):
-        return [(np.ones(len(Y)), max_runs, np.arange(len(Y)))]
-
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    _cost_fn = wraps(_fixed_runs)(partial(_fixed_runs, max_runs=max_runs))
     return cost_fn(_cost_fn, denormalize=False, decoded=False, contains_params=False)
 
 
