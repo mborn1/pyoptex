@@ -25,7 +25,8 @@ def entropies_approx(
     where :math:`f_{o}` is the observed frequency of the submodel in the SAMS
     procedure and :math:`f_{t}` is the theoretical frequency when sampling at random.
     A higher entropy indicates more "surprise" and therefore more likely to be
-    the correct model.
+    the correct model. A submodel absent from (or present in all of) the random
+    samples is counted as half a sample, which keeps its entropy finite.
 
     Parameters
     ----------
@@ -71,8 +72,9 @@ def entropies_approx(
         # Extract model parameters
         submodel = submodels[i]
 
-        # Theoretical frequency
-        theoretical_freq = np.sum(np.all(samples[:, submodel], axis=1)) / samples.shape[0]
+        # A submodel that never (or always) appears counts as half a sample, which keeps the entropy finite
+        count = np.clip(np.sum(np.all(samples[:, submodel], axis=1)), 0.5, samples.shape[0] - 0.5)
+        theoretical_freq = count / samples.shape[0]
 
         # Observed frequency
         obs_freq = freqs[i]
