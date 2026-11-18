@@ -722,10 +722,11 @@ def level_parallel_worker_cost(
     execution of a run.
     Factors with a table or level costs only take their levels:
     a value in between (such as a prior run) raises an error.
-    CODEX assumes that a detour never costs less than the direct
-    change (from A to B no more than from A to C and C to B); with
-    tables where it does, the initial design can fail the budget or
-    the search can pick worse designs.
+    A table may make a detour through another run cheaper than the
+    direct change (for example, a run in between that saves
+    cleaning). CODEX's initial design does not yet use such
+    detours, so with these tables it can stop on the budget
+    although a design within budget exists.
     For a fixed cost per change, see
     :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
@@ -780,10 +781,11 @@ def level_single_worker_cost(
     execution of a run.
     Factors with a table or level costs only take their levels:
     a value in between (such as a prior run) raises an error.
-    CODEX assumes that a detour never costs less than the direct
-    change (from A to B no more than from A to C and C to B); with
-    tables where it does, the initial design can fail the budget or
-    the search can pick worse designs.
+    A table may make a detour through another run cheaper than the
+    direct change (for example, a run in between that saves
+    cleaning). CODEX's initial design does not yet use such
+    detours, so with these tables it can stop on the budget
+    although a design within budget exists.
     For a fixed cost per change, see
     :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
