@@ -653,6 +653,10 @@ def _level_cost(
     for i, c in enumerate(level_list):
         run_costs[i, : len(c)] = c
 
+    assert np.isfinite(execution_cost) and execution_cost >= 0, (
+        f"The execution cost must be non-negative and finite, but is {execution_cost}"
+    )
+
     @numba.njit
     def _cost(Y):
         # The execution cost and level costs of each run, plus the change from the previous run
@@ -718,6 +722,10 @@ def level_parallel_worker_cost(
     execution of a run.
     Factors with a table or level costs only take their levels:
     a value in between (such as a prior run) raises an error.
+    CODEX assumes that a detour never costs less than the direct
+    change (from A to B no more than from A to C and C to B); with
+    tables where it does, the initial design can fail the budget or
+    the search can pick worse designs.
     For a fixed cost per change, see
     :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
@@ -772,6 +780,10 @@ def level_single_worker_cost(
     execution of a run.
     Factors with a table or level costs only take their levels:
     a value in between (such as a prior run) raises an error.
+    CODEX assumes that a detour never costs less than the direct
+    change (from A to B no more than from A to C and C to B); with
+    tables where it does, the initial design can fail the budget or
+    the search can pick worse designs.
     For a fixed cost per change, see
     :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
