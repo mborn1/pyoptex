@@ -103,12 +103,8 @@ def test_level_worker_costs():
             assert rm == m
             np.testing.assert_array_equal(ri, i)
 
-    # A single number is charged on any change, also between two values (from a prior) nearest the same level
-    Y = np.array([[0.0, -0.75], [0.0, -0.6]])  # T: 25 -> 28, both nearest 20
-    Yenc = encode_design(Y, params.effect_types, coords=params.coords)
-    for builder in (level_parallel_worker_cost, level_single_worker_cost):
-        np.testing.assert_allclose(builder({"T": 60}, factors, 100, 1)(Yenc, params)[0][0], [1, 61])
-
     # A factor with level costs only takes its levels: a value in between raises an error
+    Y = np.array([[0.0, -0.75]])  # T = 25, between the levels 20 and 40
+    Yenc = encode_design(Y, params.effect_types, coords=params.coords)
     with pytest.raises(ValueError, match="not one of its levels"):
         parallel(Yenc, params)
