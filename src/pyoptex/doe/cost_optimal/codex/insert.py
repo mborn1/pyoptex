@@ -220,7 +220,13 @@ def insert_optimal(new_run, state, params):
         mt = np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(
             staten.Y
         ) - np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(state.Y)
-        metric_temp = (staten.metric - state.metric) / (mt / len(state.costs))
+
+        dm = staten.metric - state.metric
+
+        if dm < 0 and mt < 0:
+            continue
+
+        metric_temp = dm / (max(mt, 1e-30) / len(state.costs))
 
         # Exceeds budget
         exceeds_budget_temp = np.any(cost_Yn > max_cost)
