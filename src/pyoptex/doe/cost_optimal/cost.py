@@ -569,7 +569,8 @@ def _level_cost(
 
     with lf the level cost of factor f at its level in this run, and tf
     the table's cost of changing factor f from its level in the previous
-    run to its level in this run (zero for the first run).
+    run to its level in this run, or its single cost when its value
+    differs from the previous run (zero for the first run).
     Shared by :py:func:`level_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.level_parallel_worker_cost>`
     and :py:func:`level_single_worker_cost <pyoptex.doe.cost_optimal.cost.level_single_worker_cost>`;
     see those for the other parameters.
@@ -594,58 +595,100 @@ def _level_cost(
 
     # The levels of each factor: categorical factors by index, continuous factors by their normalized coordinates
     nlevels = np.array([len(f.levels) if f.is_categorical else len(f.coords_) for f in factors], dtype=np.int64)
-    max_levels = int(np.max(nlevels))
     is_continuous = np.array([f.is_continuous for f in factors])
-    coords = np.zeros((len(factors), max_levels), dtype=np.float64)
-    transitions = np.zeros((len(factors), max_levels, max_levels), dtype=np.float64)
-    run_costs = np.zeros((len(factors), max_levels), dtype=np.float64)
+    coords = np.zeros((len(factors), int(np.max(nlevels))), dtype=np.float64)
+
+    # Per factor, a single change cost (zero when left out) or the index of its table (-1 without one)
+    single_costs = np.zeros(len(factors), dtype=np.float64)
+    table_idx = np.full(len(factors), -1, dtype=np.int64)
+    tables_list: list[np.ndarray] = []
     for i, (f, name, k) in enumerate(zip(factors, names, nlevels, strict=True)):
         if f.is_continuous:
             coords[i, :k] = np.asarray(f.coords_)[:, 0]
+        if name not in transition_costs:
+            continue
+
+        # A single number is charged on any change of the factor's value
+        if np.ndim(transition_costs[name]) == 0:
+            s = float(np.asarray(transition_costs[name]))
+            assert np.isfinite(s) and s >= 0, (
+                f"The transition costs of factor {name} must be non-negative and finite, but are {s}"
+            )
+            single_costs[i] = s
+            continue
 
         # The cost of changing from level a (row) to level b (column), without the diagonal
-        if name in transition_costs:
-            t = transition_costs[name]
-            t = np.full((k, k), t, dtype=np.float64) if np.ndim(t) == 0 else np.array(t, dtype=np.float64)
-            assert t.shape == (k, k), (
-                f"The transition costs of factor {name} must be a ({k}, {k}) matrix, one row and column per level, "
-                f"but have shape {t.shape}"
-            )
-            np.fill_diagonal(t, 0)
-            assert np.all(np.isfinite(t) & (t >= 0)), (
-                f"The transition costs of factor {name} must be non-negative and finite, but are {t.tolist()}"
-            )
-            transitions[i, :k, :k] = t
+        t = np.array(transition_costs[name], dtype=np.float64)
+        assert t.shape == (k, k), (
+            f"The transition costs of factor {name} must be a ({k}, {k}) matrix, one row and column per level, "
+            f"but have shape {t.shape}"
+        )
+        np.fill_diagonal(t, 0)
+        assert np.all(np.isfinite(t) & (t >= 0)), (
+            f"The transition costs of factor {name} must be non-negative and finite, but are {t.tolist()}"
+        )
+        table_idx[i] = len(tables_list)
+        tables_list.append(t)
 
-        # The extra execution cost of a run at each level
+    # The extra execution cost of a run at each level, per factor the index of its costs (-1 without)
+    level_idx = np.full(len(factors), -1, dtype=np.int64)
+    level_list: list[np.ndarray] = []
+    for i, (name, k) in enumerate(zip(names, nlevels, strict=True)):
         if name in level_costs:
             c = np.array(level_costs[name], dtype=np.float64)
             assert c.shape == (k,), f"The level costs of factor {name} must have one cost per level ({k}), but are {c}"
             assert np.all(np.isfinite(c) & (c >= 0)), (
                 f"The level costs of factor {name} must be non-negative and finite, but are {c.tolist()}"
             )
-            run_costs[i, :k] = c
+            level_idx[i] = len(level_list)
+            level_list.append(c)
+
+    # Stack the tables and level costs, padded to the largest one
+    max_table = max((len(t) for t in tables_list), default=1)
+    tables = np.zeros((len(tables_list), max_table, max_table), dtype=np.float64)
+    for i, t in enumerate(tables_list):
+        tables[i, : len(t), : len(t)] = t
+    max_level_costs = max((len(c) for c in level_list), default=1)
+    run_costs = np.zeros((len(level_list), max_level_costs), dtype=np.float64)
+    for i, c in enumerate(level_list):
+        run_costs[i, : len(c)] = c
 
     @numba.njit
     def _cost(Y):
-        # The level of every run and factor: the index of a categorical factor, the nearest level of a continuous one
-        levels = np.zeros(Y.shape, dtype=np.int64)
-        for i in range(Y.shape[0]):
-            for j in range(Y.shape[1]):
-                if is_continuous[j]:
-                    levels[i, j] = np.argmin(np.abs(coords[j, : nlevels[j]] - Y[i, j]))
-                else:
-                    levels[i, j] = int(Y[i, j])
-
         # The execution cost and level costs of each run, plus the change from the previous run
         cc = np.full(len(Y), float(execution_cost))
+        prev_levels = np.zeros(Y.shape[1], dtype=np.int64)
         for i in range(len(Y)):
             change = 0.0
             for j in range(Y.shape[1]):
-                cc[i] += run_costs[j, levels[i, j]]
+                # The level, only where a table or level costs need it:
+                # the index of a categorical factor, the nearest level of a continuous one
+                level = 0
+                if table_idx[j] >= 0 or level_idx[j] >= 0:
+                    if is_continuous[j]:
+                        distances = np.abs(coords[j, : nlevels[j]] - Y[i, j])
+                        level = np.argmin(distances)
+                        if distances[level] > 1e-9:
+                            raise ValueError(
+                                "A factor with a cost table or level costs has a value that is not one of its "
+                                "levels (a prior run?): give it one of the factor's levels, or add that value "
+                                "as a level with its costs."
+                            )
+                    else:
+                        level = int(Y[i, j])
+                if level_idx[j] >= 0:
+                    cc[i] += run_costs[level_idx[j], level]
+
+                # The change cost: from the table, or the single cost on any change of the value
                 if i > 0:
-                    c = transitions[j, levels[i - 1, j], levels[i, j]]
+                    if table_idx[j] >= 0:
+                        c = tables[table_idx[j], prev_levels[j], level]
+                    elif Y[i - 1, j] != Y[i, j]:
+                        c = single_costs[j]
+                    else:
+                        c = 0.0
                     change = max(change, c) if parallel else change + c
+                prev_levels[j] = level
             cc[i] += change
 
         return [(cc, max_cost, np.arange(len(Y)))]
@@ -673,6 +716,8 @@ def level_parallel_worker_cost(
     categorical factors whose changes cost different amounts.
     Optionally, each level also adds its own cost to the
     execution of a run.
+    Factors with a table or level costs only take their levels:
+    a value in between (such as a prior run) raises an error.
     For a fixed cost per change, see
     :py:func:`parallel_worker_cost <pyoptex.doe.cost_optimal.cost.parallel_worker_cost>`;
     for a cost that grows linearly with the size of the change, see
@@ -725,6 +770,8 @@ def level_single_worker_cost(
     categorical factors whose changes cost different amounts.
     Optionally, each level also adds its own cost to the
     execution of a run.
+    Factors with a table or level costs only take their levels:
+    a value in between (such as a prior run) raises an error.
     For a fixed cost per change, see
     :py:func:`single_worker_cost <pyoptex.doe.cost_optimal.cost.single_worker_cost>`;
     for a cost that grows linearly with the size of the change, see

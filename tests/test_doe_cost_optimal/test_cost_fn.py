@@ -2,6 +2,7 @@ from multiprocessing.reduction import ForkingPickler
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from pyoptex.doe.cost_optimal import Factor
 from pyoptex.doe.cost_optimal.codex import create_parameters
@@ -94,5 +95,20 @@ def test_level_worker_costs():
     np.testing.assert_allclose(parallel(Yenc, params)[0][0], [1, 8, 11, 8])
     np.testing.assert_allclose(single(Yenc, params)[0][0], [1, 8, 13, 8])
 
-    # Picklable for multiprocessing
-    ForkingPickler.dumps(parallel)
+    # Picklable for multiprocessing: the unpickled function computes the same costs
+    for fn in (parallel, single):
+        restored = ForkingPickler.loads(ForkingPickler.dumps(fn))
+        for (c, m, i), (rc, rm, ri) in zip(fn(Yenc, params), restored(Yenc, params), strict=True):
+            np.testing.assert_array_equal(rc, c)
+            assert rm == m
+            np.testing.assert_array_equal(ri, i)
+
+    # A single number is charged on any change, also between two values (from a prior) nearest the same level
+    Y = np.array([[0.0, -0.75], [0.0, -0.6]])  # T: 25 -> 28, both nearest 20
+    Yenc = encode_design(Y, params.effect_types, coords=params.coords)
+    for builder in (level_parallel_worker_cost, level_single_worker_cost):
+        np.testing.assert_allclose(builder({"T": 60}, factors, 100, 1)(Yenc, params)[0][0], [1, 61])
+
+    # A factor with level costs only takes its levels: a value in between raises an error
+    with pytest.raises(ValueError, match="not one of its levels"):
+        parallel(Yenc, params)
