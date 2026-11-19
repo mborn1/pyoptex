@@ -280,7 +280,11 @@ def _format_value(f, value):
 
 
 def _fixed_settings(factors, fixed, ix, iy):
-    """Check `fixed` ({factor name: value in the factor's units}) and return {factor index: normalized value}."""
+    """
+    Check `fixed` ({factor name: value in the factor's units}) and return it with the names as strings,
+    and {factor index: normalized value}.
+    """
+    fixed = {str(k): v for k, v in fixed.items()}
     names = [str(f.name) for f in factors]
     norm = {}
     for name, value in fixed.items():
@@ -301,7 +305,7 @@ def _fixed_settings(factors, fixed, ix, iy):
         else:
             assert f.min <= value <= f.max, f"Factor {name} must be between {f.min} and {f.max}, but is {value}"
             norm[i] = float(f.normalize(value))
-    return norm
+    return fixed, norm
 
 
 def _fixed_labels(factors, fixed):
@@ -319,8 +323,9 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
     a continuous factor at one uniform draw in each of 64 equal slices between its minimum and maximum,
     a categorical factor at each level equally often (up to one, when its number of levels does not divide 64),
     both in a random order.
-    A mixture component that is not fixed is at its lowest level for the design space, and raises an
-    AssertionError for the prediction variance (`variance`).
+    A mixture component that is on neither axis and not fixed is at its lowest level (exact for the sum rule;
+    a rule of the user's own on it needs a value in fixed until such components are drawn with the mixture
+    sampler). For the prediction variance (`variance`), such a component raises an AssertionError.
 
     The level settings are 64 settings like the random ones, but with every averaged continuous factor
     at its levels, each level equally often (up to one) in a random order. They are a backup for rules
@@ -334,11 +339,11 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
 
     Returns the settings, the level settings and the indices of the factors that are averaged over.
     """
-    hidden = [i for i in range(len(factors)) if i not in (ix, iy) and i not in fixed_norm]
-    mixtures = [i for i in hidden if factors[i].is_mixture]
+    others = [i for i in range(len(factors)) if i not in (ix, iy) and i not in fixed_norm]
+    mixtures = [i for i in others if factors[i].is_mixture]
     if variance:
         assert len(mixtures) == 0, "Averaging over mixture components is not supported yet: give their values in fixed."
-    averaged = [i for i in hidden if i not in mixtures]
+    averaged = [i for i in others if i not in mixtures]
 
     nsettings = 64
     settings = np.zeros((nsettings if len(averaged) > 0 else 1, len(factors)))
@@ -453,7 +458,7 @@ def _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, y_at=None, value_label=N
     count = runs["runs"].to_numpy()
 
     def label(f, v):
-        return str(f.levels[int(v)]) if f.is_categorical else f"{v:.4g}"
+        return _format_value(f, f.levels[int(v)] if f.is_categorical else v)
 
     hover = [
         f"{names[ix]}: {label(fx, a)}"
@@ -534,12 +539,10 @@ def plot_design_space(
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     n = 300  # the number of points along a continuous axis
     factors = list(params.factors)
-    fixed = dict(fixed or {})
     ix, iy = _shown_factors(factors, x, y)
     fx, fy = factors[ix], factors[iy]
-    settings, level_settings, _ = _other_settings(
-        factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=False
-    )
+    fixed, fixed_norm = _fixed_settings(factors, dict(fixed or {}), ix, iy)
+    settings, level_settings, _ = _other_settings(factors, ix, iy, fixed_norm, variance=False)
     settings = np.vstack([settings, level_settings])
     fixed_text, fixed_hover = _fixed_labels(factors, fixed)
 
@@ -619,7 +622,7 @@ def _prediction_variance(
     n: int,
     fixed: Mapping[str, float | str] | None,
     extra: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray | None, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, list[int]]:
     """
     Computes the relative prediction variance x' Minv x on a grid over the factors `x` and `y`,
     for each set of a-priori variance ratios. The factors in `fixed` are at their value, and every
@@ -660,13 +663,13 @@ def _prediction_variance(
     pv : np.array(3d) or np.array(2d)
         The relative prediction variance of shape (sets, len(ys), len(xs)), or (sets, len(xs))
         along one factor. NaN where the constraints exclude every setting and every level combination.
+    averaged : list(int)
+        The indices of the factors that are averaged over.
     """
     factors = list(params.factors)
-    fixed = dict(fixed or {})
     ix, iy = _shown_factors(factors, x, y)
-    settings, level_settings, _ = _other_settings(
-        factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=True
-    )
+    _, fixed_norm = _fixed_settings(factors, dict(fixed or {}), ix, iy)
+    settings, level_settings, averaged = _other_settings(factors, ix, iy, fixed_norm, variance=True)
     Minv = np.asarray(Minv)
 
     # The grid points
@@ -709,7 +712,7 @@ def _prediction_variance(
     if len(redo) > 0 and len(level_settings) > 0:
         pv[:, redo] = average({i: v[redo] for i, v in points.items()}, level_settings)
 
-    return _to_plot(fx, gx), ys, pv.reshape(len(Minv), *shape)
+    return _to_plot(fx, gx), ys, pv.reshape(len(Minv), *shape), averaged
 
 
 def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
@@ -744,16 +747,15 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     factors = list(params.factors)
-    fixed = dict(fixed or {})
     ix, iy = _shown_factors(factors, x, y)
     fx, fy = factors[ix], factors[iy]
+    fixed, _ = _fixed_settings(factors, dict(fixed or {}), ix, iy)
 
     # Along one continuous factor, the levels of the runs are on the grid, so that the runs sit on the curve
     extra = fx.normalize(Y[str(fx.name)].to_numpy(dtype=np.float64)) if ix == iy and fx.is_continuous else None
-    xs, ys, pv = _prediction_variance(params, Minv, x, y, n, fixed, extra)
+    xs, ys, pv, averaged = _prediction_variance(params, Minv, x, y, n, fixed, extra)
 
     # The labels
-    averaged = [i for i in range(len(factors)) if i not in (ix, iy) and str(factors[i].name) not in fixed]
     fixed_text, fixed_hover = _fixed_labels(factors, fixed)
     word = "Average relative prediction variance" if len(averaged) > 0 else "Relative prediction variance"
     parts = [fixed_text] if fixed_text else []
@@ -769,6 +771,7 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
     nsets = len(pv)
     curve_colour = "#2a78d6"
     fig = make_subplots(rows=nsets, cols=1, vertical_spacing=0.07, subplot_titles=titles)
+    runs2d = _runs_trace(Y, factors, ix, iy, fixed, fixed_hover) if ix != iy else None
 
     for i in range(nsets):
         if ix == iy:
@@ -858,7 +861,7 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
                     )
 
         # The runs on top
-        fig.add_trace(_runs_trace(Y, factors, ix, iy, fixed, fixed_hover), row=i + 1, col=1)
+        fig.add_trace(runs2d, row=i + 1, col=1)
 
     fig.update_xaxes(**_axis_layout(fx, x))
     if ix == iy:

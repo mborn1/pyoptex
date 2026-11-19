@@ -364,7 +364,8 @@ def prediction_variance(
         along one factor. NaN where the constraints allow no setting.
     """
     Minv = estimation_variance_matrix(Y, params)
-    return _prediction_variance(params, Minv, x, y, n, fixed)
+    xs, ys, pred_var, _ = _prediction_variance(params, Minv, x, y, n, fixed)
+    return xs, ys, pred_var
 
 
 def plot_prediction_variance(
