@@ -228,7 +228,6 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
         # Validate prior
         assert not np.any(fn.constraintso(prior)), "Prior contains constraint violating runs"
-        fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
             if f.re.level != 0:
@@ -314,7 +313,6 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     # Check before the random starts that the constraints leave runs (else the initialization retries forever)
     if prod(len(c) for c in params.coords) <= 200_000:
         excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
-        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
         if np.all(excluded):
             raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 

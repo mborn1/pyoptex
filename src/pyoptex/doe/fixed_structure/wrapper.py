@@ -219,7 +219,6 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
         # Validate constraints
         assert not np.any(fn.constraintso(prior)), "Prior contains constraint-violating runs"
-        fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
 
         # Build full design: prior runs first, then zeros for new runs
         prior = np.concatenate((prior, np.zeros((nruns - len(prior), len(factors)), dtype=np.float64)), axis=0)
@@ -316,7 +315,6 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     # Check before the random starts that the constraints leave runs (else the initialization retries forever)
     if prod(len(c) for c in params.coords) <= 200_000:
         excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
-        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
         if np.all(excluded):
             raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 
