@@ -2,6 +2,8 @@
 Module containing all the evaluation functions for fixed structure designs.
 """
 
+from collections.abc import Mapping
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,7 +12,9 @@ from plotly.subplots import make_subplots
 
 from ...utils.design import encode_design
 from ...utils.model import model2encnames
+from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
 from .metric import Iopt
+from .utils import Parameters
 
 
 def evaluate_metrics(Y, params, metrics):
@@ -303,3 +307,121 @@ def estimation_variance(Y, params):
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])
+
+
+def prediction_variance(
+    Y: pd.DataFrame,
+    params: Parameters,
+    x: str,
+    y: str | None = None,
+    n: int = 60,
+    fixed: Mapping[str, float | str] | None = None,
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray]:
+    """
+    Computes the relative prediction variance on a grid over two factors,
+    or along `x` when `y` is None.
+    The factors in `fixed` are held at their value. Every grid point is the
+    average over 64 random settings of the other factors (the same for every
+    grid point), leaving out the settings that the constraints exclude.
+    Mixture components that are not on an axis need a value in `fixed`,
+    as averaging over them is not supported yet.
+    The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
+
+    When a constraint involves a factor that is averaged over, the average can jump
+    where the constraint starts to exclude some of that factor's settings, because it
+    is then taken over fewer settings. Plotting that factor on one of the axes, or
+    fixing it with `fixed`, shows where the jump comes from.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+        The simulation parameters.
+    x : str
+        The name of the factor on the horizontal axis.
+    y : str or None
+        The name of the factor on the vertical axis. None gives the prediction
+        variance along `x`.
+    n : int
+        The number of grid points along a continuous factor, from its minimum
+        to its maximum (from the lowest to the highest level of a mixture component).
+        A categorical factor has its levels.
+    fixed : dict or None
+        The values of factors that are not on an axis, as {factor name: value}
+        in the factor's units (a level name for a categorical factor).
+        The other factors are averaged over.
+
+    Returns
+    -------
+    xs : np.array(1d)
+        The coordinates along `x` (the level indices of a categorical factor).
+    ys : np.array(1d) or None
+        The coordinates along `y`, None along one factor.
+    pred_var : np.array(3d) or np.array(2d)
+        The relative prediction variances for each of the a-priori variance
+        ratio sets provided, of shape (sets, len(ys), len(xs)), or (sets, len(xs))
+        along one factor. NaN where the constraints exclude every setting.
+    """
+    Minv = estimation_variance_matrix(Y, params)
+    return _prediction_variance(params, Minv, x, y, n, fixed)
+
+
+def plot_prediction_variance(
+    Y: pd.DataFrame,
+    params: Parameters,
+    x: str,
+    y: str | None = None,
+    n: int = 60,
+    fixed: Mapping[str, float | str] | None = None,
+) -> go.Figure:
+    """
+    Plots the relative prediction variance over two factors, as computed by
+    :py:func:`prediction_variance <pyoptex.doe.fixed_structure.evaluate.prediction_variance>`.
+    One is plotted for each set of a-priori variance components, on the same colour scale.
+    Combinations that the constraints exclude are left blank. The runs of the design
+    are drawn on top, one dot per combination with the number of runs; only the runs
+    at the values in `fixed` are counted. Without `y`, it is
+    a curve along `x`, with the runs on it.
+    Mixture components that are not on an axis need a value in `fixed`,
+    as averaging over them is not supported yet.
+    The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
+
+    When a constraint involves a factor that is averaged over, the average can jump
+    where the constraint starts to exclude some of that factor's settings, because it
+    is then taken over fewer settings. Plotting that factor on one of the axes, or
+    fixing it with `fixed`, shows where the jump comes from.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+        The simulation parameters.
+    x : str
+        The name of the factor on the horizontal axis.
+    y : str or None
+        The name of the factor on the vertical axis. None gives the prediction
+        variance along `x`.
+    n : int
+        The number of grid points along a continuous factor.
+    fixed : dict or None
+        The values of factors that are not on an axis, as {factor name: value}
+        in the factor's units (a level name for a categorical factor).
+        The other factors are averaged over.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The plotly figure of the relative prediction variance.
+    """
+    Minv = estimation_variance_matrix(Y, params)
+    titles = (
+        [
+            "A-priori variance ratios: " + ", ".join([f"plot {i + 1} = {r:.3f}" for r in params.ratios[i]])
+            for i in range(len(Minv))
+        ]
+        if len(params.ratios) > 0
+        else None
+    )
+    return _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles)
