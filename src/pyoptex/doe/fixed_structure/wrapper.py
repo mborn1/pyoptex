@@ -9,6 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from ...utils.design import decode_design, obs_var_from_Zs
+from ...utils.model import model2Y2X
 from ..constraints import mixture_constraints, no_constraints
 from ..utils.init import full_factorial
 from .init import initialize_feasible
@@ -16,7 +17,7 @@ from .optimize import optimize
 from .utils import Factor, FunctionSet, Parameters, RandomEffect, State
 
 
-def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible):
+def default_fn(factors, metric, Y2X=None, constraints=None, init=initialize_feasible):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
@@ -27,9 +28,10 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
         The factors of the experiment.
     metric : :py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`
         The metric object.
-    Y2X : func
+    Y2X : func or None
         The function converting from the design matrix to the
-        model matrix.
+        model matrix. None for no model (the intercept only), for criteria
+        that do not use a model, such as space-filling designs.
     constraints : func
         The constraints function,
         :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
@@ -44,6 +46,10 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
+
+    # Without a model, the intercept only
+    if Y2X is None:
+        Y2X = model2Y2X(pd.DataFrame([[0] * len(factors)], columns=[str(f.name) for f in factors]), factors)
 
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
