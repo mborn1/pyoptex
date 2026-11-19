@@ -3,6 +3,7 @@ import pandas as pd
 
 from pyoptex.doe.constraints import parse_constraints_script
 from pyoptex.doe.fixed_structure import Factor, create_parameters, default_fn
+from pyoptex.doe.fixed_structure.cov import cov_time_trend
 from pyoptex.doe.fixed_structure.evaluate import prediction_variance
 from pyoptex.doe.fixed_structure.metric import Dopt
 from pyoptex.doe.utils.evaluate import plot_design_space
@@ -21,11 +22,11 @@ Y_DESIGN = pd.DataFrame(
 )
 
 
-def _params(factors, script=None, nruns=6):
-    """The parameters of a D-optimal main effects design, with the constraints in the script."""
+def _params(factors, script=None, nruns=6, cov=None):
+    """The parameters of a D-optimal main effects design, with the constraints in the script and a covariate."""
     constraints = parse_constraints_script(script, factors) if script is not None else None
     Y2X = model2Y2X(partial_rsm_names({str(f.name): "lin" for f in factors}), factors)
-    return create_parameters(factors, default_fn(factors, Dopt(), Y2X, constraints=constraints), nruns)
+    return create_parameters(factors, default_fn(factors, Dopt(cov=cov), Y2X, constraints=constraints), nruns)
 
 
 def _run_counts(fig):
@@ -96,15 +97,20 @@ def test_plot_design_space_mixture():
 
 
 def test_prediction_variance():
-    """The relative prediction variance x0' (X'X)^-1 x0 on the grid, NaN where the constraints exclude every setting."""
+    """
+    The relative prediction variance x0' (X'X)^-1 x0 on the grid, with a time trend held at 0,
+    NaN where the constraints exclude every setting.
+    """
     runs = [(x, y, c) for x in (-1, 1) for y in (-1, 1) for c in ("L1", "L2", "L3") if not (c == "L2" and x > 0.5)]
     Y = pd.DataFrame(runs, columns=["x", "y", "C"])
-    params = _params(FACTORS, '(`C` == "L2") & (`x` > 0.5)', nruns=len(Y))
+    params = _params(FACTORS, '(`C` == "L2") & (`x` > 0.5)', nruns=len(Y), cov=cov_time_trend(2, len(Y)))
 
-    # By hand: intercept, x, y and the effect coding of C; at the center, with C fixed at L1
+    # By hand: intercept, x, y, the effect coding of C and the time trend (first half -1, second half 1);
+    # at the center, with C fixed at L1 and the time trend at 0
     effects = {"L1": [1, 0], "L2": [0, 1], "L3": [-1, -1]}
-    X = np.array([[1, x, y, *effects[c]] for x, y, c in runs], dtype=float)
-    x0 = np.array([1, 0, 0, 1, 0], dtype=float)
+    t = np.repeat([-1.0, 1.0], len(runs) // 2)
+    X = np.array([[1, x, y, *effects[c], ti] for (x, y, c), ti in zip(runs, t, strict=True)], dtype=float)
+    x0 = np.array([1, 0, 0, 1, 0, 0], dtype=float)
     expected = x0 @ np.linalg.inv(X.T @ X) @ x0
 
     n = 9
