@@ -5,6 +5,7 @@ Module for all metrics of fixed structure designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
+from ..utils.coverage import coverage, coverage_features
 from .cov import no_cov
 from .init import init_random
 
@@ -296,6 +297,71 @@ class Iopt(Metric):
             # Invert for minimization
             return -trace
         return -np.inf
+
+
+class Coverage(Metric):
+    """
+    The coverage criterion: spreads the runs over the region. It does not use the model.
+    Minimizes the distance from points of the region to their nearest run, averaged
+    with power `p` (a larger `p` weighs the worst-covered points more).
+
+    Attributes
+    ----------
+    n : int
+        The number of points of the region.
+    p : float
+        The power of the mean.
+    samples : np.array(2d)
+        The coordinates of the points of the region, as from
+        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+    """
+
+    def __init__(self, n=2000, p=2):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        n : int
+            The number of points of the region.
+        p : float
+            The power of the mean.
+        """
+        super().__init__()
+        self.n = n
+        self.p = p
+        self.samples = None
+
+    def preinit(self, params):
+        """
+        Samples the region, as for the I-optimality criterion.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+        """
+        self.samples = coverage_features(init_random(params, self.n, complete=True), params)
+
+    def call(self, Y, X, params):
+        """
+        Computes the coverage criterion.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The updated design matrix.
+        X : np.array(2d)
+            The updated model matrix (not used).
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        metric : float
+            The negative of the power mean of the distances to the nearest run.
+        """
+        return coverage(coverage_features(Y, params), self.samples, self.p)
 
 
 class Aliasing(Metric):

@@ -2,9 +2,12 @@
 Module for all metrics of the cost optimal designs.
 """
 
+from types import SimpleNamespace
+
 import numpy as np
 
 from ...utils.comp import outer_integral
+from ..utils.coverage import coverage, coverage_features
 from .cov import no_cov
 from .init import init
 
@@ -302,6 +305,83 @@ class Iopt(Metric):
             # Invert for minimization
             return -trace
         return -np.inf
+
+
+class Coverage(Metric):
+    """
+    The coverage criterion: spreads the runs over the region. It does not use the model.
+    Minimizes the distance from points of the region to their nearest run, averaged
+    with power `p` (a larger `p` weighs the worst-covered points more).
+
+    Attributes
+    ----------
+    n : int
+        The number of points of the region.
+    p : float
+        The power of the mean.
+    samples : np.array(2d)
+        The coordinates of the points of the region, as from
+        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+    """
+
+    def __init__(self, n=2000, p=2):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        n : int
+            The number of points of the region.
+        p : float
+            The power of the mean.
+        """
+        super().__init__()
+        self.n = n
+        self.p = p
+        self.samples = None
+        self.encoding_ = None
+        self.initialized_ = False
+
+    def init(self, params):
+        """
+        Samples the region once, as for the I-optimality criterion.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+            The simulation parameters
+        """
+        if not self.initialized_:
+            # The factors and their encoding, for the designs in call (which gets no parameters)
+            self.encoding_ = SimpleNamespace(
+                factors=params.factors, effect_types=params.effect_types, coords=params.coords
+            )
+            self.samples = coverage_features(init(params, self.n, complete=True), self.encoding_)
+            self.initialized_ = True
+
+    def call(self, Y, X, Zs, Vinv, costs):
+        """
+        Computes the coverage criterion for a given design.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The design matrix
+        X : np.array(2d)
+            The model matrix (not used)
+        Zs : list(np.array(1d))
+            The grouping matrices (not used)
+        Vinv : np.array(3d)
+            The inverses of the covariance matrices (not used)
+        costs : list(np.array(1d), float, np.array(1d))
+            The list of different costs (not used).
+
+        Returns
+        -------
+        metric : float
+            The negative of the power mean of the distances to the nearest run.
+        """
+        return coverage(coverage_features(Y, self.encoding_), self.samples, self.p)
 
 
 class Aliasing(Metric):
