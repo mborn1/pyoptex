@@ -13,7 +13,6 @@ from plotly.subplots import make_subplots
 from ...utils.design import encode_design
 from ...utils.model import model2encnames
 from ..cost_optimal.utils import Parameters as CostOptimalParameters
-from ..fixed_structure.splitk_plot.utils import Parameters as SplitkParameters
 from ..fixed_structure.utils import Parameters as FixedStructureParameters
 
 
@@ -503,7 +502,7 @@ def _level_trace(xp, yp, lines):
 
 def plot_design_space(
     Y: pd.DataFrame,
-    params: FixedStructureParameters | SplitkParameters | CostOptimalParameters,
+    params: FixedStructureParameters | CostOptimalParameters,
     x: str,
     y: str | None = None,
     fixed: Mapping[str, float | str] | None = None,
@@ -512,9 +511,8 @@ def plot_design_space(
     Plots the design over `x` and `y`, or along `x` when `y` is None: the levels each factor can take,
     only where the constraints in `params` allow them (including the mixture rule that `default_fn` adds),
     the region the constraints exclude as a shaded background, and the runs, with the number of runs
-    at each combination. The factors in `fixed` are held at their value; a combination is allowed when
-    some setting of the other factors allows it. When factors are fixed, only the runs at those values
-    are shown.
+    at each combination. The factors in `fixed` are held at their value. When factors are fixed,
+    only the runs at those values are shown.
 
     Parameters
     ----------
@@ -615,7 +613,7 @@ def plot_design_space(
 
 
 def _prediction_variance(
-    params: FixedStructureParameters | SplitkParameters | CostOptimalParameters,
+    params: FixedStructureParameters | CostOptimalParameters,
     Minv: np.ndarray,
     x: str,
     y: str | None,

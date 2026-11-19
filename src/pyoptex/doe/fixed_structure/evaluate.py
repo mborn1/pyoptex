@@ -14,7 +14,6 @@ from ...utils.design import encode_design
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
 from .metric import Iopt
-from .splitk_plot.utils import Parameters as SplitkParameters
 from .utils import Parameters
 
 
@@ -312,7 +311,7 @@ def estimation_variance(Y, params):
 
 def prediction_variance(
     Y: pd.DataFrame,
-    params: Parameters | SplitkParameters,
+    params: Parameters,
     x: str,
     y: str | None = None,
     n: int = 60,
@@ -363,7 +362,7 @@ def prediction_variance(
 
 def plot_prediction_variance(
     Y: pd.DataFrame,
-    params: Parameters | SplitkParameters,
+    params: Parameters,
     x: str,
     y: str | None = None,
     n: int = 60,
