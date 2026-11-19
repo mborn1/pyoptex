@@ -123,3 +123,24 @@ def test_prediction_variance():
     xs, ys, pv = prediction_variance(Y, params, "x", "C", n=n)
     np.testing.assert_array_equal(ys, [0, 1, 2])
     np.testing.assert_array_equal(np.isnan(pv[0]), (ys[:, np.newaxis] == 1) & (xs[np.newaxis, :] > 0.5))
+
+
+def test_level_combinations():
+    """A rule written for the levels of a hidden factor, which its random settings never meet, through its levels."""
+    rule = "(`x` > 0.5) & (`y` > -1)"
+    runs = [(x, y, c) for x in (-1, 1) for y in (-1, 1) for c in ("L1", "L2", "L3") if not (x > 0.5 and y > -1)]
+    Y = pd.DataFrame(runs, columns=["x", "y", "C"])
+    params = _params(FACTORS, rule, nruns=len(Y))
+
+    # At x = 1, only y at its lowest level is allowed: there, by hand (C fixed at L1)
+    effects = {"L1": [1, 0], "L2": [0, 1], "L3": [-1, -1]}
+    X = np.array([[1, x, y, *effects[c]] for x, y, c in runs], dtype=float)
+    x0 = np.array([1, 1, -1, 1, 0], dtype=float)
+    xs, _, pv = prediction_variance(Y, params, "x", fixed={"C": "L1"})
+    assert np.all(np.isfinite(pv))
+    np.testing.assert_allclose(pv[0, xs == 1], x0 @ np.linalg.inv(X.T @ X) @ x0)
+
+    # The level lines along x reach x = 1
+    x, y = _level_points(plot_design_space(Y, params, "x", "C"))
+    for level in (0, 1, 2):
+        assert x[y == level].max() == 1
