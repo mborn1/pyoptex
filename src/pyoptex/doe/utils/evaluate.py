@@ -324,8 +324,13 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
 
     The level settings are 64 settings like the random ones, but with every averaged continuous factor
     at its levels, each level equally often (up to one) in a random order. They are a backup for rules
-    written for the levels, which the random settings may never meet. Without an averaged continuous factor,
-    the random settings are already at the levels, and the level settings are empty.
+    written for the levels (such as `Time` > 2 for all but the shortest time), which the random settings
+    may never meet. A rule that only one combination of many factors meets can still be missed.
+    Without an averaged continuous factor, the random settings are already at the levels, and the level
+    settings are empty.
+
+    The mixture component that pyoptex leaves implicit (the rest) is not among the factors,
+    so it cannot be on an axis or in `fixed`.
 
     Returns the settings, the level settings and the indices of the factors that are averaged over.
     """
@@ -385,6 +390,10 @@ def _excluded(params, Yenc):
 def _allowed(params, points, settings):
     """
     Which grid points ({factor index: normalized values}) the constraints allow for at least one setting.
+    The design space passes the random settings and the level settings of
+    :py:func:`_other_settings <pyoptex.doe.utils.evaluate._other_settings>` together, so a combination is
+    allowed when one of the 64 random settings or one of the 64 level settings allows it. A very narrow
+    allowed range of a factor that is not fixed can therefore be missed.
     The grid points are encoded once; setting by setting, only the points that are still excluded are checked.
     """
     settings = np.unique(settings, axis=0)
@@ -495,25 +504,12 @@ def plot_design_space(
     fixed: Mapping[str, float | str] | None = None,
 ) -> go.Figure:
     """
-    Plots the design projected on two factors: the levels each factor
-    may take as thick lines between its lowest and highest level (points along a
-    categorical factor), only where the constraints allow them, the region that
-    the constraints exclude as a shaded background (when both factors are continuous),
-    and the runs as dots, one per combination, sized by and labelled with the number
-    of runs there. A categorical factor is drawn at its level indices,
-    with the level names on the axis.
-
-    The constraints are those in `params`, including the mixture rule that
-    `default_fn` adds. The factors in `fixed` are held at their value, and only
-    the runs at those values are counted. The other factors are at 64 random settings
-    (the same for every combination), and a combination is allowed when the constraints
-    allow it for at least one of them. A very narrow allowed range of a factor that is not
-    fixed can therefore be missed. Where none of the random settings is allowed, 64 random
-    combinations of the other factors' levels are tried as well, for rules written for the
-    levels (such as `Time` > 2 for all but the shortest time). A rule that only one combination
-    of many factors meets can still be missed. A mixture component that is not on an axis
-    or in `fixed` is at its lowest level.
-    The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
+    Plots the design over `x` and `y`, or along `x` when `y` is None: the levels each factor can take,
+    only where the constraints in `params` allow them (including the mixture rule that `default_fn` adds),
+    the region the constraints exclude as a shaded background, and the runs, with the number of runs
+    at each combination. The factors in `fixed` are held at their value; a combination is allowed when
+    some setting of the other factors allows it. When factors are fixed, only the runs at those values
+    are shown.
 
     Parameters
     ----------
@@ -527,8 +523,8 @@ def plot_design_space(
         The name of the factor on the vertical axis. None gives the levels
         of `x` on one line, with the runs per level.
     fixed : dict or None
-        The values of factors that are not on an axis, as {factor name: value}
-        in the factor's units (a level name for a categorical factor).
+        Values to hold factors at that are not on an axis, as {factor name: value} in the
+        factor's units, for example {'Oil': 'Sun', 'Size': 9}.
 
     Returns
     -------
@@ -629,7 +625,13 @@ def _prediction_variance(
     for each set of a-priori variance ratios. The factors in `fixed` are at their value, and every
     grid point is the average over 64 random settings of the other factors (the same for every grid point),
     leaving out the settings that the constraints exclude. Where none of the random settings is allowed,
-    the average is over 64 random combinations of the other factors' levels instead.
+    the average is over the 64 level settings instead (random combinations of the other factors' levels,
+    see :py:func:`_other_settings <pyoptex.doe.utils.evaluate._other_settings>`). Mixture components
+    that are not on an axis must be in `fixed`, as averaging over them is not supported yet.
+
+    When a constraint involves a factor that is averaged over, the average can jump where the constraint
+    starts to exclude some of that factor's settings, because it is then taken over fewer settings,
+    or over the levels only.
 
     Parameters
     ----------

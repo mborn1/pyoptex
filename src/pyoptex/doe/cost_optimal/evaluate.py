@@ -326,24 +326,10 @@ def prediction_variance(
     fixed: Mapping[str, float | str] | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray]:
     """
-    Computes the relative prediction variance on a grid over two factors,
-    or along `x` when `y` is None.
-    The factors in `fixed` are held at their value. Every grid point is the
-    average over 64 random settings of the other factors (the same for every
-    grid point), leaving out the settings that the constraints exclude.
-    Where none of the random settings is allowed, the average is over 64 random combinations
-    of the other factors' levels instead, for rules written for the levels (such as `Time` > 2
-    for all but the shortest time). A rule that only one combination of many factors meets
-    can still be missed.
-    Mixture components that are not on an axis need a value in `fixed`,
-    as averaging over them is not supported yet.
+    Computes the relative prediction variance on a grid over `x` and `y`, or along `x` when `y` is None.
+    Factors in `fixed` are held at the given value. The other factors are averaged over,
+    using only the settings that the constraints allow.
     Covariates such as a time trend are held at 0, the middle of the experiment.
-    The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
-
-    When a constraint involves a factor that is averaged over, the average can jump
-    where the constraint starts to exclude some of that factor's settings, because it
-    is then taken over fewer settings, or over the levels only. Plotting that factor on
-    one of the axes, or fixing it with `fixed`, shows where the jump comes from.
 
     Parameters
     ----------
@@ -363,7 +349,8 @@ def prediction_variance(
     fixed : dict or None
         The values of factors that are not on an axis, as {factor name: value}
         in the factor's units (a level name for a categorical factor).
-        The other factors are averaged over.
+        The other factors are averaged over. Mixture components that are not on an axis must be
+        in `fixed`, as averaging over them is not supported yet.
 
     Returns
     -------
@@ -374,7 +361,7 @@ def prediction_variance(
     pred_var : np.array(3d) or np.array(2d)
         The relative prediction variances for each of the a-priori variance
         ratio sets provided, of shape (sets, len(ys), len(xs)), or (sets, len(xs))
-        along one factor. NaN where the constraints exclude every setting.
+        along one factor. NaN where the constraints allow no setting.
     """
     Minv = estimation_variance_matrix(Y, params)
     return _prediction_variance(params, Minv, x, y, n, fixed)
@@ -389,24 +376,11 @@ def plot_prediction_variance(
     fixed: Mapping[str, float | str] | None = None,
 ) -> go.Figure:
     """
-    Plots the relative prediction variance over two factors, as computed by
-    :py:func:`prediction_variance <pyoptex.doe.cost_optimal.evaluate.prediction_variance>`.
-    One is plotted for each set of a-priori variance components, on the same colour scale.
-    Combinations that the constraints exclude are left blank. Where none of the random
-    settings is allowed, the average is over 64 random combinations of the other factors'
-    levels instead, for rules written for the levels (such as `Time` > 2 for all but the
-    shortest time). A rule that only one combination of many factors meets can still be
-    missed. The runs of the design are drawn on top, one dot per combination with the
-    number of runs; only the runs at the values in `fixed` are counted. Without `y`, it is
-    a curve along `x`, with the runs on it. Mixture components that are not on an axis
-    need a value in `fixed`, as averaging over them is not supported yet. Covariates such
-    as a time trend are held at 0, the middle of the experiment. The mixture component
-    that pyoptex leaves implicit (the rest) cannot be on an axis.
-
-    When a constraint involves a factor that is averaged over, the average can jump
-    where the constraint starts to exclude some of that factor's settings, because it
-    is then taken over fewer settings, or over the levels only. Plotting that factor on
-    one of the axes, or fixing it with `fixed`, shows where the jump comes from.
+    Plots the relative prediction variance of
+    :py:func:`prediction_variance <pyoptex.doe.cost_optimal.evaluate.prediction_variance>` over `x` and `y`, or along `x` when `y` is None,
+    one subplot per set of a-priori variance ratios. Settings that the constraints exclude are blank.
+    The runs are drawn on top, with the number of runs at each combination.
+    When factors are fixed, only the runs at those values are shown.
 
     Parameters
     ----------
@@ -424,7 +398,8 @@ def plot_prediction_variance(
     fixed : dict or None
         The values of factors that are not on an axis, as {factor name: value}
         in the factor's units (a level name for a categorical factor).
-        The other factors are averaged over.
+        The other factors are averaged over. Mixture components that are not on an axis must be
+        in `fixed`, as averaging over them is not supported yet.
 
     Returns
     -------
