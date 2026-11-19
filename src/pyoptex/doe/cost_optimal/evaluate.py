@@ -333,6 +333,7 @@ def prediction_variance(
     grid point), leaving out the settings that the constraints exclude.
     Mixture components that are not on an axis need a value in `fixed`,
     as averaging over them is not supported yet.
+    Covariates such as a time trend are held at 0, the middle of the experiment.
     The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     When a constraint involves a factor that is averaged over, the average can jump
@@ -393,6 +394,7 @@ def plot_prediction_variance(
     a curve along `x`, with the runs on it.
     Mixture components that are not on an axis need a value in `fixed`,
     as averaging over them is not supported yet.
+    Covariates such as a time trend are held at 0, the middle of the experiment.
     The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     When a constraint involves a factor that is averaged over, the average can jump

@@ -14,6 +14,7 @@ from ...utils.design import encode_design
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
 from .metric import Iopt
+from .splitk_plot.utils import Parameters as SplitkParameters
 from .utils import Parameters
 
 
@@ -311,7 +312,7 @@ def estimation_variance(Y, params):
 
 def prediction_variance(
     Y: pd.DataFrame,
-    params: Parameters,
+    params: Parameters | SplitkParameters,
     x: str,
     y: str | None = None,
     n: int = 60,
@@ -325,6 +326,7 @@ def prediction_variance(
     grid point), leaving out the settings that the constraints exclude.
     Mixture components that are not on an axis need a value in `fixed`,
     as averaging over them is not supported yet.
+    Covariates such as a time trend are held at 0, the middle of the experiment.
     The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     When a constraint involves a factor that is averaged over, the average can jump
@@ -336,8 +338,8 @@ def prediction_variance(
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
-        The simulation parameters.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
+        The simulation parameters, of a fixed structure or a split-plot design.
     x : str
         The name of the factor on the horizontal axis.
     y : str or None
@@ -369,7 +371,7 @@ def prediction_variance(
 
 def plot_prediction_variance(
     Y: pd.DataFrame,
-    params: Parameters,
+    params: Parameters | SplitkParameters,
     x: str,
     y: str | None = None,
     n: int = 60,
@@ -385,6 +387,7 @@ def plot_prediction_variance(
     a curve along `x`, with the runs on it.
     Mixture components that are not on an axis need a value in `fixed`,
     as averaging over them is not supported yet.
+    Covariates such as a time trend are held at 0, the middle of the experiment.
     The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     When a constraint involves a factor that is averaged over, the average can jump
@@ -396,8 +399,8 @@ def plot_prediction_variance(
     ----------
     Y : pd.DataFrame
         The denormalized, decoded design.
-    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
-        The simulation parameters.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
+        The simulation parameters, of a fixed structure or a split-plot design.
     x : str
         The name of the factor on the horizontal axis.
     y : str or None
