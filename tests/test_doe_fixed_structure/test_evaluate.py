@@ -126,7 +126,10 @@ def test_prediction_variance():
 
 
 def test_level_combinations():
-    """A rule written for the levels of a hidden factor, which its random settings never meet, through its levels."""
+    """
+    A rule written for the levels of a factor that is not on an axis, which its random settings never meet,
+    through its levels.
+    """
     rule = "(`x` > 0.5) & (`y` > -1)"
     runs = [(x, y, c) for x in (-1, 1) for y in (-1, 1) for c in ("L1", "L2", "L3") if not (x > 0.5 and y > -1)]
     Y = pd.DataFrame(runs, columns=["x", "y", "C"])
