@@ -559,3 +559,65 @@ four hours.
 >>>     transition_costs, factors,
 >>>     max_transition_cost, execution_cost, level_costs
 >>> )
+
+.. _space_filling:
+
+Designs without a model (space-filling)
+---------------------------------------
+
+Some experiments are not analysed with a linear model that is known in advance:
+
+* computer experiments, where a simulation replaces the physical experiment;
+* surrogate models, such as Gaussian processes or machine-learning models;
+* exploring an unknown response surface;
+* test or validation runs, to check a fitted model where it has seen no data.
+
+Such experiments need runs that spread over the region, rather than runs that estimate a model.
+The coverage criterion measures how far the points of the region are from their nearest run,
+and the design makes that distance small. It needs no model: leave out `Y2X` in `default_fn`.
+
+For a fixed structure design, with
+:py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>`, give the number of runs
+
+>>> from pyoptex.doe.fixed_structure import (
+>>>     Factor, create_fixed_structure_design, create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.fixed_structure.metric import Coverage
+>>>
+>>> factors = [
+>>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('E', type='continuous', levels=np.linspace(-1, 1, 11)),
+>>>     Factor('F', type='continuous', min=2, max=5, levels=np.linspace(2, 5, 11)),
+>>> ]
+>>> fn = default_fn(factors, Coverage())
+>>> params = create_parameters(factors, fn, nruns=20)
+>>> Y, state = create_fixed_structure_design(params)
+
+For a cost-optimal design, with
+:py:class:`Coverage <pyoptex.doe.cost_optimal.metric.Coverage>`, CODEX uses the budget instead.
+The factors and the cost function are set up as in :ref:`qc_codex`.
+
+>>> from pyoptex.doe.cost_optimal.codex import (
+>>>     create_cost_optimal_codex_design, create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.cost_optimal.metric import Coverage
+>>>
+>>> fn = default_fn(nsims, factors, cost_fn, Coverage())
+>>> params = create_parameters(factors, fn)
+>>> Y, state = create_cost_optimal_codex_design(params, nsims=nsims)
+
+Give the continuous factors more levels than the default three: a new run at a level
+that is already covered adds little.
+
+With an existing design as the prior, its runs count, so the new runs fill its gaps.
+In a fixed structure design, `nruns` then counts the existing runs too.
+
+>>> params = create_parameters(factors, fn, prior=existing_design)
+>>> Y, state = create_cost_optimal_codex_design(params, nsims=nsims)
+>>> new_runs = Y.iloc[len(existing_design):]
+
+For validating a fitted model, the new runs test it where the existing design has gaps; a few runs
+close to existing ones show how its accuracy changes with distance.
+
+Why coverage and not maximin (the largest smallest distance between two runs)? Maximin only gets
+worse as runs are added, so CODEX would not use its budget, and it pushes the runs to the edges of the region.
