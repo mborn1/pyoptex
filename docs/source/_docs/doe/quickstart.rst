@@ -718,6 +718,9 @@ exclude and the runs, with the number of runs at each combination.
 over the two factors, with the runs on top. Without a second factor, both plots
 show one factor. The other factors can be given a value in `fixed`; only the runs
 at those values are then counted. The factors that are not in `fixed` are averaged over.
+If a constraint involves a factor that is averaged over, the plot can show unexpected
+jumps in regions where the constraint starts to exclude some of that factor's settings;
+fixing that factor can be used to show where the jump comes from.
 
 >>> from pyoptex.doe.utils.evaluate import plot_design_space
 >>> plot_design_space(Y, params, 'B', 'C').show()
