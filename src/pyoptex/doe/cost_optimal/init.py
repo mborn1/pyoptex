@@ -179,7 +179,7 @@ def init_feasible(params, max_tries=3, max_size=None, force_cost_feasible=True):
         for i in tqdm(r):
             keep[i] = False
             Xk = X[keep]
-            if np.linalg.matrix_rank(Xk) < X.shape[1]:
+            if len(Xk) == 0 or np.linalg.matrix_rank(Xk) < X.shape[1]:
                 keep[i] = True
         Y = Y[keep]
 
