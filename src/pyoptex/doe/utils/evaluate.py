@@ -317,11 +317,17 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
     as its level index), one per row; the columns of the factors on the axes are 0.
     The factors in `fixed_norm` are at their value. The others are at 64 random settings (seed 0):
     a continuous factor at one uniform draw in each of 64 equal slices between its minimum and maximum,
-    a categorical factor at each level equally often, both in a random order.
+    a categorical factor at each level equally often (up to one, when its number of levels does not divide 64),
+    both in a random order.
     A mixture component that is not fixed is at its lowest level for the design space, and raises an
     AssertionError for the prediction variance (`variance`).
 
-    Returns the settings and the indices of the factors that are averaged over.
+    The level settings are 64 settings like the random ones, but with every averaged continuous factor
+    at its levels, each level equally often (up to one) in a random order. They are a backup for rules
+    written for the levels, which the random settings may never meet. Without an averaged continuous factor,
+    the random settings are already at the levels, and the level settings are empty.
+
+    Returns the settings, the level settings and the indices of the factors that are averaged over.
     """
     hidden = [i for i in range(len(factors)) if i not in (ix, iy) and i not in fixed_norm]
     mixtures = [i for i in hidden if factors[i].is_mixture]
@@ -343,16 +349,26 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
             if f.is_categorical
             else (rng.permutation(nsettings) + rng.uniform(size=nsettings)) / nsettings * 2 - 1
         )
-    return settings, averaged
+
+    # The same settings, with every averaged continuous factor at its levels
+    continuous = [i for i in averaged if factors[i].is_continuous]
+    if len(continuous) == 0:
+        return settings, np.empty((0, len(factors))), averaged
+    level_settings = settings.copy()
+    for i in continuous:
+        levels = _levels(factors[i])
+        level_settings[:, i] = levels[rng.permutation(np.arange(nsettings) % len(levels))]
+    return settings, level_settings, averaged
 
 
-def _grid_rows(points, settings):
+def _grid_rows(points, settings, max_rows):
     """
-    Every combination of grid point ({factor index: normalized values}) and setting, in chunks:
-    yields the slice of the grid points and the decoded rows, grid point by grid point.
+    Every combination of grid point ({factor index: normalized values}) and setting, in chunks of
+    at most `max_rows` rows (at least one grid point): yields the slice of the grid points and
+    the decoded rows, grid point by grid point.
     """
     npoints = len(next(iter(points.values())))
-    chunk = max(1, 200_000 // len(settings))
+    chunk = max(1, max_rows // len(settings))
     for start in range(0, npoints, chunk):
         sl = slice(start, min(start + chunk, npoints))
         rows = np.repeat(settings[np.newaxis], sl.stop - sl.start, axis=0)
@@ -398,11 +414,12 @@ def _allowed(params, points, settings):
     return ok
 
 
-def _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, y_at=None):
+def _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, y_at=None, value_label=None):
     """
     The runs as dots, one per combination of the factors on the axes, sized by and labelled with
     the number of runs there, counting only the runs at the values in `fixed` (a categorical factor equal,
-    a continuous one close). Along one factor, the dots are at height `y_at(x)`, or 0.
+    a continuous one close). Along one factor, the dots are at height `y_at(x)`, or 0, and the hover
+    shows that height as `value_label` when given.
     """
     names = [str(f.name) for f in factors]
     match = np.ones(len(Y), dtype=np.bool_)
@@ -435,14 +452,15 @@ def _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, y_at=None):
         + f"{fixed_hover}<br>Runs: {c}"
         for a, b, c in zip(rx, ry, count, strict=True)
     ]
+    value = f"<br>{value_label}: %{{customdata:.3~g}}" if ix == iy and value_label is not None else ""
     return go.Scatter(
         x=rx,
         y=ry,
         mode="markers+text",
         text=count.astype(str),
         textposition="middle center",
-        hovertext=hover,
-        hoverinfo="text",
+        customdata=ry,
+        hovertemplate=[f"{h}{value}<extra></extra>" for h in hover],
         cliponaxis=False,
         marker=dict(
             size=22 + 10 * (count - 1) / max(count.max(initial=1) - 1, 1),
@@ -487,11 +505,14 @@ def plot_design_space(
 
     The constraints are those in `params`, including the mixture rule that
     `default_fn` adds. The factors in `fixed` are held at their value, and only
-    the runs at those values are counted. A combination is allowed when the
-    constraints allow it for at least one of 64 random settings of the other
-    factors (the same for every combination). A very narrow allowed range of a factor
-    that is not fixed can therefore be missed. A mixture component that is not on
-    an axis or in `fixed` is at its lowest level.
+    the runs at those values are counted. The other factors are at 64 random settings
+    (the same for every combination), and a combination is allowed when the constraints
+    allow it for at least one of them. A very narrow allowed range of a factor that is not
+    fixed can therefore be missed. Where none of the random settings is allowed, 64 random
+    combinations of the other factors' levels are tried as well, for rules written for the
+    levels (such as `Time` > 2 for all but the shortest time). A rule that only one combination
+    of many factors meets can still be missed. A mixture component that is not on an axis
+    or in `fixed` is at its lowest level.
     The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     Parameters
@@ -520,7 +541,10 @@ def plot_design_space(
     fixed = dict(fixed or {})
     ix, iy = _shown_factors(factors, x, y)
     fx, fy = factors[ix], factors[iy]
-    settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=False)
+    settings, level_settings, _ = _other_settings(
+        factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=False
+    )
+    settings = np.vstack([settings, level_settings])
     fixed_text, fixed_hover = _fixed_labels(factors, fixed)
 
     def along(f):
@@ -604,7 +628,8 @@ def _prediction_variance(
     Computes the relative prediction variance x' Minv x on a grid over the factors `x` and `y`,
     for each set of a-priori variance ratios. The factors in `fixed` are at their value, and every
     grid point is the average over 64 random settings of the other factors (the same for every grid point),
-    leaving out the settings that the constraints exclude.
+    leaving out the settings that the constraints exclude. Where none of the random settings is allowed,
+    the average is over 64 random combinations of the other factors' levels instead.
 
     Parameters
     ----------
@@ -632,12 +657,14 @@ def _prediction_variance(
         The plot coordinates along `y`, None along one factor.
     pv : np.array(3d) or np.array(2d)
         The relative prediction variance of shape (sets, len(ys), len(xs)), or (sets, len(xs))
-        along one factor. NaN where the constraints exclude every setting.
+        along one factor. NaN where the constraints exclude every setting and every level combination.
     """
     factors = list(params.factors)
     fixed = dict(fixed or {})
     ix, iy = _shown_factors(factors, x, y)
-    settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=True)
+    settings, level_settings, _ = _other_settings(
+        factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=True
+    )
     Minv = np.asarray(Minv)
 
     # The grid points
@@ -654,18 +681,31 @@ def _prediction_variance(
         GX, GY = np.meshgrid(gx, gy)  # rows: y, columns: x
         ys, shape, points = _to_plot(fy, gy), GX.shape, {ix: GX.ravel(), iy: GY.ravel()}
 
-    # The relative prediction variance, averaged over the settings that the constraints allow, covariates held at 0
-    pv = np.empty((len(Minv), int(np.prod(shape))))
-    for sl, rows in _grid_rows(points, settings):
-        Yenc = encode_design(rows, params.effect_types, params.coords)
-        X = params.fn.Y2X(Yenc)
-        if X.shape[1] < Minv.shape[-1]:
-            X = np.hstack([X, np.zeros((len(X), Minv.shape[-1] - X.shape[1]))])
-        v = np.sum((X @ Minv) * X, axis=-1)
-        v[:, _excluded(params, Yenc)] = np.nan
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            pv[:, sl] = np.nanmean(v.reshape(len(Minv), -1, len(settings)), axis=-1)
+    def average(points, settings):
+        # The relative prediction variance at the grid points, averaged over the settings that the constraints
+        # allow (NaN where they allow none), covariates held at 0; in chunks of about 32 MB
+        max_rows = max(1, 4_000_000 // (len(Minv) * Minv.shape[-1]))
+        pv = np.empty((len(Minv), len(next(iter(points.values())))))
+        for sl, rows in _grid_rows(points, settings, max_rows):
+            # Only the rows that the constraints allow go through the model, the others stay NaN
+            Yenc = encode_design(rows, params.effect_types, params.coords)
+            allowed = ~_excluded(params, Yenc)
+            v = np.full((len(Minv), len(Yenc)), np.nan)
+            if allowed.any():
+                X = params.fn.Y2X(Yenc[allowed])
+                if X.shape[1] < Minv.shape[-1]:
+                    X = np.hstack([X, np.zeros((len(X), Minv.shape[-1] - X.shape[1]))])
+                v[:, allowed] = np.einsum("snp,np->sn", X @ Minv, X)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                pv[:, sl] = np.nanmean(v.reshape(len(Minv), -1, len(settings)), axis=-1)
+        return pv
+
+    # Over the random settings; where none is allowed, over the level settings (if any)
+    pv = average(points, settings)
+    redo = np.flatnonzero(np.isnan(pv).all(axis=0))
+    if len(redo) > 0 and len(level_settings) > 0:
+        pv[:, redo] = average({i: v[redo] for i, v in points.items()}, level_settings)
 
     return _to_plot(fx, gx), ys, pv.reshape(len(Minv), *shape)
 
@@ -717,7 +757,7 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
     parts = [fixed_text] if fixed_text else []
     if len(averaged) > 0:
         parts.append("averaged over " + ", ".join(str(factors[i].name) for i in averaged))
-    value = f"{word}: %{{{'y' if ix == iy else 'z'}:.3f}}<extra></extra>"
+    value = f"{word}: %{{{'y' if ix == iy else 'z'}:.3~g}}<extra></extra>"
 
     # One shared colour scale (vertical axis along one factor) over the subplots
     finite = pv[np.isfinite(pv)]
@@ -731,7 +771,7 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
     for i in range(nsets):
         if ix == iy:
             # Along one factor: the curve (points at the levels without runs for a categorical factor), the runs on it
-            runs = _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, lambda v, i=i: np.interp(v, xs, pv[i]))
+            runs = _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, lambda v, i=i: np.interp(v, xs, pv[i]), word)
             if fx.is_continuous:
                 curve = go.Scatter(
                     x=xs,

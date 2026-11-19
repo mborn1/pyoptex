@@ -324,6 +324,10 @@ def prediction_variance(
     The factors in `fixed` are held at their value. Every grid point is the
     average over 64 random settings of the other factors (the same for every
     grid point), leaving out the settings that the constraints exclude.
+    Where none of the random settings is allowed, the average is over 64 random combinations
+    of the other factors' levels instead, for rules written for the levels (such as `Time` > 2
+    for all but the shortest time). A rule that only one combination of many factors meets
+    can still be missed.
     Mixture components that are not on an axis need a value in `fixed`,
     as averaging over them is not supported yet.
     Covariates such as a time trend are held at 0, the middle of the experiment.
@@ -331,8 +335,8 @@ def prediction_variance(
 
     When a constraint involves a factor that is averaged over, the average can jump
     where the constraint starts to exclude some of that factor's settings, because it
-    is then taken over fewer settings. Plotting that factor on one of the axes, or
-    fixing it with `fixed`, shows where the jump comes from.
+    is then taken over fewer settings, or over the levels only. Plotting that factor on
+    one of the axes, or fixing it with `fixed`, shows where the jump comes from.
 
     Parameters
     ----------
@@ -381,19 +385,21 @@ def plot_prediction_variance(
     Plots the relative prediction variance over two factors, as computed by
     :py:func:`prediction_variance <pyoptex.doe.fixed_structure.evaluate.prediction_variance>`.
     One is plotted for each set of a-priori variance components, on the same colour scale.
-    Combinations that the constraints exclude are left blank. The runs of the design
-    are drawn on top, one dot per combination with the number of runs; only the runs
-    at the values in `fixed` are counted. Without `y`, it is
-    a curve along `x`, with the runs on it.
-    Mixture components that are not on an axis need a value in `fixed`,
-    as averaging over them is not supported yet.
-    Covariates such as a time trend are held at 0, the middle of the experiment.
-    The mixture component that pyoptex leaves implicit (the rest) cannot be on an axis.
+    Combinations that the constraints exclude are left blank. Where none of the random
+    settings is allowed, the average is over 64 random combinations of the other factors'
+    levels instead, for rules written for the levels (such as `Time` > 2 for all but the
+    shortest time). A rule that only one combination of many factors meets can still be
+    missed. The runs of the design are drawn on top, one dot per combination with the
+    number of runs; only the runs at the values in `fixed` are counted. Without `y`, it is
+    a curve along `x`, with the runs on it. Mixture components that are not on an axis
+    need a value in `fixed`, as averaging over them is not supported yet. Covariates such
+    as a time trend are held at 0, the middle of the experiment. The mixture component
+    that pyoptex leaves implicit (the rest) cannot be on an axis.
 
     When a constraint involves a factor that is averaged over, the average can jump
     where the constraint starts to exclude some of that factor's settings, because it
-    is then taken over fewer settings. Plotting that factor on one of the axes, or
-    fixing it with `fixed`, shows where the jump comes from.
+    is then taken over fewer settings, or over the levels only. Plotting that factor on
+    one of the axes, or fixing it with `fixed`, shows where the jump comes from.
 
     Parameters
     ----------
