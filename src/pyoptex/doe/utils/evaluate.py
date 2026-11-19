@@ -316,8 +316,8 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
     The settings of the factors that are not on the axes, normalized and decoded (a categorical factor
     as its level index), one per row; the columns of the factors on the axes are 0.
     The factors in `fixed_norm` are at their value. The others are at 64 random settings (seed 0):
-    a continuous factor uniform between its minimum and maximum, a categorical factor at each level
-    equally often, in a random order.
+    a continuous factor at one uniform draw in each of 64 equal slices between its minimum and maximum,
+    a categorical factor at each level equally often, both in a random order.
     A mixture component that is not fixed is at its lowest level for the design space, and raises an
     AssertionError for the prediction variance (`variance`).
 
@@ -339,7 +339,9 @@ def _other_settings(factors, ix, iy, fixed_norm, variance):
     for i in averaged:
         f = factors[i]
         settings[:, i] = (
-            rng.permutation(np.arange(nsettings) % len(f.levels)) if f.is_categorical else rng.uniform(-1, 1, nsettings)
+            rng.permutation(np.arange(nsettings) % len(f.levels))
+            if f.is_categorical
+            else (rng.permutation(nsettings) + rng.uniform(size=nsettings)) / nsettings * 2 - 1
         )
     return settings, averaged
 
@@ -362,13 +364,6 @@ def _grid_rows(points, settings):
 def _excluded(params, Yenc):
     """Which rows of the encoded design the constraints in `params` exclude."""
     return np.broadcast_to(np.asarray(params.fn.constraints(Yenc), dtype=np.bool_), (len(Yenc),))
-
-
-def _clear_constraints(params):
-    """Remove the compiled constraints, so that the parameters can still be pickled for multiprocessing."""
-    clear = getattr(params.fn.constraints, "clear", None)
-    if clear is not None:
-        clear()
 
 
 def _allowed(params, points, settings):
@@ -519,84 +514,81 @@ def plot_design_space(
     fig : :py:class:`plotly.graph_objects.Figure`
         The figure of the design space.
     """
-    try:
-        assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
-        n = 300  # the number of points along a continuous axis
-        factors = list(params.factors)
-        fixed = dict(fixed or {})
-        ix, iy = _shown_factors(factors, x, y)
-        fx, fy = factors[ix], factors[iy]
-        settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=False)
-        fixed_text, fixed_hover = _fixed_labels(factors, fixed)
+    assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
+    n = 300  # the number of points along a continuous axis
+    factors = list(params.factors)
+    fixed = dict(fixed or {})
+    ix, iy = _shown_factors(factors, x, y)
+    fx, fy = factors[ix], factors[iy]
+    settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=False)
+    fixed_text, fixed_hover = _fixed_labels(factors, fixed)
 
-        def along(f):
-            # The normalized points along a factor: between its lowest and highest level, its levels if categorical
-            levels = _levels(f)
-            return levels if f.is_categorical else np.linspace(levels.min(), levels.max(), n)
+    def along(f):
+        # The normalized points along a factor: between its lowest and highest level, its levels if categorical
+        levels = _levels(f)
+        return levels if f.is_categorical else np.linspace(levels.min(), levels.max(), n)
 
-        def level_lines(i_along, i_at):
-            # One line along factor i_along at every level of factor i_at, NaN between lines and where not allowed
-            fa, fb = factors[i_along], factors[i_at]
-            a, b = along(fa), _levels(fb)
-            A, B = np.meshgrid(a, b)  # rows: the levels of fb
-            ok = _allowed(params, {i_along: A.ravel(), i_at: B.ravel()}, settings).reshape(A.shape)
-            gap = np.full((len(b), 1), np.nan)
-            ap = np.hstack([np.where(ok, _to_plot(fa, A), np.nan), gap]).ravel()
-            bp = np.hstack([np.where(ok, _to_plot(fb, B), np.nan), gap]).ravel()
-            return ap, bp
+    def level_lines(i_along, i_at):
+        # One line along factor i_along at every level of factor i_at, NaN between lines and where not allowed
+        fa, fb = factors[i_along], factors[i_at]
+        a, b = along(fa), _levels(fb)
+        A, B = np.meshgrid(a, b)  # rows: the levels of fb
+        ok = _allowed(params, {i_along: A.ravel(), i_at: B.ravel()}, settings).reshape(A.shape)
+        gap = np.full((len(b), 1), np.nan)
+        ap = np.hstack([np.where(ok, _to_plot(fa, A), np.nan), gap]).ravel()
+        bp = np.hstack([np.where(ok, _to_plot(fb, B), np.nan), gap]).ravel()
+        return ap, bp
 
-        fig = go.Figure()
+    fig = go.Figure()
 
-        if ix == iy:
-            # One factor: its allowed levels on one line, with the runs per level
-            a = along(fx)
-            ok = _allowed(params, {ix: a}, settings)
-            fig.add_trace(_level_trace(np.where(ok, _to_plot(fx, a), np.nan), np.zeros(len(a)), fx.is_continuous))
-            fig.add_trace(_runs_trace(Y, factors, ix, iy, fixed, fixed_hover))
-            fig.update_layout(xaxis=_axis_layout(fx, x), yaxis=dict(visible=False, range=[-1, 1]), height=220)
+    if ix == iy:
+        # One factor: its allowed levels on one line, with the runs per level
+        a = along(fx)
+        ok = _allowed(params, {ix: a}, settings)
+        fig.add_trace(_level_trace(np.where(ok, _to_plot(fx, a), np.nan), np.zeros(len(a)), fx.is_continuous))
+        fig.add_trace(_runs_trace(Y, factors, ix, iy, fixed, fixed_hover))
+        fig.update_layout(xaxis=_axis_layout(fx, x), yaxis=dict(visible=False, range=[-1, 1]), height=220)
 
-        else:
-            if fx.is_continuous and fy.is_continuous:
-                # The excluded region
-                gx, gy = _axis_grid(fx, n), _axis_grid(fy, n)
-                GX, GY = np.meshgrid(gx, gy)  # rows: y, columns: x
-                ok = _allowed(params, {ix: GX.ravel(), iy: GY.ravel()}, settings).reshape(GX.shape)
-                if not ok.all():
-                    fig.add_trace(
-                        go.Heatmap(
-                            z=ok.astype(int),
-                            x=_to_plot(fx, gx),
-                            y=_to_plot(fy, gy),
-                            zmin=0,
-                            zmax=1,
-                            colorscale=[(0, "rgba(150,150,150,0.55)"), (1, "rgba(0,0,0,0)")],
-                            showscale=False,
-                            hoverinfo="skip",
-                            name="Excluded",
-                        )
+    else:
+        if fx.is_continuous and fy.is_continuous:
+            # The excluded region
+            gx, gy = _axis_grid(fx, n), _axis_grid(fy, n)
+            GX, GY = np.meshgrid(gx, gy)  # rows: y, columns: x
+            ok = _allowed(params, {ix: GX.ravel(), iy: GY.ravel()}, settings).reshape(GX.shape)
+            if not ok.all():
+                fig.add_trace(
+                    go.Heatmap(
+                        z=ok.astype(int),
+                        x=_to_plot(fx, gx),
+                        y=_to_plot(fy, gy),
+                        zmin=0,
+                        zmax=1,
+                        colorscale=[(0, "rgba(150,150,150,0.55)"), (1, "rgba(0,0,0,0)")],
+                        showscale=False,
+                        hoverinfo="skip",
+                        name="Excluded",
                     )
+                )
 
-            if fx.is_categorical and fy.is_categorical:
-                # The allowed combinations
-                GX, GY = np.meshgrid(_levels(fx), _levels(fy))
-                ok = _allowed(params, {ix: GX.ravel(), iy: GY.ravel()}, settings)
-                fig.add_trace(_level_trace(GX.ravel()[ok], GY.ravel()[ok], False))
-            else:
-                # The lines along x at every level of y, and along y at every level of x
-                xp, yp = level_lines(ix, iy)
-                fig.add_trace(_level_trace(xp, yp, fx.is_continuous))
-                yp, xp = level_lines(iy, ix)
-                fig.add_trace(_level_trace(xp, yp, fy.is_continuous))
+        if fx.is_categorical and fy.is_categorical:
+            # The allowed combinations
+            GX, GY = np.meshgrid(_levels(fx), _levels(fy))
+            ok = _allowed(params, {ix: GX.ravel(), iy: GY.ravel()}, settings)
+            fig.add_trace(_level_trace(GX.ravel()[ok], GY.ravel()[ok], False))
+        else:
+            # The lines along x at every level of y, and along y at every level of x
+            xp, yp = level_lines(ix, iy)
+            fig.add_trace(_level_trace(xp, yp, fx.is_continuous))
+            yp, xp = level_lines(iy, ix)
+            fig.add_trace(_level_trace(xp, yp, fy.is_continuous))
 
-            # The runs on top
-            fig.add_trace(_runs_trace(Y, factors, ix, iy, fixed, fixed_hover))
-            fig.update_layout(xaxis=_axis_layout(fx, x), yaxis=_axis_layout(fy, y))
+        # The runs on top
+        fig.add_trace(_runs_trace(Y, factors, ix, iy, fixed, fixed_hover))
+        fig.update_layout(xaxis=_axis_layout(fx, x), yaxis=_axis_layout(fy, y))
 
-        if fixed_text:
-            fig.update_layout(title=fixed_text, title_x=0.5)
-        return fig
-    finally:
-        _clear_constraints(params)
+    if fixed_text:
+        fig.update_layout(title=fixed_text, title_x=0.5)
+    return fig
 
 
 def _prediction_variance(
@@ -642,43 +634,40 @@ def _prediction_variance(
         The relative prediction variance of shape (sets, len(ys), len(xs)), or (sets, len(xs))
         along one factor. NaN where the constraints exclude every setting.
     """
-    try:
-        factors = list(params.factors)
-        fixed = dict(fixed or {})
-        ix, iy = _shown_factors(factors, x, y)
-        settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=True)
-        Minv = np.asarray(Minv)
+    factors = list(params.factors)
+    fixed = dict(fixed or {})
+    ix, iy = _shown_factors(factors, x, y)
+    settings, _ = _other_settings(factors, ix, iy, _fixed_settings(factors, fixed, ix, iy), variance=True)
+    Minv = np.asarray(Minv)
 
-        # The grid points
-        fx, fy = factors[ix], factors[iy]
-        gx = _axis_grid(fx, n)
-        ys: np.ndarray | None
-        shape: tuple[int, ...]
-        if ix == iy:
-            if extra is not None and fx.is_continuous:
-                gx = np.union1d(gx, extra)
-            ys, shape, points = None, (len(gx),), {ix: gx}
-        else:
-            gy = _axis_grid(fy, n)
-            GX, GY = np.meshgrid(gx, gy)  # rows: y, columns: x
-            ys, shape, points = _to_plot(fy, gy), GX.shape, {ix: GX.ravel(), iy: GY.ravel()}
+    # The grid points
+    fx, fy = factors[ix], factors[iy]
+    gx = _axis_grid(fx, n)
+    ys: np.ndarray | None
+    shape: tuple[int, ...]
+    if ix == iy:
+        if extra is not None and fx.is_continuous:
+            gx = np.union1d(gx, extra)
+        ys, shape, points = None, (len(gx),), {ix: gx}
+    else:
+        gy = _axis_grid(fy, n)
+        GX, GY = np.meshgrid(gx, gy)  # rows: y, columns: x
+        ys, shape, points = _to_plot(fy, gy), GX.shape, {ix: GX.ravel(), iy: GY.ravel()}
 
-        # The relative prediction variance, averaged over the settings that the constraints allow, covariates held at 0
-        pv = np.empty((len(Minv), int(np.prod(shape))))
-        for sl, rows in _grid_rows(points, settings):
-            Yenc = encode_design(rows, params.effect_types, params.coords)
-            X = params.fn.Y2X(Yenc)
-            if X.shape[1] < Minv.shape[-1]:
-                X = np.hstack([X, np.zeros((len(X), Minv.shape[-1] - X.shape[1]))])
-            v = np.sum((X @ Minv) * X, axis=-1)
-            v[:, _excluded(params, Yenc)] = np.nan
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                pv[:, sl] = np.nanmean(v.reshape(len(Minv), -1, len(settings)), axis=-1)
+    # The relative prediction variance, averaged over the settings that the constraints allow, covariates held at 0
+    pv = np.empty((len(Minv), int(np.prod(shape))))
+    for sl, rows in _grid_rows(points, settings):
+        Yenc = encode_design(rows, params.effect_types, params.coords)
+        X = params.fn.Y2X(Yenc)
+        if X.shape[1] < Minv.shape[-1]:
+            X = np.hstack([X, np.zeros((len(X), Minv.shape[-1] - X.shape[1]))])
+        v = np.sum((X @ Minv) * X, axis=-1)
+        v[:, _excluded(params, Yenc)] = np.nan
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            pv[:, sl] = np.nanmean(v.reshape(len(Minv), -1, len(settings)), axis=-1)
 
-        return _to_plot(fx, gx), ys, pv.reshape(len(Minv), *shape)
-    finally:
-        _clear_constraints(params)
+    return _to_plot(fx, gx), ys, pv.reshape(len(Minv), *shape)
 
 
 def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
