@@ -5,7 +5,7 @@ Module for all metrics of fixed structure designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
-from ..utils.coverage import coverage, coverage_features, maximin
+from ..utils.space_filling import coverage, distance_map, maximin
 from .cov import no_cov
 from .init import init_random
 
@@ -311,9 +311,13 @@ class Coverage(Metric):
         The number of points of the region.
     p : float
         The power of the mean.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
     samples : np.array(2d)
-        The coordinates of the points of the region, as from
-        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+        The distance coordinates of the points of the region.
     """
 
     def __init__(self, n=2000, p=2):
@@ -330,11 +334,13 @@ class Coverage(Metric):
         super().__init__()
         self.n = n
         self.p = p
+        self.offset = None
+        self.W = None
         self.samples = None
 
     def preinit(self, params):
         """
-        Samples the region, as for the I-optimality criterion.
+        Samples the region, as for the I-optimality criterion, and maps it to the distance coordinates.
 
         Parameters
         ----------
@@ -342,8 +348,9 @@ class Coverage(Metric):
             The optimization parameters.
         """
         assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
+        self.offset, self.W = distance_map(params.factors, params.coords)
         samples = init_random(params, self.n, complete=True)
-        self.samples = coverage_features(samples, params.factors, params.effect_types, params.coords)
+        self.samples = (samples - self.offset) @ self.W
 
     def call(self, Y, X, params):
         """
@@ -363,7 +370,7 @@ class Coverage(Metric):
         metric : float
             The negative of the power mean of the distances to the nearest run.
         """
-        return coverage(coverage_features(Y, params.factors, params.effect_types, params.coords), self.samples, self.p)
+        return coverage((Y - self.offset) @ self.W, self.samples, self.p)
 
 
 class Maximin(Metric):
@@ -376,6 +383,13 @@ class Maximin(Metric):
     ----------
     p : float
         The power of φp.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
+    nprior : int
+        The number of leading runs that the optimization cannot change (the prior runs).
     """
 
     def __init__(self, p=50):
@@ -389,10 +403,44 @@ class Maximin(Metric):
         """
         super().__init__()
         self.p = p
+        self.offset = None
+        self.W = None
+        self.nprior = 0
+
+    def _nprior(self, params):
+        """
+        The number of leading runs that the optimization cannot change: the prior runs.
+        The prior in the parameters has a row for every run, so its length does not give it.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        nprior : int
+            The index of the first run that a group of the optimization contains.
+        """
+        if params.prior is None:
+            return 0
+        return min((int(runs.min()) for grp_runs in params.grp_runs for runs in grp_runs), default=params.nruns)
+
+    def preinit(self, params):
+        """
+        Computes the map to the distance coordinates and the number of prior runs.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+        """
+        self.offset, self.W = distance_map(params.factors, params.coords)
+        self.nprior = self._nprior(params)
 
     def call(self, Y, X, params):
         """
-        Computes the maximin criterion, over all runs (the prior runs too).
+        Computes the maximin criterion, without the pairs of two prior runs.
 
         Parameters
         ----------
@@ -408,7 +456,7 @@ class Maximin(Metric):
         metric : float
             The negative of φp.
         """
-        return maximin(coverage_features(Y, params.factors, params.effect_types, params.coords), self.p)
+        return maximin((Y - self.offset) @ self.W, self.p, self.nprior)
 
 
 class Aliasing(Metric):

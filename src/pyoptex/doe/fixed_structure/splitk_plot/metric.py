@@ -575,9 +575,13 @@ class Coverage(SplitkPlotMetricMixin, Coverageo):
         The number of points of the region.
     p : float
         The power of the mean.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
     samples : np.array(2d)
-        The coordinates of the points of the region, as from
-        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+        The distance coordinates of the points of the region.
     """
 
     pass
@@ -585,7 +589,7 @@ class Coverage(SplitkPlotMetricMixin, Coverageo):
 
 class Maximin(SplitkPlotMetricMixin, Maximino):
     """
-    The maximin criterion (Morris–Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
+    The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
     It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
     the other close pairs.
 
@@ -593,9 +597,40 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
     ----------
     p : float
         The power of φp.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
+    nprior : int
+        The number of leading runs that the optimization cannot change (the prior runs).
     """
 
-    pass
+    def _nprior(self, params):
+        """
+        The number of leading runs that the optimization cannot change: the prior runs.
+        Group g at level l holds the runs from g * thetas[l] to (g + 1) * thetas[l].
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        nprior : int
+            The index of the first run that a group of the optimization contains.
+        """
+        if params.prior is None:
+            return 0
+        return min(
+            (
+                int(grps.min()) * int(params.thetas[level])
+                for grps, level in zip(params.grps, params.effect_levels, strict=True)
+                if len(grps) > 0
+            ),
+            default=params.nruns,
+        )
 
 
 class Aliasing(SplitkPlotMetricMixin, Aliasingo):

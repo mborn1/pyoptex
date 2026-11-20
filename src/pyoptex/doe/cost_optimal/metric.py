@@ -5,7 +5,7 @@ Module for all metrics of the cost optimal designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
-from ..utils.coverage import coverage, coverage_features
+from ..utils.space_filling import coverage, distance_map
 from .cov import no_cov
 from .init import init
 
@@ -317,9 +317,13 @@ class Coverage(Metric):
         The number of points of the region.
     p : float
         The power of the mean.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
     samples : np.array(2d)
-        The coordinates of the points of the region, as from
-        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+        The distance coordinates of the points of the region.
     """
 
     def __init__(self, n=2000, p=2):
@@ -336,15 +340,14 @@ class Coverage(Metric):
         super().__init__()
         self.n = n
         self.p = p
+        self.offset = None
+        self.W = None
         self.samples = None
-        self.factors = None
-        self.effect_types = None
-        self.coords = None
         self.initialized_ = False
 
     def init(self, params):
         """
-        Samples the region once, as for the I-optimality criterion.
+        Samples the region once, as for the I-optimality criterion, and maps it to the distance coordinates.
 
         Parameters
         ----------
@@ -353,11 +356,9 @@ class Coverage(Metric):
         """
         if not self.initialized_:
             assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
-
-            # The factors and their encoding, for the designs in call (which gets no parameters)
-            self.factors, self.effect_types, self.coords = params.factors, params.effect_types, params.coords
+            self.offset, self.W = distance_map(params.factors, params.coords)
             samples = init(params, self.n, complete=True)
-            self.samples = coverage_features(samples, self.factors, self.effect_types, self.coords)
+            self.samples = (samples - self.offset) @ self.W
             self.initialized_ = True
 
     def call(self, Y, X, Zs, Vinv, costs):
@@ -382,7 +383,7 @@ class Coverage(Metric):
         metric : float
             The negative of the power mean of the distances to the nearest run.
         """
-        return coverage(coverage_features(Y, self.factors, self.effect_types, self.coords), self.samples, self.p)
+        return coverage((Y - self.offset) @ self.W, self.samples, self.p)
 
 
 class Aliasing(Metric):
