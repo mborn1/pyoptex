@@ -40,6 +40,24 @@ def test_maximin_replicated_prior():
     np.testing.assert_allclose(np.sort(x[2:]), [-1, 1])
 
 
+def test_maximin_reoptimized_prior_plot():
+    """
+    Re-optimizing a prior whole plot that holds a replicate: the replicate's distance still cannot change,
+    so it is left out, and the new runs spread out to the free corner.
+    """
+    set_seed(42)
+    re = fs.RandomEffect(np.array([0, 0, 1, 1, 2, 2]), ratio=1)
+    factors = [fs.Factor("W", re, levels=LEVELS21), fs.Factor("S", levels=LEVELS21)]
+    prior = pd.DataFrame({"W": [0.0, 0.0, 1.0, 1.0], "S": [0.0, 0.0, -1.0, 1.0]})
+    fn = fs.default_fn(factors, fs_metric.Maximin(), None)
+    params = fs.create_parameters(factors, fn, 6, prior=prior, grps=[np.array([0]), None])
+    Y, state = fs.create_fixed_structure_design(params, n_tries=5)
+
+    assert state.metric > -1e5
+    np.testing.assert_allclose(Y["W"].to_numpy()[4:], -1)
+    np.testing.assert_allclose(np.sort(Y["S"].to_numpy()[4:]), [-1, 1])
+
+
 def test_splitk_maximin_replicated_prior():
     """
     A split-plot prior with a replicate in each of its 3 whole plots, extended from 2 to 4 runs per whole plot:
