@@ -50,7 +50,7 @@ def _compute_cs(plot_sizes, ratios, thetas):
     return c
 
 
-def default_fn(factors, metric, Y2X=None, constraints=no_constraints, init=initialize_feasible):
+def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize_feasible):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.

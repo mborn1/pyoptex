@@ -26,7 +26,7 @@ def default_fn(
     factors,
     cost,
     metric,
-    Y2X=None,
+    Y2X,
     init=init_feasible,
     sample=sample_random,
     temperature=None,

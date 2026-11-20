@@ -17,7 +17,7 @@ from .optimize import optimize
 from .utils import Factor, FunctionSet, Parameters, RandomEffect, State
 
 
-def default_fn(factors, metric, Y2X=None, constraints=None, init=initialize_feasible):
+def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible):
     """
     Create a functionset with the default operators. Each
     operator can be manually overriden by providing the parameter.
