@@ -574,7 +574,7 @@ Some experiments are not analysed with a linear model that is known in advance:
 
 Such experiments need runs that spread over the region, rather than runs that estimate a model.
 The coverage criterion measures how far the points of the region are from their nearest run,
-and the design makes that distance small. It needs no model: leave out `Y2X` in `default_fn`.
+and the design makes that distance small. It needs no model: pass None as `Y2X` to `default_fn`.
 
 For a fixed structure design, with
 :py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>`, give the number of runs
@@ -589,7 +589,7 @@ For a fixed structure design, with
 >>>     Factor('E', type='continuous', levels=np.linspace(-1, 1, 11)),
 >>>     Factor('F', type='continuous', min=2, max=5, levels=np.linspace(2, 5, 11)),
 >>> ]
->>> fn = default_fn(factors, Coverage())
+>>> fn = default_fn(factors, Coverage(), None)
 >>> params = create_parameters(factors, fn, nruns=20)
 >>> Y, state = create_fixed_structure_design(params)
 
@@ -602,7 +602,7 @@ The factors and the cost function are set up as in :ref:`qc_codex`.
 >>> )
 >>> from pyoptex.doe.cost_optimal.metric import Coverage
 >>>
->>> fn = default_fn(nsims, factors, cost_fn, Coverage())
+>>> fn = default_fn(nsims, factors, cost_fn, Coverage(), None)
 >>> params = create_parameters(factors, fn)
 >>> Y, state = create_cost_optimal_codex_design(params, nsims=nsims)
 
@@ -619,5 +619,10 @@ In a fixed structure design, `nruns` then counts the existing runs too.
 For validating a fitted model, the new runs test it where the existing design has gaps; a few runs
 close to existing ones show how its accuracy changes with distance.
 
-Why coverage and not maximin (the largest smallest distance between two runs)? Maximin only gets
-worse as runs are added, so CODEX would not use its budget, and it pushes the runs to the edges of the region.
+Coverage or maximin?
+
+* :py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>` spreads runs over the whole region,
+  minimizing the worst-covered spot with a large `p` (minimax). It works in every module and in CODEX,
+  where it uses the budget.
+* :py:class:`Maximin <pyoptex.doe.fixed_structure.metric.Maximin>` pushes runs apart, mostly towards
+  the edges, and is only for a fixed number of runs.
