@@ -625,4 +625,4 @@ Coverage or maximin?
   minimizing the worst-covered spot with a large `p` (minimax). It works in every module and in CODEX
   (not yet for mixture components), where it uses the budget.
 * :py:class:`Maximin <pyoptex.doe.fixed_structure.metric.Maximin>` pushes runs apart, mostly towards
-  the edges, and is only for a fixed number of runs.
+  the edges, and is only for a fixed number of runs (not yet for mixture components).
