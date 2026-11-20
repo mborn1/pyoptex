@@ -723,8 +723,12 @@ jumps in regions where the constraint starts to exclude some of that factor's se
 fixing that factor can be used to show where the jump comes from.
 
 >>> from pyoptex.doe.utils.evaluate import plot_design_space
+>>> # the fixed-structure design (factors A, B, C)
 >>> plot_design_space(Y, params, 'B', 'C').show()
 >>> plot_prediction_variance(Y, params, 'B', 'C', fixed={'A': 'L1'}).show()
+>>> # the cost-optimal design (factors A, E, F, G)
+>>> plot_design_space(Y, params, 'E', 'F').show()
+>>> plot_prediction_variance(Y, params, 'E', 'F', fixed={'A': 'L1'}).show()
 
 .. _qc_parallel:
 
