@@ -22,9 +22,9 @@ def distance_map(
     The affine map from an encoded design to the coordinates in which the space-filling criteria
     measure distances: `(Yenc - offset) @ W`, with W block-diagonal per factor.
     Per factor: a continuous factor is its normalized value divided by 2, so that the range
-    from its minimum to its maximum counts as 1; a mixture component is its value divided by
-    the range of its levels; a categorical factor with k levels gets k coordinates, in which
-    every two levels are at distance 1.
+    from its minimum to its maximum counts as 1; a categorical factor with k levels gets
+    k coordinates, in which every two levels are at distance 1. Mixture components are not
+    supported yet.
 
     Parameters
     ----------
@@ -40,6 +40,7 @@ def distance_map(
     W : np.array(2d)
         The map, one row per column of the encoded design.
     """
+    assert not any(f.is_mixture for f in factors), "Space-filling criteria do not support mixture components yet."
     offsets, blocks = [], []
     for f, C in zip(factors, coords, strict=True):
         C = np.asarray(C, dtype=np.float64)
@@ -54,9 +55,6 @@ def distance_map(
             )
             offsets.append(C.mean(axis=0))
             blocks.append(T)
-        elif f.is_mixture:
-            offsets.append(np.zeros(1))
-            blocks.append(np.array([[1 / (C.max() - C.min())]]))
         else:
             offsets.append(np.zeros(1))
             blocks.append(np.array([[1 / 2]]))
@@ -100,9 +98,10 @@ def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float
     so that larger is better. For a large p, φp tends to one over the smallest distance between two runs.
     Distances are floored at 1e-6. The score is -inf without any pair.
 
-    Pairs of two runs that the optimization cannot change (such as prior runs) are left out (`keep`):
-    they cannot change, and a replicate among them would hide every other distance. Every prior run still counts separately in its distances to the new runs,
-    so a replicated prior run pushes new runs away more strongly.
+    Pairs whose distance the optimization cannot change (such as two prior runs that are not optimized)
+    are left out with `keep`: their distance is constant, and a replicate among them would hide every
+    other distance. Every prior run still counts separately in its distances to the new runs, so a
+    replicated prior run pushes new runs away more strongly.
 
     Parameters
     ----------
@@ -124,6 +123,7 @@ def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float
         return -np.inf
     d = pdist(runs)
     if keep is not None:
+        assert len(keep) == len(d), "the design has a different number of runs than the parameters"
         d = d[keep]
     d = np.maximum(d, 1e-6)
     if len(d) == 0:

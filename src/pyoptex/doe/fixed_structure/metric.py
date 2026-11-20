@@ -347,7 +347,6 @@ class Coverage(Metric):
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
-        assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
         self.offset, self.W = distance_map(params.factors, params.coords)
         samples = init_random(params, self.n, complete=True)
         self.samples = (samples - self.offset) @ self.W
@@ -378,6 +377,7 @@ class Maximin(Metric):
     The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
     It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
     the other close pairs. Not for cost-optimal designs, where it would keep the design small.
+    Replicates in the prior are allowed: the distance between two prior runs that are not optimized is left out.
 
     Attributes
     ----------
@@ -388,9 +388,9 @@ class Maximin(Metric):
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
     W : np.array(2d)
         The matrix of the map to the distance coordinates.
-    keep : np.array(1d)
+    keep : np.array(1d) or None
         Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist`: every pair
-        but those of two runs that the optimization cannot change.
+        but those whose distance the optimization cannot change. None when every pair counts.
     """
 
     def __init__(self, p=50):
@@ -408,10 +408,10 @@ class Maximin(Metric):
         self.W = None
         self.keep = None
 
-    def _fixed_runs(self, params):
+    def _run_groups(self, params):
         """
-        Which runs the optimization cannot change: the runs that no group of the optimization contains.
-        Without a prior, none.
+        The group of every run among the groups to optimize, per factor: -1 for a run that
+        no group to optimize of that factor contains.
 
         Parameters
         ----------
@@ -420,34 +420,34 @@ class Maximin(Metric):
 
         Returns
         -------
-        fixed : np.array(1d)
-            True for every run that the optimization cannot change, one per run.
+        groups : np.array(2d)
+            The group labels, one row per factor and one column per run.
         """
-        fixed = np.ones(params.nruns, dtype=np.bool_)
-        if params.prior is None:
-            return ~fixed
-        runs = [runs for grp_runs in params.grp_runs for runs in grp_runs]
-        fixed[np.concatenate(runs).astype(np.int64) if len(runs) > 0 else []] = False
-        return fixed
+        groups = np.full((len(params.factors), params.nruns), -1, dtype=np.int64)
+        for i, grp_runs in enumerate(params.grp_runs):
+            for g, runs in enumerate(grp_runs):
+                groups[i, runs] = g
+        return groups
 
     def preinit(self, params):
         """
-        Computes the map to the distance coordinates, and which pairs of runs to keep.
+        Computes the map to the distance coordinates, and which pairs of runs to keep: a pair's
+        distance cannot change when both runs are in the same group (or in none) for every factor.
 
         Parameters
         ----------
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
-        assert not any(f.is_mixture for f in params.factors), "Maximin does not support mixture components yet"
         self.offset, self.W = distance_map(params.factors, params.coords)
-        fixed = self._fixed_runs(params)
+        groups = self._run_groups(params)
         i, j = np.triu_indices(params.nruns, 1)
-        self.keep = ~(fixed[i] & fixed[j])
+        keep = ~np.all(groups[:, i] == groups[:, j], axis=0)
+        self.keep = None if keep.all() else keep
 
     def call(self, Y, X, params):
         """
-        Computes the maximin criterion, without the pairs of two runs that the optimization cannot change.
+        Computes the maximin criterion.
 
         Parameters
         ----------

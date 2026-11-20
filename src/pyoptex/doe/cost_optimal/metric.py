@@ -355,7 +355,6 @@ class Coverage(Metric):
             The simulation parameters
         """
         if not self.initialized_:
-            assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
             self.offset, self.W = distance_map(params.factors, params.coords)
             samples = init(params, self.n, complete=True)
             self.samples = (samples - self.offset) @ self.W

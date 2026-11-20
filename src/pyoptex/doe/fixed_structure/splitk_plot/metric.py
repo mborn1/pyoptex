@@ -592,6 +592,7 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
     The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
     It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
     the other close pairs.
+    Replicates in the prior are allowed: the distance between two prior runs that are not optimized is left out.
 
     Attributes
     ----------
@@ -602,16 +603,16 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
     W : np.array(2d)
         The matrix of the map to the distance coordinates.
-    keep : np.array(1d)
+    keep : np.array(1d) or None
         Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist`: every pair
-        but those of two runs that the optimization cannot change.
+        but those whose distance the optimization cannot change. None when every pair counts.
     """
 
-    def _fixed_runs(self, params):
+    def _run_groups(self, params):
         """
-        Which runs the optimization cannot change: the runs that no group of the optimization contains.
-        Group g of a factor at level l holds the runs from g * thetas[l] to (g + 1) * thetas[l].
-        Without a prior, none.
+        The group of every run among the groups to optimize, per factor: -1 for a run that
+        no group to optimize of that factor contains. Group g of a factor at level l holds
+        the runs from g * thetas[l] to (g + 1) * thetas[l].
 
         Parameters
         ----------
@@ -620,17 +621,14 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
 
         Returns
         -------
-        fixed : np.array(1d)
-            True for every run that the optimization cannot change, one per run.
+        groups : np.array(2d)
+            The group labels, one row per factor and one column per run.
         """
-        fixed = np.ones(params.nruns, dtype=np.bool_)
-        if params.prior is None:
-            return ~fixed
-        for grps, level in zip(params.grps, params.effect_levels, strict=True):
-            size = int(params.thetas[level])
-            for g in grps:
-                fixed[int(g) * size : (int(g) + 1) * size] = False
-        return fixed
+        groups = np.empty((len(params.factors), params.nruns), dtype=np.int64)
+        for i, (grps, level) in enumerate(zip(params.grps, params.effect_levels, strict=True)):
+            plot = np.arange(params.nruns) // int(params.thetas[level])
+            groups[i] = np.where(np.isin(plot, grps), plot, -1)
+        return groups
 
 
 class Aliasing(SplitkPlotMetricMixin, Aliasingo):
