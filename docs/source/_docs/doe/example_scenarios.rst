@@ -622,7 +622,7 @@ close to existing ones show how its accuracy changes with distance.
 Coverage or maximin?
 
 * :py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>` spreads runs over the whole region,
-  minimizing the worst-covered spot with a large `p` (minimax). It works in every module and in CODEX,
-  where it uses the budget.
+  minimizing the worst-covered spot with a large `p` (minimax). It works in every module and in CODEX
+  (not yet for mixture components), where it uses the budget.
 * :py:class:`Maximin <pyoptex.doe.fixed_structure.metric.Maximin>` pushes runs apart, mostly towards
   the edges, and is only for a fixed number of runs.
