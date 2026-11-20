@@ -388,8 +388,9 @@ class Maximin(Metric):
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
     W : np.array(2d)
         The matrix of the map to the distance coordinates.
-    nprior : int
-        The number of leading runs that the optimization cannot change (the prior runs).
+    keep : np.array(1d)
+        Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist`: every pair
+        but those of two runs that the optimization cannot change.
     """
 
     def __init__(self, p=50):
@@ -405,12 +406,12 @@ class Maximin(Metric):
         self.p = p
         self.offset = None
         self.W = None
-        self.nprior = 0
+        self.keep = None
 
-    def _nprior(self, params):
+    def _fixed_runs(self, params):
         """
-        The number of leading runs that the optimization cannot change: the prior runs.
-        The prior in the parameters has a row for every run, so its length does not give it.
+        Which runs the optimization cannot change: the runs that no group of the optimization contains.
+        Without a prior, none.
 
         Parameters
         ----------
@@ -419,28 +420,34 @@ class Maximin(Metric):
 
         Returns
         -------
-        nprior : int
-            The index of the first run that a group of the optimization contains.
+        fixed : np.array(1d)
+            True for every run that the optimization cannot change, one per run.
         """
+        fixed = np.ones(params.nruns, dtype=np.bool_)
         if params.prior is None:
-            return 0
-        return min((int(runs.min()) for grp_runs in params.grp_runs for runs in grp_runs), default=params.nruns)
+            return ~fixed
+        runs = [runs for grp_runs in params.grp_runs for runs in grp_runs]
+        fixed[np.concatenate(runs).astype(np.int64) if len(runs) > 0 else []] = False
+        return fixed
 
     def preinit(self, params):
         """
-        Computes the map to the distance coordinates and the number of prior runs.
+        Computes the map to the distance coordinates, and which pairs of runs to keep.
 
         Parameters
         ----------
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
+        assert not any(f.is_mixture for f in params.factors), "Maximin does not support mixture components yet"
         self.offset, self.W = distance_map(params.factors, params.coords)
-        self.nprior = self._nprior(params)
+        fixed = self._fixed_runs(params)
+        i, j = np.triu_indices(params.nruns, 1)
+        self.keep = ~(fixed[i] & fixed[j])
 
     def call(self, Y, X, params):
         """
-        Computes the maximin criterion, without the pairs of two prior runs.
+        Computes the maximin criterion, without the pairs of two runs that the optimization cannot change.
 
         Parameters
         ----------
@@ -456,7 +463,7 @@ class Maximin(Metric):
         metric : float
             The negative of φp.
         """
-        return maximin((Y - self.offset) @ self.W, self.p, self.nprior)
+        return maximin((Y - self.offset) @ self.W, self.p, self.keep)
 
 
 class Aliasing(Metric):

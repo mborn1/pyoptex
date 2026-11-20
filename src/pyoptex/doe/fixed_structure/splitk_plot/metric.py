@@ -602,14 +602,16 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
     W : np.array(2d)
         The matrix of the map to the distance coordinates.
-    nprior : int
-        The number of leading runs that the optimization cannot change (the prior runs).
+    keep : np.array(1d)
+        Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist`: every pair
+        but those of two runs that the optimization cannot change.
     """
 
-    def _nprior(self, params):
+    def _fixed_runs(self, params):
         """
-        The number of leading runs that the optimization cannot change: the prior runs.
-        Group g at level l holds the runs from g * thetas[l] to (g + 1) * thetas[l].
+        Which runs the optimization cannot change: the runs that no group of the optimization contains.
+        Group g of a factor at level l holds the runs from g * thetas[l] to (g + 1) * thetas[l].
+        Without a prior, none.
 
         Parameters
         ----------
@@ -618,19 +620,17 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
 
         Returns
         -------
-        nprior : int
-            The index of the first run that a group of the optimization contains.
+        fixed : np.array(1d)
+            True for every run that the optimization cannot change, one per run.
         """
+        fixed = np.ones(params.nruns, dtype=np.bool_)
         if params.prior is None:
-            return 0
-        return min(
-            (
-                int(grps.min()) * int(params.thetas[level])
-                for grps, level in zip(params.grps, params.effect_levels, strict=True)
-                if len(grps) > 0
-            ),
-            default=params.nruns,
-        )
+            return ~fixed
+        for grps, level in zip(params.grps, params.effect_levels, strict=True):
+            size = int(params.thetas[level])
+            for g in grps:
+                fixed[int(g) * size : (int(g) + 1) * size] = False
+        return fixed
 
 
 class Aliasing(SplitkPlotMetricMixin, Aliasingo):

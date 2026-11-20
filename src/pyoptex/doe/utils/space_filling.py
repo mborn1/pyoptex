@@ -94,14 +94,14 @@ def coverage(runs: np.ndarray, samples: np.ndarray, p: float) -> float:
     return -float(dmax * np.mean((d / dmax) ** p) ** (1 / p))
 
 
-def maximin(runs: np.ndarray, p: float, nprior: int = 0) -> float:
+def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float:
     """
     The maximin criterion of Morris and Mitchell: -φp, with φp = (sum over all pairs of runs of d^-p)^(1/p),
     so that larger is better. For a large p, φp tends to one over the smallest distance between two runs.
     Distances are floored at 1e-6. The score is -inf without any pair.
 
-    Pairs of two prior runs are left out: they cannot change, and a replicate among them would hide
-    every other distance. Every prior run still counts separately in its distances to the new runs,
+    Pairs of two runs that the optimization cannot change (such as prior runs) are left out (`keep`):
+    they cannot change, and a replicate among them would hide every other distance. Every prior run still counts separately in its distances to the new runs,
     so a replicated prior run pushes new runs away more strongly.
 
     Parameters
@@ -111,8 +111,9 @@ def maximin(runs: np.ndarray, p: float, nprior: int = 0) -> float:
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
     p : float
         The power.
-    nprior : int
-        The number of prior runs, which come first in `runs`.
+    keep : np.array(1d) or None
+        Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist` (the pairs (i, j)
+        with i < j, row by row). None keeps every pair.
 
     Returns
     -------
@@ -121,9 +122,10 @@ def maximin(runs: np.ndarray, p: float, nprior: int = 0) -> float:
     """
     if len(runs) < 2:
         return -np.inf
-    # The pairs (i, j) with i < j, in the order of pdist; both are prior runs when j < nprior
-    _, j = np.triu_indices(len(runs), 1)
-    d = np.maximum(pdist(runs)[j >= nprior], 1e-6)
+    d = pdist(runs)
+    if keep is not None:
+        d = d[keep]
+    d = np.maximum(d, 1e-6)
     if len(d) == 0:
         return -np.inf
     dmin = d.min()
