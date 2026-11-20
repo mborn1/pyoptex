@@ -6,6 +6,7 @@ from pyoptex.doe import fixed_structure as fs
 from pyoptex.doe.fixed_structure import metric as fs_metric
 from pyoptex.doe.fixed_structure.splitk_plot import Plot, create_parameters, create_splitk_plot_design, default_fn
 from pyoptex.doe.fixed_structure.splitk_plot.metric import Coverage
+from pyoptex.doe.fixed_structure.splitk_plot.metric import Maximin as SplitkMaximin
 from tests._helpers import assert_frame_equal, load_reference
 
 LEVELS21 = list(np.linspace(-1, 1, 21))
@@ -37,6 +38,25 @@ def test_maximin_replicated_prior():
     """A prior with two runs at 0 does not hide the new runs: the 2 new runs go to -1 and 1."""
     x = _fixed_design(fs_metric.Maximin(), 4, prior=pd.DataFrame({"x": [0.0, 0.0]}))
     np.testing.assert_allclose(np.sort(x[2:]), [-1, 1])
+
+
+def test_splitk_maximin_replicated_prior():
+    """
+    A split-plot prior with a replicate in each of its 3 whole plots, extended from 2 to 4 runs per whole plot:
+    the replicates, spread over the plots, do not hide the new runs, which move away from them.
+    """
+    set_seed(42)
+    etc, htc = Plot(level=0, size=4), Plot(level=1, size=3)
+    factors = [fs.Factor("W", htc, levels=LEVELS21), fs.Factor("S", etc, levels=LEVELS21)]
+    prior = pd.DataFrame({"W": [-1.0, -1.0, 0.0, 0.0, 1.0, 1.0], "S": [0.0, 0.0, 0.5, 0.5, -0.5, -0.5]})
+    prior_plots = [Plot(level=0, size=2), Plot(level=1, size=3)]
+    params = create_parameters(factors, default_fn(factors, SplitkMaximin(), None), prior=(prior, prior_plots))
+    Y, state = create_splitk_plot_design(params, n_tries=5)
+
+    assert state.metric > -1e5
+    S = Y["S"].to_numpy().reshape(3, 4)  # one row per whole plot, the prior's two runs first
+    np.testing.assert_array_equal(S[:, :2], prior["S"].to_numpy().reshape(3, 2))
+    assert np.all(S[:, 2:] != S[:, :1])
 
 
 def test_splitk_coverage():
