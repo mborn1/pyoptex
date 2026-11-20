@@ -5,7 +5,7 @@ Module for all metrics of fixed structure designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
-from ..utils.coverage import coverage, coverage_features
+from ..utils.coverage import coverage, coverage_features, maximin
 from .cov import no_cov
 from .init import init_random
 
@@ -341,7 +341,9 @@ class Coverage(Metric):
         params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
             The optimization parameters.
         """
-        self.samples = coverage_features(init_random(params, self.n, complete=True), params)
+        assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
+        samples = init_random(params, self.n, complete=True)
+        self.samples = coverage_features(samples, params.factors, params.effect_types, params.coords)
 
     def call(self, Y, X, params):
         """
@@ -361,7 +363,52 @@ class Coverage(Metric):
         metric : float
             The negative of the power mean of the distances to the nearest run.
         """
-        return coverage(coverage_features(Y, params), self.samples, self.p)
+        return coverage(coverage_features(Y, params.factors, params.effect_types, params.coords), self.samples, self.p)
+
+
+class Maximin(Metric):
+    """
+    The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
+    It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
+    the other close pairs. Not for cost-optimal designs, where it would keep the design small.
+
+    Attributes
+    ----------
+    p : float
+        The power of φp.
+    """
+
+    def __init__(self, p=50):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        p : float
+            The power of φp.
+        """
+        super().__init__()
+        self.p = p
+
+    def call(self, Y, X, params):
+        """
+        Computes the maximin criterion, over all runs (the prior runs too).
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The updated design matrix.
+        X : np.array(2d)
+            The updated model matrix (not used).
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        metric : float
+            The negative of φp.
+        """
+        return maximin(coverage_features(Y, params.factors, params.effect_types, params.coords), self.p)
 
 
 class Aliasing(Metric):

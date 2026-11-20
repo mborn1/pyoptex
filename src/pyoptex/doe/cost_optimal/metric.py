@@ -2,8 +2,6 @@
 Module for all metrics of the cost optimal designs.
 """
 
-from types import SimpleNamespace
-
 import numpy as np
 
 from ...utils.comp import outer_integral
@@ -339,7 +337,9 @@ class Coverage(Metric):
         self.n = n
         self.p = p
         self.samples = None
-        self.encoding_ = None
+        self.factors = None
+        self.effect_types = None
+        self.coords = None
         self.initialized_ = False
 
     def init(self, params):
@@ -352,11 +352,12 @@ class Coverage(Metric):
             The simulation parameters
         """
         if not self.initialized_:
+            assert not any(f.is_mixture for f in params.factors), "Coverage does not support mixture components yet"
+
             # The factors and their encoding, for the designs in call (which gets no parameters)
-            self.encoding_ = SimpleNamespace(
-                factors=params.factors, effect_types=params.effect_types, coords=params.coords
-            )
-            self.samples = coverage_features(init(params, self.n, complete=True), self.encoding_)
+            self.factors, self.effect_types, self.coords = params.factors, params.effect_types, params.coords
+            samples = init(params, self.n, complete=True)
+            self.samples = coverage_features(samples, self.factors, self.effect_types, self.coords)
             self.initialized_ = True
 
     def call(self, Y, X, Zs, Vinv, costs):
@@ -381,7 +382,7 @@ class Coverage(Metric):
         metric : float
             The negative of the power mean of the distances to the nearest run.
         """
-        return coverage(coverage_features(Y, self.encoding_), self.samples, self.p)
+        return coverage(coverage_features(Y, self.factors, self.effect_types, self.coords), self.samples, self.p)
 
 
 class Aliasing(Metric):

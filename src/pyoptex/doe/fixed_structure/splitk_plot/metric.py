@@ -13,10 +13,16 @@ from ..metric import (
     Aopt as Aopto,
 )
 from ..metric import (
+    Coverage as Coverageo,
+)
+from ..metric import (
     Dopt as Dopto,
 )
 from ..metric import (
     Iopt as Iopto,
+)
+from ..metric import (
+    Maximin as Maximino,
 )
 from ._formulas_cy import compute_update_UD, det_update_UD, inv_update_UD, inv_update_UD_no_P
 
@@ -555,6 +561,41 @@ class Iopt(SplitkPlotMetricMixin, Iopto):
         """
         # Update Minv
         self.Minv -= self.Mup
+
+
+class Coverage(SplitkPlotMetricMixin, Coverageo):
+    """
+    The coverage criterion: spreads the runs over the region. It does not use the model.
+    Minimizes the distance from points of the region to their nearest run, averaged
+    with power `p` (a larger `p` weighs the worst-covered points more).
+
+    Attributes
+    ----------
+    n : int
+        The number of points of the region.
+    p : float
+        The power of the mean.
+    samples : np.array(2d)
+        The coordinates of the points of the region, as from
+        :py:func:`coverage_features <pyoptex.doe.utils.coverage.coverage_features>`.
+    """
+
+    pass
+
+
+class Maximin(SplitkPlotMetricMixin, Maximino):
+    """
+    The maximin criterion (Morris–Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
+    It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
+    the other close pairs.
+
+    Attributes
+    ----------
+    p : float
+        The power of φp.
+    """
+
+    pass
 
 
 class Aliasing(SplitkPlotMetricMixin, Aliasingo):
