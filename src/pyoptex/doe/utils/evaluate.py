@@ -437,10 +437,13 @@ def _runs_trace(Y, factors, ix, iy, fixed, fixed_hover, y_at=None, value_label=N
     names = [str(f.name) for f in factors]
     match = np.ones(len(Y), dtype=np.bool_)
     for name, value in fixed.items():
-        if factors[names.index(name)].is_categorical:
+        f = factors[names.index(name)]
+        if f.is_categorical:
             match &= (Y[name] == value).to_numpy()
         else:
-            match &= np.isclose(Y[name].to_numpy(dtype=np.float64), float(value))
+            match &= np.isclose(
+                f.normalize(Y[name].to_numpy(dtype=np.float64)), f.normalize(float(value)), rtol=0, atol=1e-9
+            )
     Y = Y[match]
 
     def coords(f):
@@ -768,7 +771,7 @@ def _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles):
 
     nsets = len(pv)
     curve_colour = "#2a78d6"
-    fig = make_subplots(rows=nsets, cols=1, vertical_spacing=0.07, subplot_titles=titles)
+    fig = make_subplots(rows=nsets, cols=1, vertical_spacing=min(0.07, 0.5 / nsets), subplot_titles=titles)
     runs2d = _runs_trace(Y, factors, ix, iy, fixed, fixed_hover) if ix != iy else None
 
     for i in range(nsets):
