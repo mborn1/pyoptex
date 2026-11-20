@@ -295,7 +295,7 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
                 keep[i] = False
 
                 # Test for feasibility
-                if np.linalg.matrix_rank(X[keep]) < X.shape[1]:
+                if len(X[keep]) == 0 or np.linalg.matrix_rank(X[keep]) < X.shape[1]:
                     # Keep the term
                     keep[i] = True
             Y = Y[keep]
@@ -307,7 +307,7 @@ def init_feasible_(params, max_tries=3, minimal=True, max_size=None, force_cost_
                 keep[i] = False
 
                 # Test for feasibility
-                if np.linalg.matrix_rank(X[keep]) < X.shape[1]:
+                if len(X[keep]) == 0 or np.linalg.matrix_rank(X[keep]) < X.shape[1]:
                     # Keep the term
                     keep[i] = True
 
