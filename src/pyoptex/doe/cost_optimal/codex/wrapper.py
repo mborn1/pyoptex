@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ....utils.design import decode_design, encode_design
+from ....utils.model import model2Y2X
 from ...constraints import mixture_constraints, no_constraints
 from ..init import init_feasible
 from ..utils import Factor, Parameters
@@ -54,9 +55,10 @@ def default_fn(
         The cost function.
     metric : :py:class:`Metric <pyoptex.doe.cost_optimal.metric.Metric>`
         The metric object.
-    Y2X : func
+    Y2X : func or None
         The function converting from the design matrix to the
-        model matrix.
+        model matrix. None for no model (the intercept only), for criteria
+        that do not use a model, such as space-filling designs.
     init : func
         The initialization function,
         :py:func:`init_feasible <pyoptex.doe.cost_optimal.init.init_feasible>`
@@ -108,6 +110,10 @@ def default_fn(
         temperature = LinearTemperature(T0=1, nsims=nsims)
     if restart is None:
         restart = RestartEveryNFailed(nsims / 100)
+
+    # Without a model, the intercept only
+    if Y2X is None:
+        Y2X = model2Y2X(pd.DataFrame([[0] * len(factors)], columns=[str(f.name) for f in factors]), factors)
 
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
