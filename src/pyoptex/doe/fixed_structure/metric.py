@@ -302,15 +302,15 @@ class Iopt(Metric):
 class Coverage(Metric):
     """
     The coverage criterion: spreads the runs over the region. It does not use the model.
-    Minimizes the distance from points of the region to their nearest run, averaged
-    with power `p` (a larger `p` weighs the worst-covered points more).
+    Minimizes the generalized mean (with exponent p) of the distance from points of the region
+    to their nearest run (a larger p weighs the worst-covered points more).
 
     Attributes
     ----------
     n : int
         The number of points of the region.
     p : float
-        The power of the mean.
+        The exponent of the generalized mean.
     offset : np.array(1d)
         The offset of the map to the distance coordinates, from
         :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
@@ -329,7 +329,7 @@ class Coverage(Metric):
         n : int
             The number of points of the region.
         p : float
-            The power of the mean.
+            The exponent of the generalized mean.
         """
         assert p > 0, "p must be positive"
         super().__init__()
@@ -368,7 +368,7 @@ class Coverage(Metric):
         Returns
         -------
         metric : float
-            The negative of the power mean of the distances to the nearest run.
+            The negative of the generalized mean of the distances to the nearest run.
         """
         return coverage((Y - self.offset) @ self.W, self.samples, self.p)
 
@@ -378,7 +378,8 @@ class Maximin(Metric):
     The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
     It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
     the other close pairs. Not for cost-optimal designs, where it would keep the design small.
-    Replicates in the prior are allowed: the distance between two prior runs that are not optimized is left out.
+    Replicates in the prior are allowed: distances that the optimization cannot change,
+    such as between two prior runs, are left out.
 
     Attributes
     ----------

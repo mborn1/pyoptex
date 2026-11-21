@@ -4,20 +4,15 @@ fixed structure and the cost optimal designs.
 """
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.linalg import block_diag
 from scipy.spatial.distance import cdist, pdist
 
-if TYPE_CHECKING:
-    from ..cost_optimal.utils import Factor as CostOptimalFactor
-    from ..fixed_structure.utils import Factor as FixedStructureFactor
+from ...utils.factor import FactorMixin
 
 
-def distance_map(
-    factors: Sequence["FixedStructureFactor | CostOptimalFactor"], coords: Sequence[np.ndarray]
-) -> tuple[np.ndarray, np.ndarray]:
+def distance_map(factors: Sequence[FactorMixin], coords: Sequence[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
     """
     The affine map from an encoded design to the coordinates in which the space-filling criteria
     measure distances: `(Yenc - offset) @ W`, with W block-diagonal per factor.
@@ -45,13 +40,14 @@ def distance_map(
     for f, C in zip(factors, coords, strict=True):
         C = np.asarray(C, dtype=np.float64)
         if f.is_categorical:
+            name = f.name  # type: ignore[attr-defined]  # the factor classes are namedtuples with a name
             # Centred one-hot over sqrt(2): every two levels at distance 1, whatever the encoding
             k = len(C)
             Cc = C - C.mean(axis=0)
             target = (np.eye(k) - 1 / k) / np.sqrt(2)
             T = np.linalg.lstsq(Cc, target, rcond=None)[0]
             assert np.allclose(Cc @ T, target), (
-                f"The encoding of categorical factor {f.name} does not allow equal distances between its levels"
+                f"The encoding of categorical factor {name} does not allow equal distances between its levels"
             )
             offsets.append(C.mean(axis=0))
             blocks.append(T)
@@ -63,7 +59,7 @@ def distance_map(
 
 def coverage(runs: np.ndarray, samples: np.ndarray, p: float) -> float:
     """
-    The coverage of the samples by the runs: the negative power mean (with power `p`) of the
+    The coverage of the samples by the runs: the negative generalized mean (with exponent p) of the
     distance from each sample to its nearest run, so that larger is better. The score is
     always below 0, and -inf without runs.
 
@@ -75,7 +71,7 @@ def coverage(runs: np.ndarray, samples: np.ndarray, p: float) -> float:
     samples : np.array(2d)
         The coordinates of the samples of the region, in the same columns.
     p : float
-        The power of the mean.
+        The exponent of the generalized mean.
 
     Returns
     -------
@@ -86,9 +82,9 @@ def coverage(runs: np.ndarray, samples: np.ndarray, p: float) -> float:
         return -np.inf
     d = cdist(samples, runs).min(axis=1)
     dmax = d.max()
-    power_mean = dmax * np.mean((d / dmax) ** p) ** (1 / p) if dmax > 0 else 0.0
+    generalized_mean = dmax * np.mean((d / dmax) ** p) ** (1 / p) if dmax > 0 else 0.0
     # CODEX's relative acceptance needs a metric with one sign, so the score stays just below 0
-    return -max(float(power_mean), 1e-12)
+    return -max(float(generalized_mean), 1e-12)
 
 
 def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float:
@@ -97,10 +93,11 @@ def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float
     so that larger is better. For a large p, φp tends to one over the smallest distance between two runs.
     Distances are floored at 1e-6. The score is -inf without any pair.
 
-    Pairs whose distance the optimization cannot change (such as two prior runs that are not optimized)
-    are left out with `keep`: their distance is constant, and a replicate among them would hide every
-    other distance. Every prior run still counts separately in its distances to the new runs, so a
-    replicated prior run pushes new runs away more strongly.
+    Pairs whose distance the optimization cannot change are left out with `keep`: two runs that,
+    factor by factor, are either both not optimized or in the same group (such as two prior runs,
+    or the copies of a replicate). Their distance is constant, and a replicate among them would hide
+    every other distance. Every run still counts separately in its distances to the other runs, so
+    a replicated run pushes the others away more strongly.
 
     Parameters
     ----------
@@ -122,12 +119,14 @@ def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float
         return -np.inf
     d = pdist(runs)
     if keep is not None:
-        assert len(keep) == len(d), "the design has a different number of runs than the parameters"
+        assert len(keep) == len(d), (
+            f"The design has {len(runs)} runs, but the parameters are for a different number: "
+            "evaluate it with the parameters it was made with."
+        )
         d = d[keep]
     d = np.maximum(d, 1e-6)
     if len(d) == 0:
         return -np.inf
     dmin = d.min()
     # Scaled by the smallest distance, so that every ratio is at most 1 (no overflow for a large p)
-    # Floored like the coverage, so that the score stays just below 0
-    return -max(float(np.sum((dmin / d) ** p) ** (1 / p) / dmin), 1e-12)
+    return -float(np.sum((dmin / d) ** p) ** (1 / p) / dmin)
