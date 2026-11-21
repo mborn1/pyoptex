@@ -86,10 +86,9 @@ def coverage(runs: np.ndarray, samples: np.ndarray, p: float) -> float:
         return -np.inf
     d = cdist(samples, runs).min(axis=1)
     dmax = d.max()
-    if dmax == 0:
-        # CODEX's relative acceptance needs a metric with one sign, so a fully covered region scores just below 0
-        return -1e-12
-    return -float(dmax * np.mean((d / dmax) ** p) ** (1 / p))
+    power_mean = dmax * np.mean((d / dmax) ** p) ** (1 / p) if dmax > 0 else 0.0
+    # CODEX's relative acceptance needs a metric with one sign, so the score stays just below 0
+    return -max(float(power_mean), 1e-12)
 
 
 def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float:
@@ -130,4 +129,5 @@ def maximin(runs: np.ndarray, p: float, keep: np.ndarray | None = None) -> float
         return -np.inf
     dmin = d.min()
     # Scaled by the smallest distance, so that every ratio is at most 1 (no overflow for a large p)
-    return -float(np.sum((dmin / d) ** p) ** (1 / p) / dmin)
+    # Floored like the coverage, so that the score stays just below 0
+    return -max(float(np.sum((dmin / d) ** p) ** (1 / p) / dmin), 1e-12)

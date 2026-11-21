@@ -622,12 +622,12 @@ class Maximin(SplitkPlotMetricMixin, Maximino):
         Returns
         -------
         groups : np.array(2d)
-            The group labels, one row per factor and one column per run.
+            The group labels, one row per run and one column per factor.
         """
-        groups = np.empty((len(params.factors), params.nruns), dtype=np.int64)
+        groups = np.empty((params.nruns, len(params.factors)), dtype=np.int64)
         for i, (grps, level) in enumerate(zip(params.grps, params.effect_levels, strict=True)):
             plot = np.arange(params.nruns) // int(params.thetas[level])
-            groups[i] = np.where(np.isin(plot, grps), plot, -1)
+            groups[:, i] = np.where(np.isin(plot, grps), plot, -1)
         return groups
 
 

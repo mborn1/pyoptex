@@ -331,6 +331,7 @@ class Coverage(Metric):
         p : float
             The power of the mean.
         """
+        assert p > 0, "p must be positive"
         super().__init__()
         self.n = n
         self.p = p
@@ -402,6 +403,7 @@ class Maximin(Metric):
         p : float
             The power of φp.
         """
+        assert p > 0, "p must be positive"
         super().__init__()
         self.p = p
         self.offset = None
@@ -421,12 +423,12 @@ class Maximin(Metric):
         Returns
         -------
         groups : np.array(2d)
-            The group labels, one row per factor and one column per run.
+            The group labels, one row per run and one column per factor.
         """
-        groups = np.full((len(params.factors), params.nruns), -1, dtype=np.int64)
+        groups = np.full((params.nruns, len(params.factors)), -1, dtype=np.int64)
         for i, grp_runs in enumerate(params.grp_runs):
             for g, runs in enumerate(grp_runs):
-                groups[i, runs] = g
+                groups[runs, i] = g
         return groups
 
     def preinit(self, params):
@@ -440,9 +442,14 @@ class Maximin(Metric):
             The optimization parameters.
         """
         self.offset, self.W = distance_map(params.factors, params.coords)
-        groups = self._run_groups(params)
+        # One number per run for its labels: a pair is left out when both runs have the same number
+        _, ids = np.unique(self._run_groups(params), axis=0, return_inverse=True)
+        ids = ids.reshape(-1)
         i, j = np.triu_indices(params.nruns, 1)
-        keep = ~np.all(groups[:, i] == groups[:, j], axis=0)
+        keep = ids[i] != ids[j]
+        assert params.nruns >= 2 and keep.any(), (
+            "Maximin needs at least two runs whose distance the optimization can change"
+        )
         self.keep = None if keep.all() else keep
 
     def call(self, Y, X, params):

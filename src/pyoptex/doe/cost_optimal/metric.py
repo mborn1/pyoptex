@@ -337,6 +337,7 @@ class Coverage(Metric):
         p : float
             The power of the mean.
         """
+        assert p > 0, "p must be positive"
         super().__init__()
         self.n = n
         self.p = p
