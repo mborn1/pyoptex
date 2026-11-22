@@ -62,9 +62,12 @@ def test_splitk_plot():
     np.testing.assert_allclose(state.metric, ref["metric"], rtol=1e-6)
     assert_frame_equal(Y, {"shape": ref["Y_shape"], "columns": ref["Y_columns"], "data": ref["Y_values"]})
 
-    # After a design run, the compiled constraints can still go to worker processes
-    restored = ForkingPickler.loads(ForkingPickler.dumps(params.fn.constraints))
-    np.testing.assert_array_equal(restored(state.Y), params.fn.constraints(state.Y))
+    # After a design run, the parameters (with the compiled constraints and the covariates)
+    # can still go to worker processes
+    restored = ForkingPickler.loads(ForkingPickler.dumps(params))
+    np.testing.assert_array_equal(restored.fn.constraints(state.Y), params.fn.constraints(state.Y))
+    for a, b in zip(restored.fn.metric.cov(state.Y, state.X), params.fn.metric.cov(state.Y, state.X), strict=True):
+        np.testing.assert_array_equal(a, b)
 
 
 def test_splitk_plot_initial_design_estimable_with_covariates():
