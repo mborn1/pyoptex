@@ -5,7 +5,9 @@ import pandas as pd
 
 from .design import create_default_coords, encode_design
 
-__Factor__ = namedtuple("__Factor__", "name type min max levels coords", defaults=(None, "cont", -1, 1, None, None))
+__Factor__ = namedtuple(
+    "__Factor__", "name type min max levels coords", defaults=(None, "cont", None, None, None, None)
+)
 
 
 class FactorMixin:
@@ -23,8 +25,10 @@ class FactorMixin:
         'cat', 'mixture', 'mixt', 'quantitative', 'quant', 'qualitative', 'qual'
     min : float
         The minimum of the factor. Used for continuous factors.
+        Defaults to the lowest level when levels are given, otherwise -1.
     max : float
         The maximum of the factor. Used for continuous factors.
+        Defaults to the highest level when levels are given, otherwise 1.
     levels : list(float) or list(str)
         For continuous factors, this is the list of possible numerical values.
         For categorical factors, this is a list of strings for the possible
@@ -40,7 +44,7 @@ class FactorMixin:
         # Check for a mixture component
         if self.type in ("mixt", "mixture"):
             # Alter default minimum and maximum
-            assert self.min == -1 and self.max == 1, (
+            assert self.min is None and self.max is None, (
                 "Cannot specify a minimum and maximum for mixture components. Use levels parameters to specify minimum and maximum consumption per run"
             )
 
@@ -50,6 +54,8 @@ class FactorMixin:
             # Transform to a new factor
             params = self._asdict()
             params["type"] = "cont_mixture"
+            params["min"] = -1
+            params["max"] = 1
             params["levels"] = levels
             return self.__class__.__new__(self.__class__, **params)
 
@@ -66,6 +72,11 @@ class FactorMixin:
             "quantitative",
         ], f"The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}"
         if self.is_continuous:
+            # Without a minimum or maximum, the range is that of the levels (or -1 to 1 without levels)
+            if self.min is None:
+                self = self._replace(min=float(min(self.levels)) if self.levels is not None else -1)
+            if self.max is None:
+                self = self._replace(max=float(max(self.levels)) if self.levels is not None else 1)
             assert isinstance(self.min, (float, int)), (
                 f"Factor {self.name} must have an integer or float minimum, but is {self.min}"
             )
@@ -81,7 +92,12 @@ class FactorMixin:
             assert self.levels is None or len(self.levels) >= 2, (
                 f"A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}"
             )
+            if self.levels is not None:
+                assert min(self.levels) >= self.min and max(self.levels) <= self.max, (
+                    f"The levels of factor {self.name} must lie between its minimum {self.min} and maximum {self.max}"
+                )
         else:
+            self = self._replace(min=-1 if self.min is None else self.min, max=1 if self.max is None else self.max)
             assert len(self.levels) >= 2, (
                 f"A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}"
             )

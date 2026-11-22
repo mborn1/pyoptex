@@ -66,7 +66,7 @@ class RandomEffect(__RandomEffect__):
 
 
 __Factor__ = namedtuple(
-    "__Factor__", "name re type min max levels coords", defaults=(None, None, "cont", -1, 1, None, None)
+    "__Factor__", "name re type min max levels coords", defaults=(None, None, "cont", None, None, None, None)
 )
 
 

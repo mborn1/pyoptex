@@ -16,7 +16,9 @@ Parameters = namedtuple(
 )
 State = namedtuple("State", "Y X Zs Vinv metric cost_Y costs max_cost")
 __Factor__ = namedtuple(
-    "__Factor__", "name grouped ratio type min max levels coords", defaults=(None, True, 1, "cont", -1, 1, None, None)
+    "__Factor__",
+    "name grouped ratio type min max levels coords",
+    defaults=(None, True, 1, "cont", None, None, None, None),
 )
 
 
