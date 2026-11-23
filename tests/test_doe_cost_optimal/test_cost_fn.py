@@ -57,6 +57,28 @@ def test_cost_fn_encoded():
     np.testing.assert_array_equal(Y, Yenc)
 
 
+def test_cost_fn_bound_method():
+    """A bound method with a docstring can be a cost function."""
+
+    class Costs:
+        def __init__(self, max_runs):
+            self.max_runs = max_runs
+
+        def runs(self, Y, params):
+            """One unit of cost per run."""
+            return [(np.ones(len(Y)), self.max_runs, np.arange(len(Y)))]
+
+    obj = Costs(10)
+    fn = cost_fn(obj.runs, denormalize=False, decoded=False, contains_params=True)
+
+    params = create_parameters(FACTORS, None)
+    Yenc = encode_design(Y_DEC, params.effect_types, coords=params.coords)
+    for (c, m, i), (rc, rm, ri) in zip(obj.runs(Yenc, params), fn(Yenc, params), strict=True):
+        np.testing.assert_array_equal(rc, c)
+        assert rm == m
+        np.testing.assert_array_equal(ri, i)
+
+
 def test_cost_functions_picklable():
     """Parallel generation sends the cost function to worker processes, which requires pickling."""
     params = create_parameters(FACTORS, None)

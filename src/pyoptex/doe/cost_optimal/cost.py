@@ -2,6 +2,7 @@
 Module containing all the cost functions of the cost optimal designs
 """
 
+import re
 from collections.abc import Callable, Sequence
 from functools import partial, wraps
 
@@ -88,6 +89,10 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, datafram
     if denormalize or decoded:
         f = wraps(f)(partial(_fn_decoded, f))
 
+    # Always a new wrapper, so the note never goes into the caller's own function or method
+    if contains_params and not (denormalize or decoded or dataframe):
+        f = wraps(f)(partial(f))
+
     if denormalize:
         NOTE = "This cost function works on denormalized inputs"
 
@@ -97,9 +102,12 @@ def __cost_fn(f, denormalize=True, decoded=True, contains_params=False, datafram
     else:
         NOTE = "This cost function works on normalized (encoded) inputs"
 
-    if f.__doc__ is not None:
-        params_pos = f.__doc__.find("    Parameters\n    ---------")
-        f.__doc__ = f.__doc__[:params_pos] + f"\n    .. note::\n        {NOTE}\n\n" + f.__doc__[params_pos:]
+    # The note goes before the Parameters header, in its indent (Python 3.13 strips docstring indentation)
+    match = re.search(r"^([ \t]*)Parameters\n[ \t]*-{3,}", f.__doc__, re.MULTILINE) if f.__doc__ else None
+    if match is not None:
+        indent = match.group(1)
+        note = f"{indent}.. note::\n{indent}    {NOTE}\n\n"
+        f.__doc__ = f.__doc__[: match.start()] + note + f.__doc__[match.start() :]
 
     return f
 
