@@ -1,0 +1,197 @@
+"""
+Module with the power of the tests of the effects, shared by the fixed structure and the cost optimal designs.
+"""
+
+from collections.abc import Sequence
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+from ...utils.model import encode_model, model2encnames, model2names
+
+
+def _power(
+    X: np.ndarray,
+    Vinv: np.ndarray,
+    Gs: Sequence[np.ndarray],
+    terms: Sequence[np.ndarray],
+    sizes: np.ndarray,
+    alpha: float,
+    ddf: str,
+) -> np.ndarray:
+    """
+    The power of the test of each term, for one set of variance ratios.
+
+    Parameters
+    ----------
+    X : np.array(2d)
+        The model matrix, with the covariate columns.
+    Vinv : np.array(2d)
+        The inverse of the observation covariance matrix V = I + sum of r_j Z_j Z_j'.
+    Gs : list(np.array(2d))
+        The derivatives of V to the variance components: I, Z_1 Z_1', Z_2 Z_2', ...
+    terms : list(np.array(1d))
+        The columns of X of each tested term.
+    sizes : np.array(1d)
+        The size of each term's coefficients, in units of the residual standard deviation.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : np.array(1d)
+        The power of each term, NaN when the design cannot estimate a variance
+        component that the test depends on.
+    """
+    VinvX = Vinv @ X
+    Phi = np.linalg.inv(X.T @ VinvX)
+    Ptilde = Vinv - VinvX @ Phi @ VinvX.T
+    GVinvX = [G @ VinvX for G in Gs]
+    VinvGVinvX = [Vinv @ g for g in GVinvX]
+    P = np.array([VinvX.T @ g for g in GVinvX])
+    Q = np.array([[gi.T @ vgj for vgj in VinvGVinvX] for gi in GVinvX])
+    PhiPPhi = Phi @ P @ Phi
+
+    # The information of the variance components, inverted on the directions the design can estimate
+    PG = [Ptilde @ G for G in Gs]
+    info = np.array([[np.sum(PGi * PGj.T) / 2 for PGj in PG] for PGi in PG])
+    eigval, eigvec = np.linalg.eigh(info)
+    keep = eigval > 1e-10 * eigval.max()
+    W = (eigvec[:, keep] / eigval[keep]) @ eigvec[:, keep].T
+    unestimable = eigvec[:, ~keep]
+
+    if ddf == "kenward-roger":
+        Lambda = np.einsum("ij,ijab->ab", W, Q) - np.einsum("ij,iab,bc,jcd->ad", W, P, Phi, P)
+        PhiA = Phi + 2 * Phi @ Lambda @ Phi
+
+    power = np.full(len(terms), np.nan)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        for t, (c, size) in enumerate(zip(terms, sizes, strict=True)):
+            k = len(c)
+            b = size * (-1.0) ** np.arange(k)
+            LPhiL = Phi[np.ix_(c, c)]
+            dPhi = PhiPPhi[:, c][:, :, c]
+
+            # A test that leans on a variance component the design cannot estimate has no power
+            lean = np.einsum("iu,ijk->ujk", unestimable, dPhi)
+            if np.any(np.linalg.norm(lean, axis=(1, 2)) > 1e-8 * np.linalg.norm(LPhiL)):
+                continue
+
+            if ddf == "kenward-roger":
+                M = np.linalg.solve(LPhiL, dPhi)
+                traces = np.trace(M, axis1=1, axis2=2)
+                A1 = traces @ W @ traces
+                A2 = np.sum(W * np.einsum("iab,jba->ij", M, M))
+                if k == 1:
+                    df, lam = 2 / A2, 1.0
+                else:
+                    B = (A1 + 6 * A2) / (2 * k)
+                    g = ((k + 1) * A1 - (k + 4) * A2) / ((k + 2) * A2)
+                    denom = 3 * k + 2 * (1 - g)
+                    c1, c2, c3 = g / denom, (k - g) / denom, (k + 2 - g) / denom
+                    E = 1 / (1 - A2 / k)
+                    Vstar = (2 / k) * (1 + c1 * B) / ((1 - c2 * B) ** 2 * (1 - c3 * B))
+                    rho = Vstar / (2 * E**2)
+                    df = 4 + (k + 2) / (k * rho - 1)
+                    lam = df / (E * (df - 2))
+                noncentrality = lam * b @ np.linalg.solve(PhiA[np.ix_(c, c)], b)
+            else:
+                # Satterthwaite per direction of L'PhiL (Fai and Cornelius for k > 1)
+                D, U = np.linalg.eigh(LPhiL)
+                g = np.einsum("au,iab,bu->ui", U, dPhi, U)
+                nus = 2 * D**2 / np.einsum("ui,ij,uj->u", g, W, g)
+                if k == 1:
+                    df = nus[0]
+                else:
+                    E = np.sum(nus[nus > 2] / (nus[nus > 2] - 2))
+                    df = 2 * E / (E - k) if E > k else np.nan
+                noncentrality = b @ np.linalg.solve(LPhiL, b)
+
+            if not np.isfinite(df) or df <= 0:
+                continue
+            critical = stats.f.ppf(1 - alpha, k, df)
+            # scipy's ncf.sf returns sf - 1 for a noncentrality of 0, so the central F is used there
+            power[t] = (
+                stats.f.sf(critical, k, df) if noncentrality == 0 else stats.ncf.sf(critical, k, df, noncentrality)
+            )
+
+    return power
+
+
+def _power_table(
+    factors: Sequence,
+    effect_types: np.ndarray,
+    model: pd.DataFrame,
+    X: np.ndarray,
+    nmodel: int,
+    Vinv: np.ndarray,
+    Zs: Sequence[np.ndarray | None],
+    sizes: float | Sequence[float],
+    alpha: float,
+    ddf: str,
+) -> pd.DataFrame:
+    """
+    The power of the test of each term of the model (except the intercept), for each set of variance ratios.
+
+    Parameters
+    ----------
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.FactorMixin>`)
+        The factors of the design.
+    effect_types : np.array(1d)
+        The effect type of each factor (1 for continuous, the number of levels for categorical).
+    model : pd.DataFrame
+        The model, one row per term.
+    X : np.array(2d)
+        The model matrix, with the covariate columns after the model's columns.
+    nmodel : int
+        The number of columns of the model, without the covariates.
+    Vinv : np.array(3d)
+        The inverse of the observation covariance matrix, for each set of variance ratios.
+    Zs : list(np.array(1d) or None)
+        The groupings of the random effects, None for a factor without one.
+    sizes : float or list(float)
+        The size of the coefficients of each term, or of all terms.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : pd.DataFrame
+        The power, one row per set of variance ratios and one column per tested term.
+    """
+    assert ddf in ("kenward-roger", "satterthwaite"), f"ddf must be 'kenward-roger' or 'satterthwaite', but is {ddf}"
+    assert not any(fac.is_mixture for fac in factors), "Power for mixture designs is not supported yet"
+
+    # The columns of each term: the rows that encode_model makes from it, in order
+    col_names = [str(fac.name) for fac in factors]
+    model = model[col_names]
+    nenc = [len(encode_model(row[np.newaxis], effect_types)) for row in model.to_numpy()]
+    starts = np.concatenate(([0], np.cumsum(nenc)))
+    assert starts[-1] == len(model2encnames(model, effect_types)) == nmodel, (
+        f"The model has {starts[-1]} columns, but the model matrix of the parameters has {nmodel}"
+    )
+    tested = np.flatnonzero(np.any(model.to_numpy() != 0, axis=1))
+    terms = [np.arange(starts[i], starts[i + 1]) for i in tested]
+    all_names = model2names(model)
+    names = [all_names[i] for i in tested]
+
+    size = np.full(len(tested), sizes, dtype=np.float64) if np.ndim(sizes) == 0 else np.asarray(sizes, np.float64)
+    assert len(size) == len(tested), f"sizes must have one value per tested term ({len(tested)}), but has {len(size)}"
+
+    # V is linear in the variance components: its derivatives are I and the ZZ' of each grouping
+    n = len(X)
+    Gs = [np.eye(n), *((Z[:, np.newaxis] == Z[np.newaxis, :]).astype(np.float64) for Z in Zs if Z is not None)]
+    for Vi in Vinv:
+        V = np.linalg.inv(Vi)
+        coef = np.linalg.lstsq(np.array([G.ravel() for G in Gs]).T, V.ravel(), rcond=None)[0]
+        assert np.allclose(np.tensordot(coef, Gs, axes=1), V), (
+            "Power requires V to be I plus the variance ratios times ZZ' of the groupings in the parameters "
+            "(block effects are not supported yet)"
+        )
+
+    return pd.DataFrame([_power(X, Vi, Gs, terms, size, alpha, ddf) for Vi in Vinv], columns=names)

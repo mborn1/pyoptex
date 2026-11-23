@@ -2,7 +2,7 @@
 Module containing all the evaluation functions for fixed structure designs.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 from ...utils.design import encode_design
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
+from ..utils.power import _power_table
 from .metric import Iopt
 from .utils import Parameters
 
@@ -168,9 +169,9 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     return fig
 
 
-def estimation_variance_matrix(Y, params):
+def _model_matrix(Y, params):
     """
-    Computes the parameter estimation covariance matrix.
+    The model matrix of the design, with the covariate columns after the model's columns.
 
     Parameters
     ----------
@@ -181,9 +182,10 @@ def estimation_variance_matrix(Y, params):
 
     Returns
     -------
-    est_var : np.array(3d)
-        The mutiple parameter estimation covariance matrices for each of the
-        a-priori variance ratio sets.
+    X : np.array(2d)
+        The model matrix, with the covariates.
+    nmodel : int
+        The number of columns of the model, without the covariates.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
@@ -201,10 +203,34 @@ def estimation_variance_matrix(Y, params):
 
     # Define the metric inputs
     X = params.fn.Y2X(Y)
+    nmodel = X.shape[1]
 
-    # Compute information matrix
+    # Add the covariates
     if params.fn.metric.cov is not None:
         _, X = params.fn.metric.cov(Y, X)
+
+    return X, nmodel
+
+
+def estimation_variance_matrix(Y, params):
+    """
+    Computes the parameter estimation covariance matrix.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    est_var : np.array(3d)
+        The mutiple parameter estimation covariance matrices for each of the
+        a-priori variance ratio sets.
+    """
+    # Compute information matrix
+    X, _ = _model_matrix(Y, params)
     M = X.T @ params.Vinv @ X
 
     # Compute inverse of information matrix
@@ -307,6 +333,48 @@ def estimation_variance(Y, params):
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])
+
+
+def power(
+    Y: pd.DataFrame,
+    params: Parameters,
+    model: pd.DataFrame,
+    sizes: float | Sequence[float] = 1,
+    alpha: float = 0.05,
+    ddf: str = "kenward-roger",
+) -> pd.DataFrame:
+    """
+    Computes the power of the test of each term of the model (except the intercept),
+    with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
+    such as a categorical factor, is tested with one F-test on all its columns.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
+        The simulation parameters, of a fixed structure or a split-plot design.
+    model : pd.DataFrame
+        The model dataframe corresponding to the Y2X function.
+    sizes : float or list(float)
+        The size of the effect of each tested term, or of all of them: the coefficient
+        on the coded scale, in units of the residual standard deviation. The columns of
+        a term with several columns get it with alternating signs.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : pd.DataFrame
+        The power, one row per set of a-priori variance ratios and one column per tested term.
+        NaN when the design cannot estimate a variance component that the test depends on.
+    """
+    X, nmodel = _model_matrix(Y, params)
+    return _power_table(
+        params.factors, params.effect_types, model, X, nmodel, params.Vinv, list(params.Zs), sizes, alpha, ddf
+    )
 
 
 def prediction_variance(

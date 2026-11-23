@@ -1,10 +1,14 @@
+import itertools
+
 import numpy as np
 import pandas as pd
+import pytest
+from scipy import stats
 
 from pyoptex.doe.constraints import parse_constraints_script
-from pyoptex.doe.fixed_structure import Factor, create_parameters, default_fn
+from pyoptex.doe.fixed_structure import Factor, RandomEffect, create_parameters, default_fn
 from pyoptex.doe.fixed_structure.cov import cov_time_trend
-from pyoptex.doe.fixed_structure.evaluate import prediction_variance
+from pyoptex.doe.fixed_structure.evaluate import estimation_variance_matrix, power, prediction_variance
 from pyoptex.doe.fixed_structure.metric import Dopt
 from pyoptex.doe.utils.evaluate import plot_design_space
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
@@ -147,3 +151,82 @@ def test_level_combinations():
     x, y = _level_points(plot_design_space(Y, params, "x", "C"))
     for level in (0, 1, 2):
         assert x[y == level].max() == 1
+
+
+ddfs = pytest.mark.parametrize("ddf", ["kenward-roger", "satterthwaite"])
+
+
+def _expected_power(k, df, noncentrality, alpha=0.05):
+    """The power of an F-test with k and df degrees of freedom."""
+    return stats.ncf.sf(stats.f.ppf(1 - alpha, k, df), k, df, noncentrality)
+
+
+def _power_params(factors, model, nruns):
+    """The parameters of a design with this model."""
+    return create_parameters(factors, default_fn(factors, Dopt(), model2Y2X(model, factors)), nruns)
+
+
+def _split_plot(nplots):
+    """W per whole plot of 4 runs (-1, 1, -1, 1, ...) with ratio 1, S at -1, 1, -1, 1 within each whole plot."""
+    factors = [Factor("W", RandomEffect(np.repeat(np.arange(nplots), 4), ratio=1)), Factor("S")]
+    Y = pd.DataFrame({"W": np.repeat(np.resize([-1, 1], nplots), 4), "S": np.tile([-1, 1, -1, 1], nplots)})
+    return factors, Y
+
+
+@ddfs
+def test_power_factorial(ddf):
+    """2^3 full factorial with main effects, completely randomized: 4 residual df and noncentrality 8 * size^2."""
+    factors = [Factor(name) for name in "ABC"]
+    Y = pd.DataFrame(list(itertools.product([-1, 1], repeat=3)), columns=list("ABC"))
+    model = partial_rsm_names({name: "lin" for name in "ABC"})
+    params = _power_params(factors, model, len(Y))
+
+    pw = power(Y, params, model, ddf=ddf)
+    assert list(pw.columns) == ["A", "B", "C"]
+    np.testing.assert_allclose(pw.to_numpy(), _expected_power(1, 4, 8))
+
+    # Without an effect, the power is the significance level
+    np.testing.assert_allclose(power(Y, params, model, sizes=0, ddf=ddf).to_numpy(), 0.05, rtol=1e-12)
+
+
+@ddfs
+def test_power_categorical(ddf):
+    """A 3-level categorical factor with 4 runs per level: one F-test on its 2 columns with 9 residual df."""
+    factors = [Factor("C", type="categorical", levels=["L1", "L2", "L3"])]
+    Y = pd.DataFrame({"C": ["L1", "L2", "L3"] * 4})
+    model = partial_rsm_names({"C": "lin"})
+    params = _power_params(factors, model, len(Y))
+
+    # The coefficients (1, -1) of the two columns
+    Phi = estimation_variance_matrix(Y, params)[0]
+    b = np.array([1.0, -1.0])
+    pw = power(Y, params, model, ddf=ddf)
+    assert list(pw.columns) == ["C"]
+    np.testing.assert_allclose(pw.to_numpy(), _expected_power(2, 9, b @ np.linalg.solve(Phi[1:, 1:], b)))
+
+
+@ddfs
+def test_power_split_plot(ddf):
+    """
+    Balanced split-plot with 4 whole plots: W is tested against the whole plots (2 df, variance (1 + 1/4) / 4),
+    S and W * S within them (10 df, variance 1/16).
+    """
+    factors, Y = _split_plot(4)
+    model = partial_rsm_names({"W": "tfi", "S": "tfi"})
+    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    assert list(pw.columns) == ["W", "S", "W * S"]
+    np.testing.assert_allclose(pw["W"], _expected_power(1, 2, 3.2))
+    np.testing.assert_allclose(pw[["S", "W * S"]].to_numpy(), _expected_power(1, 10, 16))
+
+
+@ddfs
+def test_power_unestimable_whole_plot_variance(ddf):
+    """
+    With 2 whole plots, the whole-plot variance cannot be estimated: W, which depends on it, has no power.
+    S does not depend on it (5 df within the whole plots, variance 1/8).
+    """
+    factors, Y = _split_plot(2)
+    model = partial_rsm_names({"W": "lin", "S": "lin"})
+    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    assert np.isnan(pw.loc[0, "W"])
+    np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
