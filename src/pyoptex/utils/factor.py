@@ -54,6 +54,8 @@ class FactorMixin:
             # Transform to a new factor
             params = self._asdict()
             params["type"] = "cont_mixture"
+            # Mixture components are not rescaled: min -1 and max 1 give
+            # mean 0 and scale 1, so the encoded value is the fraction itself.
             params["min"] = -1
             params["max"] = 1
             params["levels"] = levels
@@ -97,7 +99,6 @@ class FactorMixin:
                     f"The levels of factor {self.name} must lie between its minimum {self.min} and maximum {self.max}"
                 )
         else:
-            self = self._replace(min=-1 if self.min is None else self.min, max=1 if self.max is None else self.max)
             assert len(self.levels) >= 2, (
                 f"A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}"
             )

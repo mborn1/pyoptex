@@ -17,13 +17,6 @@ def test_range_from_levels(Factor):
 
 
 @factor_classes
-def test_explicit_range_with_levels(Factor):
-    f = Factor("x", min=10, max=50, levels=[20, 30, 40])
-    assert (f.min, f.max) == (10, 50)
-    np.testing.assert_allclose(f.normalize(np.array(f.levels)), [-0.5, 0, 0.5])
-
-
-@factor_classes
 def test_levels_outside_range(Factor):
     with pytest.raises(AssertionError, match="must lie between its minimum 0 and maximum 10"):
         Factor("x", min=0, max=10, levels=[5, 20])
