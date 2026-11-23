@@ -54,10 +54,6 @@ class FactorMixin:
             # Transform to a new factor
             params = self._asdict()
             params["type"] = "cont_mixture"
-            # Mixture components are not rescaled: min -1 and max 1 give
-            # mean 0 and scale 1, so the encoded value is the fraction itself.
-            params["min"] = -1
-            params["max"] = 1
             params["levels"] = levels
             return self.__class__.__new__(self.__class__, **params)
 
@@ -75,10 +71,18 @@ class FactorMixin:
         ], f"The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}"
         if self.is_continuous:
             # Without a minimum or maximum, the range is that of the levels (or -1 to 1 without levels)
+            if self.is_mixture:
+                # Mixture components are not rescaled: min -1 and max 1 give
+                # mean 0 and scale 1, so the encoded value is the fraction itself.
+                default_min, default_max = -1, 1
+            elif self.levels is not None:
+                default_min, default_max = float(min(self.levels)), float(max(self.levels))
+            else:
+                default_min, default_max = -1, 1
             if self.min is None:
-                self = self._replace(min=float(min(self.levels)) if self.levels is not None else -1)
+                self = self._replace(min=default_min)
             if self.max is None:
-                self = self._replace(max=float(max(self.levels)) if self.levels is not None else 1)
+                self = self._replace(max=default_max)
             assert isinstance(self.min, (float, int)), (
                 f"Factor {self.name} must have an integer or float minimum, but is {self.min}"
             )

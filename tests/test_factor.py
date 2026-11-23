@@ -17,6 +17,14 @@ def test_range_from_levels(Factor):
 
 
 @factor_classes
+@pytest.mark.parametrize("kind", ["cont_mixture", "mixture"])
+def test_mixture_not_rescaled(Factor, kind):
+    """A mixture component keeps its fractions: its levels are not rescaled to their range."""
+    f = Factor("x", type=kind, levels=[0, 0.5, 1])
+    np.testing.assert_allclose(f.normalize(np.array(f.levels)), [0, 0.5, 1])
+
+
+@factor_classes
 def test_levels_outside_range(Factor):
     with pytest.raises(AssertionError, match="must lie between its minimum 0 and maximum 10"):
         Factor("x", min=0, max=10, levels=[5, 20])
