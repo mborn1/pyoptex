@@ -684,8 +684,8 @@ plots a fraction of design space plot. The third command plots the covariance
 matrix of the parameter estimates. The fourth command prints the variances
 of the parameter estimates to the console. The last command prints the power of each effect's test,
 for an effect size on the coded scale in units of the residual standard deviation.
-The degrees of freedom are Kenward-Roger by default, as in JMP; `ddf="satterthwaite"` gives
-those of R's lmerTest. The `params` are the simulation parameters
+The degrees of freedom are Kenward-Roger by default, as in JMP; `ddf="satterthwaite"` uses
+Satterthwaite's, the default of R's lmerTest. The `params` are the simulation parameters
 which are passed to the design generation functions.
 
 >>> print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))

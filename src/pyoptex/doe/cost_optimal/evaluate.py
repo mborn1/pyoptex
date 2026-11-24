@@ -385,7 +385,9 @@ def power(
         NaN when the design cannot estimate a variance component that the test depends on.
     """
     X, nmodel, Zs, Vinv = _model_matrices(Y, params)
-    return _power_table(params.factors, params.effect_types, model, X, nmodel, Vinv, list(Zs), sizes, alpha, ddf)
+    return _power_table(
+        params.factors, params.effect_types, model, params.fn.Y2X, X, nmodel, Vinv, list(Zs), sizes, alpha, ddf
+    )
 
 
 def prediction_variance(

@@ -10,6 +10,7 @@ from pyoptex.doe.fixed_structure import Factor, RandomEffect, create_parameters,
 from pyoptex.doe.fixed_structure.cov import cov_time_trend
 from pyoptex.doe.fixed_structure.evaluate import estimation_variance_matrix, power, prediction_variance
 from pyoptex.doe.fixed_structure.metric import Dopt
+from pyoptex.doe.utils.power import _power
 from pyoptex.doe.utils.evaluate import plot_design_space
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
@@ -230,3 +231,67 @@ def test_power_unestimable_whole_plot_variance(ddf):
     pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
     assert np.isnan(pw.loc[0, "W"])
     np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
+
+
+def _mixed_model(groupings, ratios):
+    """V^-1 and the derivatives of V (I and ZZ' per grouping) for V = I + sum of ratio * ZZ'."""
+    n = len(groupings[0])
+    Gs = [np.eye(n), *(np.equal.outer(Z, Z).astype(float) for Z in groupings)]
+    V = Gs[0] + sum(r * G for r, G in zip(ratios, Gs[1:], strict=True))
+    return np.linalg.inv(V), Gs
+
+
+@ddfs
+def test_power_two_residual_df(ddf):
+    """
+    A 3-level categorical factor at L1, L2, L3, L1, L2 (effect coding), completely randomized: 2 residual df,
+    where Kenward-Roger's A2 equals the number of columns.
+    """
+    effects = {"L1": [1, 0], "L2": [0, 1], "L3": [-1, -1]}
+    X = np.array([[1, *effects[c]] for c in ["L1", "L2", "L3", "L1", "L2"]], dtype=float)
+    Phi = np.linalg.inv(X.T @ X)
+    b = np.array([1.0, -1.0])
+    pw = _power(X, np.eye(len(X)), [np.eye(len(X))], [np.array([1, 2])], np.ones(1), 0.05, ddf)
+    np.testing.assert_allclose(pw, _expected_power(2, 2, b @ np.linalg.solve(Phi[1:, 1:], b)))
+
+
+@ddfs
+def test_power_large_ratio(ddf):
+    """A whole-plot ratio of 1e5 shrinks the information of the whole-plot variance, but it is still estimable."""
+    Z = np.repeat(np.arange(6), 4)
+    W = np.repeat([-1, 1, -1, 1, 0, 0], 4)
+    S = np.tile([-1, 1, 1, -1], 6)
+    X = np.column_stack((np.ones(len(Z)), W, S)).astype(float)
+    Vinv, Gs = _mixed_model([Z], [1e5])
+    pw = _power(X, Vinv, Gs, [np.array([1])], np.ones(1), 0.05, ddf)
+
+    # W is tested against the 6 whole plots, less the intercept and W: F(1, 4)
+    Phi = np.linalg.inv(X.T @ Vinv @ X)
+    assert not np.isnan(pw[0])
+    np.testing.assert_allclose(pw[0], _expected_power(1, 4, 1 / Phi[1, 1]))
+
+
+def test_power_kenward_roger_pbkrtest():
+    """Kenward-Roger power of unbalanced split-plot designs, against pbkrtest 0.5.2 (lme4 at fixed ratios)."""
+    # B: one whole-plot grouping, a 3-level categorical whole-plot factor (2 columns) and its interaction with S
+    Z = np.array([0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6])
+    C1 = np.array([1, 1, 0, 0, 0, 0, -1, -1, -1, 1, 1, 1, 0, 0, 0, 0, 0, -1, -1, 1, 1, 1, 1])
+    C2 = np.array([0, 0, 1, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, 1, 1, -1, -1, 0, 0, 0, 0])
+    S = np.array([1, -1, -1, -1, 1, 1, 1, -1, 1, -1, 1, 1, -1, 1, 1, 1, 1, 1, -1, 1, -1, -1, -1])
+    X = np.column_stack((np.ones(len(Z)), C1, C2, S, C1 * S, C2 * S)).astype(float)
+    Vinv, Gs = _mixed_model([Z], [2])
+    terms = [np.array([1, 2]), np.array([3]), np.array([4, 5])]
+    pw = _power(X, Vinv, Gs, terms, np.ones(3), 0.05, "kenward-roger")
+    np.testing.assert_allclose(pw, [0.136384, 0.978210, 0.873589], atol=1e-5)
+
+    # C: whole plots and subplots within them
+    Zw = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3])
+    Zs = np.array([0, 0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9])
+    W = np.array([-1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1])
+    Sp = np.array([-1, -1, 1, 1, 1, 1, 1, -1, -1, -1, 0, 0, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, 0, 0])
+    R = np.array([1, -1, -1, -1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, 1, -1, -1, 1, -1, 1, 1, -1])
+    X = np.column_stack((np.ones(len(Zw)), W, Sp, R, W * Sp, Sp * R)).astype(float)
+    Vinv, Gs = _mixed_model([Zw, Zs], [1, 0.5])
+    terms = [np.array([i]) for i in range(1, 6)]
+    pw = _power(X, Vinv, Gs, terms, np.ones(5), 0.05, "kenward-roger")
+    np.testing.assert_allclose(pw, [0.172227, 0.582855, 0.971032, 0.587741, 0.929311], atol=1e-5)

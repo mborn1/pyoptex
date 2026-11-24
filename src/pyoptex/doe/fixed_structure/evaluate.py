@@ -373,7 +373,17 @@ def power(
     """
     X, nmodel = _model_matrix(Y, params)
     return _power_table(
-        params.factors, params.effect_types, model, X, nmodel, params.Vinv, list(params.Zs), sizes, alpha, ddf
+        params.factors,
+        params.effect_types,
+        model,
+        params.fn.Y2X,
+        X,
+        nmodel,
+        params.Vinv,
+        list(params.Zs),
+        sizes,
+        alpha,
+        ddf,
     )
 
 

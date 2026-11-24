@@ -2,7 +2,7 @@
 Module with the power of the tests of the effects, shared by the fixed structure and the cost optimal designs.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -58,7 +58,13 @@ def _power(
     # The information of the variance components, inverted on the directions the design can estimate
     PG = [Ptilde @ G for G in Gs]
     info = np.array([[np.sum(PGi * PGj.T) / 2 for PGj in PG] for PGi in PG])
-    eigval, eigvec = np.linalg.eigh(info)
+
+    # The information of a component shrinks with its ratio, so the threshold needs a scale-free form:
+    # each component is scaled by its information without fixed effects
+    VinvG = [Vinv @ G for G in Gs]
+    s = 1 / np.sqrt([np.sum(VG * VG.T) / 2 for VG in VinvG])
+    eigval, eigvec = np.linalg.eigh(s[:, np.newaxis] * info * s[np.newaxis, :])
+    eigvec = s[:, np.newaxis] * eigvec
     keep = eigval > 1e-10 * eigval.max()
     W = (eigvec[:, keep] / eigval[keep]) @ eigvec[:, keep].T
     unestimable = eigvec[:, ~keep]
@@ -88,26 +94,29 @@ def _power(
                 if k == 1:
                     df, lam = 2 / A2, 1.0
                 else:
+                    # As pbkrtest: without E, so that A2 = k does not divide by zero
                     B = (A1 + 6 * A2) / (2 * k)
                     g = ((k + 1) * A1 - (k + 4) * A2) / ((k + 2) * A2)
                     denom = 3 * k + 2 * (1 - g)
                     c1, c2, c3 = g / denom, (k - g) / denom, (k + 2 - g) / denom
-                    E = 1 / (1 - A2 / k)
-                    Vstar = (2 / k) * (1 + c1 * B) / ((1 - c2 * B) ** 2 * (1 - c3 * B))
-                    rho = Vstar / (2 * E**2)
+                    num, den = 1 - A2 / k, 1 - c2 * B
+                    r = 1.0 if abs(num) < 1e-14 and abs(den) < 1e-14 else num / den
+                    rho = r**2 * (1 + c1 * B) / (k * (1 - c3 * B))
                     df = 4 + (k + 2) / (k * rho - 1)
-                    lam = df / (E * (df - 2))
+                    lam = 1.0 if abs(df - 2) < 0.01 else df * (1 - A2 / k) / (df - 2)
                 noncentrality = lam * b @ np.linalg.solve(PhiA[np.ix_(c, c)], b)
             else:
-                # Satterthwaite per direction of L'PhiL (Fai and Cornelius for k > 1)
+                # Satterthwaite per direction of L'PhiL (Fai and Cornelius for k > 1, as lmerTest and pbkrtest)
                 D, U = np.linalg.eigh(LPhiL)
                 g = np.einsum("au,iab,bu->ui", U, dPhi, U)
                 nus = 2 * D**2 / np.einsum("ui,ij,uj->u", g, W, g)
-                if k == 1:
+                if k == 1 or np.allclose(nus, nus[0]):
                     df = nus[0]
+                elif np.any(nus <= 2):
+                    df = 2.0
                 else:
-                    E = np.sum(nus[nus > 2] / (nus[nus > 2] - 2))
-                    df = 2 * E / (E - k) if E > k else np.nan
+                    E = np.sum(nus / (nus - 2))
+                    df = 2 * E / (E - k)
                 noncentrality = b @ np.linalg.solve(LPhiL, b)
 
             if not np.isfinite(df) or df <= 0:
@@ -125,6 +134,7 @@ def _power_table(
     factors: Sequence,
     effect_types: np.ndarray,
     model: pd.DataFrame,
+    Y2X: Callable,
     X: np.ndarray,
     nmodel: int,
     Vinv: np.ndarray,
@@ -144,6 +154,8 @@ def _power_table(
         The effect type of each factor (1 for continuous, the number of levels for categorical).
     model : pd.DataFrame
         The model, one row per term.
+    Y2X : func(Y)
+        The function of the parameters that makes the model matrix.
     X : np.array(2d)
         The model matrix, with the covariate columns after the model's columns.
     nmodel : int
@@ -175,10 +187,16 @@ def _power_table(
     assert starts[-1] == len(model2encnames(model, effect_types)) == nmodel, (
         f"The model has {starts[-1]} columns, but the model matrix of the parameters has {nmodel}"
     )
+    modelenc = getattr(Y2X, "keywords", {}).get("modelenc")
+    if modelenc is not None:
+        # A Y2X function from model2Y2X
+        assert np.array_equal(modelenc, encode_model(model.to_numpy(), effect_types)), (
+            "The model must be the one given to model2Y2X, with its rows in the same order"
+        )
     tested = np.flatnonzero(np.any(model.to_numpy() != 0, axis=1))
     terms = [np.arange(starts[i], starts[i + 1]) for i in tested]
     all_names = model2names(model)
-    names = [all_names[i] for i in tested]
+    names = [str(all_names[i]) for i in tested]
 
     size = np.full(len(tested), sizes, dtype=np.float64) if np.ndim(sizes) == 0 else np.asarray(sizes, np.float64)
     assert len(size) == len(tested), f"sizes must have one value per tested term ({len(tested)}), but has {len(size)}"
@@ -190,8 +208,7 @@ def _power_table(
         V = np.linalg.inv(Vi)
         coef = np.linalg.lstsq(np.array([G.ravel() for G in Gs]).T, V.ravel(), rcond=None)[0]
         assert np.allclose(np.tensordot(coef, Gs, axes=1), V), (
-            "Power requires V to be I plus the variance ratios times ZZ' of the groupings in the parameters "
-            "(block effects are not supported yet)"
+            "The covariate function must add its random effects to the groupings (Zs)"
         )
 
     return pd.DataFrame([_power(X, Vi, Gs, terms, size, alpha, ddf) for Vi in Vinv], columns=names)
