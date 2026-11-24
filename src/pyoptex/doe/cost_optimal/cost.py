@@ -882,12 +882,14 @@ def max_changes_cost(factor, factors, max_changes):
     # Determine the columns of the factor
     if isinstance(factor, str):
         factor = [str(f.name) for f in factors].index(factor)
-    factor = slice(colstart[factor], colstart[factor + 1])
+    cols = slice(colstart[factor], colstart[factor + 1])
 
-    # Create cost function
-    def _cost_fn(Y):
-        changes = np.zeros(len(Y))
-        changes[1:] = np.any(np.diff(Y[:, factor], axis=0), axis=1).astype(int)
-        return [(changes, max_changes, np.arange(len(Y)))]
-
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    _cost_fn = wraps(_max_changes_cost)(partial(_max_changes_cost, cols=cols, max_changes=max_changes))
     return cost_fn(_cost_fn, denormalize=False, decoded=False, contains_params=False)
+
+
+def _max_changes_cost(Y, *, cols, max_changes):
+    changes = np.zeros(len(Y))
+    changes[1:] = np.any(np.diff(Y[:, cols], axis=0), axis=1).astype(int)
+    return [(changes, max_changes, np.arange(len(Y)))]
