@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 from ...utils.design import encode_design, obs_var_from_Zs
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
-from ..utils.power import _power_table
+from ..utils.power import _model_tests, _power_table
 from .metric import Iopt
 from .utils import Parameters, obs_var_Zs
 
@@ -191,6 +191,8 @@ def _model_matrices(Y, params):
     -------
     X : np.array(2d)
         The model matrix, with the covariates.
+    nmodel : int
+        The number of columns of Y2X, where the covariate columns begin.
     Zs : list(np.array(1d) or None)
         The groupings of the random effects.
     Vinv : np.array(3d)
@@ -215,12 +217,13 @@ def _model_matrices(Y, params):
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
+    nmodel = X.shape[1]
 
     # Add the covariates
     if params.fn.metric.cov is not None:
         _, X, Zs, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
 
-    return X, Zs, Vinv
+    return X, nmodel, Zs, Vinv
 
 
 def estimation_variance_matrix(Y, params):
@@ -241,7 +244,7 @@ def estimation_variance_matrix(Y, params):
         a-priori variance ratio sets.
     """
     # Compute information matrix
-    X, _, Vinv = _model_matrices(Y, params)
+    X, _, _, Vinv = _model_matrices(Y, params)
     M = X.T @ Vinv @ X
 
     # Compute inverse of information matrix
@@ -348,7 +351,7 @@ def estimation_variance(Y, params):
 def power(
     Y: pd.DataFrame,
     params: Parameters,
-    model: pd.DataFrame,
+    model: pd.DataFrame | None = None,
     sizes: float | Sequence[float] = 1,
     alpha: float = 0.05,
     ddf: str = "kenward-roger",
@@ -364,8 +367,10 @@ def power(
         The denormalized, decoded design.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    model : pd.DataFrame
+    model : pd.DataFrame or None
         The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
+        Without a model (None), each column of Y2X is tested on its own (also an intercept column),
+        for a custom Y2X; the result is a DataFrame whose columns (the column indices) can be renamed.
     sizes : float or list(float)
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
@@ -383,8 +388,9 @@ def power(
         NaN also with Kenward-Roger when its degrees of freedom are not defined, as can happen
         in very small designs; a warning is issued, and ddf="satterthwaite" gives a value.
     """
-    X, Zs, Vinv = _model_matrices(Y, params)
-    return _power_table(params, model, X, list(Zs), Vinv, sizes, alpha, ddf)
+    X, nmodel, Zs, Vinv = _model_matrices(Y, params)
+    tests = _model_tests(params, model, nmodel)
+    return _power_table(tests, X, list(Zs), Vinv, sizes, alpha, ddf)
 
 
 def prediction_variance(

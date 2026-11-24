@@ -12,7 +12,7 @@ from pyoptex.doe.fixed_structure.cov import cov_time_trend
 from pyoptex.doe.fixed_structure.evaluate import estimation_variance_matrix, power, prediction_variance
 from pyoptex.doe.fixed_structure.metric import Dopt
 from pyoptex.doe.utils.evaluate import plot_design_space
-from pyoptex.doe.utils.power import _power
+from pyoptex.doe.utils.power import _power, _power_table
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 FACTORS = [
@@ -234,6 +234,27 @@ def test_power_unestimable_whole_plot_variance(ddf):
     np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
 
 
+@ddfs
+def test_power_without_model(ddf):
+    """Without a model, each column of Y2X is tested on its own: for main effects, the same powers as the model."""
+    factors, Y = _split_plot(4)
+    model = partial_rsm_names({"W": "lin", "S": "lin"})
+    params = _power_params(factors, model, len(Y))
+    by_column = power(Y, params, ddf=ddf)
+    assert list(by_column.columns) == ["0", "1", "2"]  # the intercept, W and S
+    np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), power(Y, params, model, ddf=ddf).to_numpy())
+
+
+def test_power_custom_Y2X_fewer_columns():
+    """A custom Y2X with fewer columns than the model raises an error."""
+    factors, Y = _split_plot(4)
+    model = partial_rsm_names({"W": "tfi", "S": "tfi"})
+    Y2X = model2Y2X(model, factors)
+    fn = default_fn(factors, Dopt(), lambda Yenc: Y2X(Yenc)[:, :-1])
+    with pytest.raises(AssertionError, match="The model has 4 columns but Y2X gives 3"):
+        power(Y, create_parameters(factors, fn, len(Y)), model)
+
+
 def _mixed_model(groupings, ratios):
     """V^-1 and the derivatives of V (I and ZZ' per grouping) for V = I + sum of ratio * ZZ'."""
     n = len(groupings[0])
@@ -252,7 +273,7 @@ def test_power_two_residual_df(ddf):
     X = np.array([[1, *effects[c]] for c in ["L1", "L2", "L3", "L1", "L2"]], dtype=float)
     Phi = np.linalg.inv(X.T @ X)
     b = np.array([1.0, -1.0])
-    pw = _power(X, np.eye(len(X)), [np.eye(len(X))], [np.array([1, 2])], np.ones(1), 0.05, ddf)
+    pw, _ = _power(X, np.eye(len(X)), [np.eye(len(X))], [np.array([1, 2])], np.ones(1), 0.05, ddf)
     np.testing.assert_allclose(pw, _expected_power(2, 2, b @ np.linalg.solve(Phi[1:, 1:], b)))
 
 
@@ -264,7 +285,7 @@ def test_power_large_ratio(ddf):
     S = np.tile([-1, 1, 1, -1], 6)
     X = np.column_stack((np.ones(len(Z)), W, S)).astype(float)
     Vinv, Gs = _mixed_model([Z], [1e5])
-    pw = _power(X, Vinv, Gs, [np.array([1])], np.ones(1), 0.05, ddf)
+    pw, _ = _power(X, Vinv, Gs, [np.array([1])], np.ones(1), 0.05, ddf)
 
     # W is tested against the 6 whole plots, less the intercept and W: F(1, 4)
     Phi = np.linalg.inv(X.T @ Vinv @ X)
@@ -286,13 +307,13 @@ def test_power_saturated(ddf, ratio):
     X = np.column_stack((np.ones(6), W1, W2, S, W1 * S, W2 * S)).astype(float)
     Vinv, Gs = _mixed_model([Z], [ratio])
     terms = [np.array([1, 2]), np.array([3]), np.array([4, 5])]
-    assert np.all(np.isnan(_power(X, Vinv, Gs, terms, np.ones(3), 0.05, ddf)))
+    assert np.all(np.isnan(_power(X, Vinv, Gs, terms, np.ones(3), 0.05, ddf)[0]))
 
 
 def test_power_kenward_roger_undefined_df():
     """
-    In a very small design, Kenward-Roger's df is negative (pbkrtest: -0.12): NaN with a warning.
-    Satterthwaite gives a value (df 2), without a warning.
+    In a very small design, Kenward-Roger's df is negative (pbkrtest: -0.12) for the test of x1 and x2:
+    NaN with a warning that names it. x3 has a defined df. Satterthwaite gives a value (df 2), without a warning.
     """
     Z = np.array([0, 1, 2, 2, 2, 3, 3, 3])
     x1 = [1, 0, 1, 1, 1, -1, -1, -1]
@@ -301,17 +322,18 @@ def test_power_kenward_roger_undefined_df():
     x4 = [1, 1, 1, 0, 1, 0, 0, 0]
     x5 = [1, 0, -1, -1, -1, -1, -1, -1]
     X = np.column_stack((np.ones(len(Z)), x1, x2, x3, x4, x5)).astype(float)
-    Vinv, Gs = _mixed_model([Z], [1])
-    terms = [np.array([1, 2])]
+    Vinv, _ = _mixed_model([Z], [1])
+    tests = [("x1 and x2", np.array([1, 2])), ("x3", np.array([3]))]
 
-    with pytest.warns(UserWarning, match="Kenward-Roger's degrees of freedom are not defined"):
-        pw = _power(X, Vinv, Gs, terms, np.ones(1), 0.05, "kenward-roger")
-    assert np.isnan(pw[0])
+    with pytest.warns(UserWarning, match=r"not defined for x1 and x2 in this small design") as record:
+        pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
+    assert len(record) == 1
+    assert np.isnan(pw.loc[0, "x1 and x2"])
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        pw = _power(X, Vinv, Gs, terms, np.ones(1), 0.05, "satterthwaite")
-    np.testing.assert_allclose(pw, [0.100441], atol=1e-5)
+        pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "satterthwaite")
+    np.testing.assert_allclose(pw.loc[0, "x1 and x2"], 0.100441, atol=1e-5)
 
 
 def test_power_kenward_roger_pbkrtest():
@@ -324,7 +346,7 @@ def test_power_kenward_roger_pbkrtest():
     X = np.column_stack((np.ones(len(Z)), C1, C2, S, C1 * S, C2 * S)).astype(float)
     Vinv, Gs = _mixed_model([Z], [2])
     terms = [np.array([1, 2]), np.array([3]), np.array([4, 5])]
-    pw = _power(X, Vinv, Gs, terms, np.ones(3), 0.05, "kenward-roger")
+    pw, _ = _power(X, Vinv, Gs, terms, np.ones(3), 0.05, "kenward-roger")
     np.testing.assert_allclose(pw, [0.136384, 0.978210, 0.873589], atol=1e-5)
 
     # C: whole plots and subplots within them
@@ -336,5 +358,5 @@ def test_power_kenward_roger_pbkrtest():
     X = np.column_stack((np.ones(len(Zw)), W, Sp, R, W * Sp, Sp * R)).astype(float)
     Vinv, Gs = _mixed_model([Zw, Zs], [1, 0.5])
     terms = [np.array([i]) for i in range(1, 6)]
-    pw = _power(X, Vinv, Gs, terms, np.ones(5), 0.05, "kenward-roger")
+    pw, _ = _power(X, Vinv, Gs, terms, np.ones(5), 0.05, "kenward-roger")
     np.testing.assert_allclose(pw, [0.172227, 0.582855, 0.971032, 0.587741, 0.929311], atol=1e-5)

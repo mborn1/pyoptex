@@ -21,7 +21,7 @@ def _power(
     sizes: np.ndarray,
     alpha: float,
     ddf: str,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     The power of the test of each term, for one set of variance ratios.
 
@@ -47,7 +47,9 @@ def _power(
     power : np.array(1d)
         The power of each term, NaN when the design cannot estimate a variance
         component that the test depends on, and with Kenward-Roger when its degrees
-        of freedom are not defined (a warning is issued).
+        of freedom are not defined.
+    undefined : np.array(1d)
+        Whether Kenward-Roger's degrees of freedom of each term are not defined.
     """
     VinvX = Vinv @ X
     Phi = np.linalg.inv(X.T @ VinvX)
@@ -79,7 +81,7 @@ def _power(
         PhiA = Phi + 2 * Phi @ Lambda @ Phi
 
     power = np.full(len(terms), np.nan)
-    undefined_df = False
+    undefined = np.zeros(len(terms), dtype=np.bool_)
     with np.errstate(divide="ignore", invalid="ignore"):
         for t, (c, size) in enumerate(zip(terms, sizes, strict=True)):
             k = len(c)
@@ -127,7 +129,7 @@ def _power(
 
             # Kenward-Roger's df can be negative in very small designs (as in pbkrtest)
             if not np.isfinite(df) or df <= 0:
-                undefined_df = True
+                undefined[t] = ddf == "kenward-roger"
                 continue
             critical = stats.f.ppf(1 - alpha, k, df)
             # scipy's ncf.sf returns sf - 1 for a noncentrality of 0, so the central F is used there
@@ -135,58 +137,36 @@ def _power(
                 stats.f.sf(critical, k, df) if noncentrality == 0 else stats.ncf.sf(critical, k, df, noncentrality)
             )
 
-    if undefined_df and ddf == "kenward-roger":
-        warnings.warn(
-            "Kenward-Roger's degrees of freedom are not defined for some terms of this small design; "
-            "their power is NaN. ddf='satterthwaite' gives a value.",
-            stacklevel=2,
-        )
-
-    return power
+    return power, undefined
 
 
-def _power_table(
-    params: Any,
-    model: pd.DataFrame,
-    X: np.ndarray,
-    Zs: Sequence[np.ndarray | None],
-    Vinv: np.ndarray,
-    sizes: float | Sequence[float],
-    alpha: float,
-    ddf: str,
-) -> pd.DataFrame:
+def _model_tests(params: Any, model: pd.DataFrame | None, nmodel: int) -> list[tuple[str, np.ndarray]]:
     """
-    The power of the test of each term of the model (except the intercept), for each set of variance ratios.
+    The tests of a model: one per term of the model (except the intercept), with its encoded columns,
+    or without a model one per column of Y2X. The covariate columns (from `nmodel` on) are not tested.
 
     Parameters
     ----------
     params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters, for the factors, their effect types and the Y2X function.
-    model : pd.DataFrame
-        The model, one row per term.
-    X : np.array(2d)
-        The model matrix, with the covariate columns after the model's columns.
-    Zs : list(np.array(1d) or None)
-        The groupings of the random effects, None for a factor without one.
-    Vinv : np.array(3d)
-        The inverse of the observation covariance matrix, for each set of variance ratios.
-    sizes : float or list(float)
-        The size of the coefficients of each term, or of all terms.
-    alpha : float
-        The significance level.
-    ddf : str
-        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+    model : pd.DataFrame or None
+        The model, one row per term, or None to test each column of Y2X on its own.
+    nmodel : int
+        The number of columns of Y2X, where the covariate columns begin.
 
     Returns
     -------
-    power : pd.DataFrame
-        The power, one row per set of variance ratios and one column per tested term.
+    tests : list(tuple(str, np.array(1d)))
+        The name and the columns of the model matrix of each test.
     """
-    assert ddf in ("kenward-roger", "satterthwaite"), f"ddf must be 'kenward-roger' or 'satterthwaite', but is {ddf}"
     assert not any(fac.is_mixture for fac in params.factors), "Power for mixture designs is not supported yet"
-    effect_types = params.effect_types
+
+    # Without a model, each column of Y2X on its own
+    if model is None:
+        return [(str(i), np.array([i])) for i in range(nmodel)]
 
     # The columns of each term: the rows that encode_model makes from it, in order
+    effect_types = params.effect_types
     col_names = [str(fac.name) for fac in params.factors]
     model = model[col_names]
     nenc = [len(encode_model(row[np.newaxis], effect_types)) for row in model.to_numpy()]
@@ -197,13 +177,56 @@ def _power_table(
         assert np.array_equal(modelenc, encode_model(model.to_numpy(), effect_types)), (
             "The model must be the one given to model2Y2X, with its rows in the same order"
         )
-    tested = np.flatnonzero(np.any(model.to_numpy() != 0, axis=1))
-    terms = [np.arange(starts[i], starts[i + 1]) for i in tested]
-    all_names = model2names(model)
-    names = [str(all_names[i]) for i in tested]
+    assert starts[-1] == nmodel, (
+        f"The model has {starts[-1]} columns but Y2X gives {nmodel}; "
+        "with a custom Y2X, its columns must follow the order of encode_model"
+    )
+    names = model2names(model)
+    return [
+        (str(names[i]), np.arange(starts[i], starts[i + 1]))
+        for i in np.flatnonzero(np.any(model.to_numpy() != 0, axis=1))
+    ]
 
-    size = np.full(len(tested), sizes, dtype=np.float64) if np.ndim(sizes) == 0 else np.asarray(sizes, np.float64)
-    assert len(size) == len(tested), f"sizes must have one value per tested term ({len(tested)}), but has {len(size)}"
+
+def _power_table(
+    tests: Sequence[tuple[str, np.ndarray]],
+    X: np.ndarray,
+    Zs: Sequence[np.ndarray | None],
+    Vinv: np.ndarray,
+    sizes: float | Sequence[float],
+    alpha: float,
+    ddf: str,
+) -> pd.DataFrame:
+    """
+    The power of each test, for each set of variance ratios.
+
+    Parameters
+    ----------
+    tests : list(tuple(str, np.array(1d)))
+        The name and the columns of the model matrix of each test.
+    X : np.array(2d)
+        The model matrix, with the covariate columns.
+    Zs : list(np.array(1d) or None)
+        The groupings of the random effects, None for a factor without one.
+    Vinv : np.array(3d)
+        The inverse of the observation covariance matrix, for each set of variance ratios.
+    sizes : float or list(float)
+        The size of the coefficients of each test, or of all tests.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : pd.DataFrame
+        The power, one row per set of variance ratios and one column per test.
+    """
+    assert ddf in ("kenward-roger", "satterthwaite"), f"ddf must be 'kenward-roger' or 'satterthwaite', but is {ddf}"
+    names = [name for name, _ in tests]
+    columns = [cols for _, cols in tests]
+    size = np.full(len(tests), sizes, dtype=np.float64) if np.ndim(sizes) == 0 else np.asarray(sizes, np.float64)
+    assert len(size) == len(tests), f"sizes must have one value per test ({len(tests)}), but has {len(size)}"
 
     # V is linear in the variance components: its derivatives are I and the ZZ' of each grouping
     n = len(X)
@@ -216,4 +239,18 @@ def _power_table(
             "nor covariate functions that change Vinv without adding their groupings to Zs"
         )
 
-    return pd.DataFrame([_power(X, Vi, Gs, terms, size, alpha, ddf) for Vi in Vinv], columns=names)
+    # The power for each set of variance ratios, and the tests whose Kenward-Roger df are not defined in any
+    powers = []
+    undefined = np.zeros(len(tests), dtype=np.bool_)
+    for Vi in Vinv:
+        power, undefined_i = _power(X, Vi, Gs, columns, size, alpha, ddf)
+        powers.append(power)
+        undefined |= undefined_i
+    if np.any(undefined):
+        warnings.warn(
+            f"Kenward-Roger's degrees of freedom are not defined for {', '.join(np.array(names)[undefined])} "
+            "in this small design; their power is NaN. ddf='satterthwaite' gives a value.",
+            stacklevel=3,
+        )
+
+    return pd.DataFrame(powers, columns=names)
