@@ -191,8 +191,6 @@ def _model_matrices(Y, params):
     -------
     X : np.array(2d)
         The model matrix, with the covariates.
-    nmodel : int
-        The number of columns of the model, without the covariates.
     Zs : list(np.array(1d) or None)
         The groupings of the random effects.
     Vinv : np.array(3d)
@@ -217,13 +215,12 @@ def _model_matrices(Y, params):
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
-    nmodel = X.shape[1]
 
     # Add the covariates
     if params.fn.metric.cov is not None:
         _, X, Zs, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
 
-    return X, nmodel, Zs, Vinv
+    return X, Zs, Vinv
 
 
 def estimation_variance_matrix(Y, params):
@@ -244,7 +241,7 @@ def estimation_variance_matrix(Y, params):
         a-priori variance ratio sets.
     """
     # Compute information matrix
-    X, _, _, Vinv = _model_matrices(Y, params)
+    X, _, Vinv = _model_matrices(Y, params)
     M = X.T @ Vinv @ X
 
     # Compute inverse of information matrix
@@ -368,7 +365,7 @@ def power(
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
     model : pd.DataFrame
-        The model dataframe corresponding to the Y2X function.
+        The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
     sizes : float or list(float)
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
@@ -383,11 +380,11 @@ def power(
     power : pd.DataFrame
         The power, one row per set of a-priori variance ratios and one column per tested term.
         NaN when the design cannot estimate a variance component that the test depends on.
+        NaN also with Kenward-Roger when its degrees of freedom are not defined, as can happen
+        in very small designs; a warning is issued, and ddf="satterthwaite" gives a value.
     """
-    X, nmodel, Zs, Vinv = _model_matrices(Y, params)
-    return _power_table(
-        params.factors, params.effect_types, model, params.fn.Y2X, X, nmodel, Vinv, list(Zs), sizes, alpha, ddf
-    )
+    X, Zs, Vinv = _model_matrices(Y, params)
+    return _power_table(params, model, X, list(Zs), Vinv, sizes, alpha, ddf)
 
 
 def prediction_variance(

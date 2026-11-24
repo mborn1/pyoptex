@@ -184,8 +184,6 @@ def _model_matrix(Y, params):
     -------
     X : np.array(2d)
         The model matrix, with the covariates.
-    nmodel : int
-        The number of columns of the model, without the covariates.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
@@ -203,13 +201,12 @@ def _model_matrix(Y, params):
 
     # Define the metric inputs
     X = params.fn.Y2X(Y)
-    nmodel = X.shape[1]
 
     # Add the covariates
     if params.fn.metric.cov is not None:
         _, X = params.fn.metric.cov(Y, X)
 
-    return X, nmodel
+    return X
 
 
 def estimation_variance_matrix(Y, params):
@@ -230,7 +227,7 @@ def estimation_variance_matrix(Y, params):
         a-priori variance ratio sets.
     """
     # Compute information matrix
-    X, _ = _model_matrix(Y, params)
+    X = _model_matrix(Y, params)
     M = X.T @ params.Vinv @ X
 
     # Compute inverse of information matrix
@@ -347,6 +344,7 @@ def power(
     Computes the power of the test of each term of the model (except the intercept),
     with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
     such as a categorical factor, is tested with one F-test on all its columns.
+    Designs with block effects (`block_effects`) are not supported yet.
 
     Parameters
     ----------
@@ -355,7 +353,7 @@ def power(
     params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
         The simulation parameters, of a fixed structure or a split-plot design.
     model : pd.DataFrame
-        The model dataframe corresponding to the Y2X function.
+        The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
     sizes : float or list(float)
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
@@ -370,21 +368,11 @@ def power(
     power : pd.DataFrame
         The power, one row per set of a-priori variance ratios and one column per tested term.
         NaN when the design cannot estimate a variance component that the test depends on.
+        NaN also with Kenward-Roger when its degrees of freedom are not defined, as can happen
+        in very small designs; a warning is issued, and ddf="satterthwaite" gives a value.
     """
-    X, nmodel = _model_matrix(Y, params)
-    return _power_table(
-        params.factors,
-        params.effect_types,
-        model,
-        params.fn.Y2X,
-        X,
-        nmodel,
-        params.Vinv,
-        list(params.Zs),
-        sizes,
-        alpha,
-        ddf,
-    )
+    X = _model_matrix(Y, params)
+    return _power_table(params, model, X, list(params.Zs), params.Vinv, sizes, alpha, ddf)
 
 
 def prediction_variance(

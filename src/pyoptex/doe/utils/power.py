@@ -2,13 +2,15 @@
 Module with the power of the tests of the effects, shared by the fixed structure and the cost optimal designs.
 """
 
-from collections.abc import Callable, Sequence
+import warnings
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...utils.model import encode_model, model2encnames, model2names
+from ...utils.model import encode_model, model2names
 
 
 def _power(
@@ -44,7 +46,8 @@ def _power(
     -------
     power : np.array(1d)
         The power of each term, NaN when the design cannot estimate a variance
-        component that the test depends on.
+        component that the test depends on, and with Kenward-Roger when its degrees
+        of freedom are not defined (a warning is issued).
     """
     VinvX = Vinv @ X
     Phi = np.linalg.inv(X.T @ VinvX)
@@ -65,7 +68,9 @@ def _power(
     s = 1 / np.sqrt([np.sum(VG * VG.T) / 2 for VG in VinvG])
     eigval, eigvec = np.linalg.eigh(s[:, np.newaxis] * info * s[np.newaxis, :])
     eigvec = s[:, np.newaxis] * eigvec
-    keep = eigval > 1e-10 * eigval.max()
+    # After the scaling the eigenvalues have no units: when the whole information is rounding noise
+    # (a saturated design), nothing is kept
+    keep = eigval > 1e-10 * max(eigval.max(), 1)
     W = (eigvec[:, keep] / eigval[keep]) @ eigvec[:, keep].T
     unestimable = eigvec[:, ~keep]
 
@@ -74,6 +79,7 @@ def _power(
         PhiA = Phi + 2 * Phi @ Lambda @ Phi
 
     power = np.full(len(terms), np.nan)
+    undefined_df = False
     with np.errstate(divide="ignore", invalid="ignore"):
         for t, (c, size) in enumerate(zip(terms, sizes, strict=True)):
             k = len(c)
@@ -119,7 +125,9 @@ def _power(
                     df = 2 * E / (E - k)
                 noncentrality = b @ np.linalg.solve(LPhiL, b)
 
+            # Kenward-Roger's df can be negative in very small designs (as in pbkrtest)
             if not np.isfinite(df) or df <= 0:
+                undefined_df = True
                 continue
             critical = stats.f.ppf(1 - alpha, k, df)
             # scipy's ncf.sf returns sf - 1 for a noncentrality of 0, so the central F is used there
@@ -127,18 +135,22 @@ def _power(
                 stats.f.sf(critical, k, df) if noncentrality == 0 else stats.ncf.sf(critical, k, df, noncentrality)
             )
 
+    if undefined_df and ddf == "kenward-roger":
+        warnings.warn(
+            "Kenward-Roger's degrees of freedom are not defined for some terms of this small design; "
+            "their power is NaN. ddf='satterthwaite' gives a value.",
+            stacklevel=2,
+        )
+
     return power
 
 
 def _power_table(
-    factors: Sequence,
-    effect_types: np.ndarray,
+    params: Any,
     model: pd.DataFrame,
-    Y2X: Callable,
     X: np.ndarray,
-    nmodel: int,
-    Vinv: np.ndarray,
     Zs: Sequence[np.ndarray | None],
+    Vinv: np.ndarray,
     sizes: float | Sequence[float],
     alpha: float,
     ddf: str,
@@ -148,22 +160,16 @@ def _power_table(
 
     Parameters
     ----------
-    factors : list(:py:class:`Factor <pyoptex.utils.factor.FactorMixin>`)
-        The factors of the design.
-    effect_types : np.array(1d)
-        The effect type of each factor (1 for continuous, the number of levels for categorical).
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters, for the factors, their effect types and the Y2X function.
     model : pd.DataFrame
         The model, one row per term.
-    Y2X : func(Y)
-        The function of the parameters that makes the model matrix.
     X : np.array(2d)
         The model matrix, with the covariate columns after the model's columns.
-    nmodel : int
-        The number of columns of the model, without the covariates.
-    Vinv : np.array(3d)
-        The inverse of the observation covariance matrix, for each set of variance ratios.
     Zs : list(np.array(1d) or None)
         The groupings of the random effects, None for a factor without one.
+    Vinv : np.array(3d)
+        The inverse of the observation covariance matrix, for each set of variance ratios.
     sizes : float or list(float)
         The size of the coefficients of each term, or of all terms.
     alpha : float
@@ -177,17 +183,15 @@ def _power_table(
         The power, one row per set of variance ratios and one column per tested term.
     """
     assert ddf in ("kenward-roger", "satterthwaite"), f"ddf must be 'kenward-roger' or 'satterthwaite', but is {ddf}"
-    assert not any(fac.is_mixture for fac in factors), "Power for mixture designs is not supported yet"
+    assert not any(fac.is_mixture for fac in params.factors), "Power for mixture designs is not supported yet"
+    effect_types = params.effect_types
 
     # The columns of each term: the rows that encode_model makes from it, in order
-    col_names = [str(fac.name) for fac in factors]
+    col_names = [str(fac.name) for fac in params.factors]
     model = model[col_names]
     nenc = [len(encode_model(row[np.newaxis], effect_types)) for row in model.to_numpy()]
     starts = np.concatenate(([0], np.cumsum(nenc)))
-    assert starts[-1] == len(model2encnames(model, effect_types)) == nmodel, (
-        f"The model has {starts[-1]} columns, but the model matrix of the parameters has {nmodel}"
-    )
-    modelenc = getattr(Y2X, "keywords", {}).get("modelenc")
+    modelenc = getattr(params.fn.Y2X, "keywords", {}).get("modelenc")
     if modelenc is not None:
         # A Y2X function from model2Y2X
         assert np.array_equal(modelenc, encode_model(model.to_numpy(), effect_types)), (
@@ -208,7 +212,8 @@ def _power_table(
         V = np.linalg.inv(Vi)
         coef = np.linalg.lstsq(np.array([G.ravel() for G in Gs]).T, V.ravel(), rcond=None)[0]
         assert np.allclose(np.tensordot(coef, Gs, axes=1), V), (
-            "The covariate function must add its random effects to the groupings (Zs)"
+            "Power does not support the block effects of fixed-structure designs (block_effects) yet, "
+            "nor covariate functions that change Vinv without adding their groupings to Zs"
         )
 
     return pd.DataFrame([_power(X, Vi, Gs, terms, size, alpha, ddf) for Vi in Vinv], columns=names)

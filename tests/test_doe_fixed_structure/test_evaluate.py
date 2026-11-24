@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -10,8 +11,8 @@ from pyoptex.doe.fixed_structure import Factor, RandomEffect, create_parameters,
 from pyoptex.doe.fixed_structure.cov import cov_time_trend
 from pyoptex.doe.fixed_structure.evaluate import estimation_variance_matrix, power, prediction_variance
 from pyoptex.doe.fixed_structure.metric import Dopt
-from pyoptex.doe.utils.power import _power
 from pyoptex.doe.utils.evaluate import plot_design_space
+from pyoptex.doe.utils.power import _power
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 FACTORS = [
@@ -269,6 +270,48 @@ def test_power_large_ratio(ddf):
     Phi = np.linalg.inv(X.T @ Vinv @ X)
     assert not np.isnan(pw[0])
     np.testing.assert_allclose(pw[0], _expected_power(1, 4, 1 / Phi[1, 1]))
+
+
+@ddfs
+@pytest.mark.parametrize("ratio", [1, 0.5, 10])
+def test_power_saturated(ddf, ratio):
+    """
+    A saturated split-plot (6 runs, 6 columns): no variance component can be estimated, so no term has power.
+    3 whole plots of 2 runs, W a 3-level categorical whole-plot factor (effect coding), S at -1, 1 within each.
+    At ratios other than 1, the information is rounding noise instead of exactly 0.
+    """
+    Z = np.repeat(np.arange(3), 2)
+    W1, W2 = np.repeat([1, 0, -1], 2), np.repeat([0, 1, -1], 2)
+    S = np.tile([-1, 1], 3)
+    X = np.column_stack((np.ones(6), W1, W2, S, W1 * S, W2 * S)).astype(float)
+    Vinv, Gs = _mixed_model([Z], [ratio])
+    terms = [np.array([1, 2]), np.array([3]), np.array([4, 5])]
+    assert np.all(np.isnan(_power(X, Vinv, Gs, terms, np.ones(3), 0.05, ddf)))
+
+
+def test_power_kenward_roger_undefined_df():
+    """
+    In a very small design, Kenward-Roger's df is negative (pbkrtest: -0.12): NaN with a warning.
+    Satterthwaite gives a value (df 2), without a warning.
+    """
+    Z = np.array([0, 1, 2, 2, 2, 3, 3, 3])
+    x1 = [1, 0, 1, 1, 1, -1, -1, -1]
+    x2 = [0, 0, 1, 1, -1, 0, 1, 1]
+    x3 = [0, -1, -1, 0, 1, 1, 1, -1]
+    x4 = [1, 1, 1, 0, 1, 0, 0, 0]
+    x5 = [1, 0, -1, -1, -1, -1, -1, -1]
+    X = np.column_stack((np.ones(len(Z)), x1, x2, x3, x4, x5)).astype(float)
+    Vinv, Gs = _mixed_model([Z], [1])
+    terms = [np.array([1, 2])]
+
+    with pytest.warns(UserWarning, match="Kenward-Roger's degrees of freedom are not defined"):
+        pw = _power(X, Vinv, Gs, terms, np.ones(1), 0.05, "kenward-roger")
+    assert np.isnan(pw[0])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        pw = _power(X, Vinv, Gs, terms, np.ones(1), 0.05, "satterthwaite")
+    np.testing.assert_allclose(pw, [0.100441], atol=1e-5)
 
 
 def test_power_kenward_roger_pbkrtest():
