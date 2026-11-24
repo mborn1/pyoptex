@@ -12,6 +12,7 @@ from pyoptex.doe.cost_optimal.cost import (
     fixed_runs_cost,
     level_parallel_worker_cost,
     level_single_worker_cost,
+    max_changes_cost,
     parallel_worker_cost,
 )
 from pyoptex.utils.design import encode_design
@@ -88,7 +89,7 @@ def test_cost_functions_picklable():
         [parallel_worker_cost(transitions, FACTORS, 10), parallel_worker_cost(transitions, FACTORS, 20)]
     )
 
-    for fn in (fixed_runs_cost(10), combined):
+    for fn in (fixed_runs_cost(10), combined, max_changes_cost("A", FACTORS, 3)):
         # The unpickled function computes the same costs
         restored = ForkingPickler.loads(ForkingPickler.dumps(fn))
         for (c, m, i), (rc, rm, ri) in zip(fn(Yenc, params), restored(Yenc, params), strict=True):

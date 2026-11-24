@@ -1,3 +1,5 @@
+from multiprocessing.reduction import ForkingPickler
+
 import numpy as np
 
 from pyoptex._seed import set_seed
@@ -34,3 +36,7 @@ def test_mixture():
     assert Y.columns.tolist() == ref["Y_columns"]
     np.testing.assert_allclose(state.metric, ref["metric"], rtol=1e-6)
     assert_frame_equal(Y, {"shape": ref["Y_shape"], "columns": ref["Y_columns"], "data": ref["Y_values"]})
+
+    # The Y2X function can go to worker processes: the copy gives the same model matrix
+    restored = ForkingPickler.loads(ForkingPickler.dumps(Y2X))
+    np.testing.assert_array_equal(restored(state.Y), Y2X(state.Y))

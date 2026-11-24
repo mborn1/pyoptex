@@ -1,8 +1,17 @@
+from functools import partial
+
 import numpy as np
 import pandas as pd
 
 from ...doe.fixed_structure import Factor
 from ...utils.model import encode_model, model2encnames, x2fx
+
+
+def _conditional_Y2X(Y, *, Y2X, n_conditional_cols, conditional_model_enc):
+    # The model matrix of the original columns, followed by the main effects of the conditional factors
+    return np.concatenate(
+        (Y2X(Y[:, :-n_conditional_cols]), x2fx(Y[:, -n_conditional_cols:], conditional_model_enc)), axis=1
+    )
 
 
 class ConditionalRegressionMixin:
@@ -85,8 +94,12 @@ class ConditionalRegressionMixin:
             conditional_model_enc = encode_model(self._conditional_model.to_numpy(), effect_types)
 
             # Add additional random effects in the Y2X function
-            self._Y2X = lambda Y: np.concatenate(
-                (self.Y2X(Y[:, :-n_conditional_cols]), x2fx(Y[:, -n_conditional_cols:], conditional_model_enc)), axis=1
+            # (a module-level function with a partial, so that a fitted regressor can be pickled)
+            self._Y2X = partial(
+                _conditional_Y2X,
+                Y2X=self.Y2X,
+                n_conditional_cols=n_conditional_cols,
+                conditional_model_enc=conditional_model_enc,
             )
 
             # Clear the random effects

@@ -1,5 +1,3 @@
-from functools import cached_property
-
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -159,8 +157,8 @@ def fit_mixedlm(X, y, groups):
     fit.params[fit.k_fe :][nans] = 0
     fit.vcomp[nans] = 0
 
-    # Add additional values
-    fit.rsquared = cached_property(lambda self: r2_score(self.model.endog, self.predict(self.model.exog)))
-    fit.rsquared_adj = cached_property(lambda self: r2adj(self))
+    # Add additional values (numbers, so that the fit can be pickled; r2adj does not need rsquared)
+    fit.rsquared = r2_score(fit.model.endog, fit.predict(fit.model.exog))
+    fit.rsquared_adj = r2adj(fit)
 
     return fit
