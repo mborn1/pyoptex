@@ -81,7 +81,7 @@ def obs_var_Zs(Yenc, colstart, grouped_cols=None):
             )
 
             # Determine the groups
-            grp = np.repeat(np.arange(len(borders) - 1), np.diff(borders))
+            grp = np.repeat(np.arange(len(borders) - 1, dtype=np.int64), np.diff(borders))
             Zs[i] = grp
 
     return tuple(Zs)
@@ -119,4 +119,4 @@ def obs_var(Yenc, colstart, ratios=None, grouped_cols=None):
     # Initializes the variance ratios and ensure correct type
     ratios = np.ones(colstart.size - 1, dtype=np.double) if ratios is None else np.asarray(ratios, dtype=np.double)
 
-    return obs_var_cy(Yenc, colstart, ratios, grouped_cols)
+    return obs_var_cy(Yenc, np.ascontiguousarray(colstart, dtype=np.int64), ratios, grouped_cols)

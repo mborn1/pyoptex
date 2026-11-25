@@ -9,6 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from ...utils.design import decode_design, obs_var_from_Zs
+from ...utils.model import model2Y2X
 from ..constraints import mixture_constraints, no_constraints
 from ..utils.init import full_factorial
 from .init import initialize_feasible
@@ -27,9 +28,10 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
         The factors of the experiment.
     metric : :py:class:`Metric <pyoptex.doe.fixed_structure.metric.Metric>`
         The metric object.
-    Y2X : func
+    Y2X : func or None
         The function converting from the design matrix to the
-        model matrix.
+        model matrix. None for no model (the intercept only), for criteria
+        that do not use a model, such as space-filling designs.
     constraints : func
         The constraints function,
         :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
@@ -44,6 +46,10 @@ def default_fn(factors, metric, Y2X, constraints=None, init=initialize_feasible)
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
+
+    # Without a model, the intercept only
+    if Y2X is None:
+        Y2X = model2Y2X(pd.DataFrame([[0] * len(factors)], columns=[str(f.name) for f in factors]), factors)
 
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
@@ -165,7 +171,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
     if len(block_effects) > 0:
         # beZs = np.array([np.unique(np.array(be.Z, dtype=np.int64), return_inverse=True)[1] for be in block_effects])
         beZs = np.array([np.array(be.Z, dtype=np.int64) for be in block_effects])
-        V += np.array(
+        V = V + np.array(
             [obs_var_from_Zs(beZs, N=nruns, ratios=r, include_error=False) for r in be_ratios], dtype=np.float64
         )
 
@@ -219,7 +225,6 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
 
         # Validate constraints
         assert not np.any(fn.constraintso(prior)), "Prior contains constraint-violating runs"
-        fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
 
         # Build full design: prior runs first, then zeros for new runs
         prior = np.concatenate((prior, np.zeros((nruns - len(prior), len(factors)), dtype=np.float64)), axis=0)
@@ -275,7 +280,7 @@ def create_parameters(factors, fn, nruns, block_effects=(), prior=None, grps=Non
             if level == 0:
                 grp_runs[i][j] = np.array([grps[i][j]], dtype=np.int64)
             else:
-                grp_runs[i][j] = np.flatnonzero(Zs[level - 1] == grps[i][j])
+                grp_runs[i][j] = np.flatnonzero(Zs[level - 1] == grps[i][j]).astype(np.int64)
 
     # Create the parameters
     params = Parameters(
@@ -316,7 +321,6 @@ def create_fixed_structure_design(params, n_tries=10, max_it=10000, validate=Fal
     # Check before the random starts that the constraints leave runs (else the initialization retries forever)
     if prod(len(c) for c in params.coords) <= 200_000:
         excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
-        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
         if np.all(excluded):
             raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 

@@ -2,6 +2,8 @@
 Module containing all the evaluation functions, specific to the CODEX algorithm
 """
 
+from collections.abc import Mapping, Sequence
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,8 +12,10 @@ from plotly.subplots import make_subplots
 
 from ...utils.design import encode_design, obs_var_from_Zs
 from ...utils.model import model2encnames
+from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
+from ..utils.power import _power_table, _term_columns
 from .metric import Iopt
-from .utils import obs_var_Zs
+from .utils import Parameters, obs_var_Zs
 
 
 def evaluate_metrics(Y, params, metrics):
@@ -171,9 +175,10 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     return fig
 
 
-def estimation_variance_matrix(Y, params):
+def _model_matrices(Y, params):
     """
-    Computes the parameter estimation covariance matrix.
+    The model matrix of the design, with the covariate columns after the model's columns,
+    and the groupings and inverse observation covariance matrices after the covariate function.
 
     Parameters
     ----------
@@ -184,9 +189,14 @@ def estimation_variance_matrix(Y, params):
 
     Returns
     -------
-    est_var : np.array(3d)
-        The mutiple parameter estimation covariance matrices for each of the
-        a-priori variance ratio sets.
+    X : np.array(2d)
+        The model matrix, with the covariates.
+    nmodel : int
+        The number of columns of Y2X, where the covariate columns begin.
+    Zs : list(np.array(1d) or None)
+        The groupings of the random effects.
+    Vinv : np.array(3d)
+        The inverse of the observation covariance matrix, for each set of a-priori variance ratios.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
@@ -207,10 +217,38 @@ def estimation_variance_matrix(Y, params):
     Zs = obs_var_Zs(Y, params.colstart, grouped_cols=params.grouped_cols)
     Vinv = np.array([np.linalg.inv(obs_var_from_Zs(Zs, len(Y), ratios)) for ratios in params.ratios])
     costs = params.fn.cost(Y, params)
+    nmodel = X.shape[1]
 
-    # Compute information matrix
+    # Add the covariates
     if params.fn.metric.cov is not None:
-        _, X, _, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
+        Xmodel = np.copy(X)
+        _, X, Zs, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
+        assert X.shape[1] >= nmodel and np.array_equal(X[:, :nmodel], Xmodel), (
+            "The covariate function must append its columns after the model's"
+        )
+
+    return X, nmodel, Zs, Vinv
+
+
+def estimation_variance_matrix(Y, params):
+    """
+    Computes the parameter estimation covariance matrix.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    est_var : np.array(3d)
+        The mutiple parameter estimation covariance matrices for each of the
+        a-priori variance ratio sets.
+    """
+    # Compute information matrix
+    X, _, _, Vinv = _model_matrices(Y, params)
     M = X.T @ Vinv @ X
 
     # Compute inverse of information matrix
@@ -312,3 +350,155 @@ def estimation_variance(Y, params):
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])
+
+
+def power(
+    Y: pd.DataFrame,
+    params: Parameters,
+    model: pd.DataFrame | None = None,
+    sizes: float | Sequence[float] | Mapping[str, float] | pd.Series = 1,
+    alpha: float = 0.05,
+    ddf: str = "kenward-roger",
+) -> pd.DataFrame:
+    """
+    Computes the power of the test of each term of the model (except the intercept),
+    with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
+    such as a categorical factor, is tested with one F-test on all its columns.
+    A covariate function (the metric's `cov`) must append its columns after the model's; they are not tested.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+    model : pd.DataFrame or None
+        The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
+        Without a model (None), each column of Y2X is tested on its own (also an intercept column),
+        for a custom Y2X; the result is a DataFrame whose columns (the column indices) can be renamed.
+    sizes : float, list(float), dict(str, float) or pd.Series
+        The size of the effect of each tested term, or of all of them: the coefficient
+        on the coded scale, in units of the residual standard deviation. The columns of
+        a term with several columns get it with alternating signs.
+        A dict or pd.Series is matched by name, a list by position.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : pd.DataFrame
+        The power, one row per set of a-priori variance ratios and one column per tested term.
+        NaN when the design cannot estimate a variance component the test needs.
+        NaN also, with a warning, when power is not defined for the term: its degrees of freedom are below 1,
+        or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
+    """
+    X, nmodel, Zs, Vinv = _model_matrices(Y, params)
+    tests = _term_columns(params, model, nmodel)
+
+    # A grouping with ratio 0 in every set only constrains the levels (as the quickstart's level constraints
+    # without a random effect): it is not a variance component. params.ratios has one column per factor, as the
+    # first entries of Zs (None for an ungrouped factor); the groupings a covariate function appends always stay.
+    nfactors = params.ratios.shape[1]
+    Zs = [None if i < nfactors and np.all(params.ratios[:, i] == 0) else Z for i, Z in enumerate(Zs)]
+    return _power_table(tests, X, Zs, Vinv, sizes, alpha, ddf)
+
+
+def prediction_variance(
+    Y: pd.DataFrame,
+    params: Parameters,
+    x: str,
+    y: str | None = None,
+    n: int = 60,
+    fixed: Mapping[str, float | str] | None = None,
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray]:
+    """
+    Computes the relative prediction variance on a grid over `x` and `y`, or along `x` when `y` is None.
+    Factors in `fixed` are held at the given value. The other factors are averaged over,
+    using only the settings that the constraints allow.
+    Covariates such as a time trend are held at 0, the middle of the experiment.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+    x : str
+        The name of the factor on the horizontal axis.
+    y : str or None
+        The name of the factor on the vertical axis. None gives the prediction
+        variance along `x`.
+    n : int
+        The number of grid points along a continuous factor, from its minimum
+        to its maximum (from the lowest to the highest level of a mixture component).
+        A categorical factor has its levels.
+    fixed : dict or None
+        The values of factors that are not on an axis, as {factor name: value}
+        in the factor's units (a level name for a categorical factor).
+        The other factors are averaged over. Mixture components that are not on an axis must be
+        in `fixed`, as averaging over them is not supported yet.
+
+    Returns
+    -------
+    xs : np.array(1d)
+        The coordinates along `x` (the level indices of a categorical factor).
+    ys : np.array(1d) or None
+        The coordinates along `y`, None along one factor.
+    pred_var : np.array(3d) or np.array(2d)
+        The relative prediction variances for each of the a-priori variance
+        ratio sets provided, of shape (sets, len(ys), len(xs)), or (sets, len(xs))
+        along one factor. NaN where the constraints allow no setting.
+    """
+    Minv = estimation_variance_matrix(Y, params)
+    xs, ys, pred_var, _ = _prediction_variance(params, Minv, x, y, n, fixed)
+    return xs, ys, pred_var
+
+
+def plot_prediction_variance(
+    Y: pd.DataFrame,
+    params: Parameters,
+    x: str,
+    y: str | None = None,
+    n: int = 60,
+    fixed: Mapping[str, float | str] | None = None,
+) -> go.Figure:
+    """
+    Plots the relative prediction variance of
+    :py:func:`prediction_variance <pyoptex.doe.cost_optimal.evaluate.prediction_variance>` over `x` and `y`, or along `x` when `y` is None,
+    one subplot per set of a-priori variance ratios. Settings that the constraints exclude are blank.
+    The runs are drawn on top, with the number of runs at each combination.
+    When factors are fixed, only the runs at those values are shown.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+        The simulation parameters.
+    x : str
+        The name of the factor on the horizontal axis.
+    y : str or None
+        The name of the factor on the vertical axis. None gives the prediction
+        variance along `x`.
+    n : int
+        The number of grid points along a continuous factor.
+    fixed : dict or None
+        The values of factors that are not on an axis, as {factor name: value}
+        in the factor's units (a level name for a categorical factor).
+        The other factors are averaged over. Mixture components that are not on an axis must be
+        in `fixed`, as averaging over them is not supported yet.
+
+    Returns
+    -------
+    fig : :py:class:`plotly.graph_objects.Figure`
+        The plotly figure of the relative prediction variance.
+    """
+    Minv = estimation_variance_matrix(Y, params)
+    titles = [
+        "A-priori variance ratios: "
+        + ", ".join([f"{f.name!s}={r:.3f}" for f, r in zip(params.factors, params.ratios[i], strict=True) if f.grouped])
+        for i in range(len(Minv))
+    ]
+    return _plot_prediction_variance(Y, params, Minv, x, y, n, fixed, titles)

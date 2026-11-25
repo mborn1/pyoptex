@@ -64,7 +64,7 @@ def int2bool(arr, size):
 
     # Reshape existing array to keep only last dimension
     n = np.prod(np.array(arr.shape[:-1]))
-    arr = arr.reshape(n, arr.shape[-1])
+    arr = np.ascontiguousarray(arr.reshape(n, arr.shape[-1]), dtype=np.int64)
 
     # Convert to boolean
     out = int2bool_cython_impl(arr, n, size, arr.shape[1])

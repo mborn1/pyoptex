@@ -71,20 +71,21 @@ def initialize_feasible(params, complete=False, max_tries=1000):
         # Encode the design
         Yenc = encode_design(Y, params.effect_types, params.coords)
 
-        # Make sure it's feasible
+        # Make sure it's feasible, including the covariates the metric adds
         Xenc = params.fn.Y2X(Yenc)
-        feasible = np.linalg.matrix_rank(Xenc) >= Xenc.shape[1]
+        _, Xcov = params.fn.metric.cov(Yenc, Xenc)
+        feasible = np.linalg.matrix_rank(Xcov) >= Xcov.shape[1]
 
         # Check if not in infinite loop
         if tries >= max_tries and not feasible:
             # Determine which column causes rank deficiency
-            for i in range(1, Xenc.shape[1] + 1):
-                if np.linalg.matrix_rank(Xenc[:, :i]) < i:
+            for i in range(1, Xcov.shape[1] + 1):
+                if np.linalg.matrix_rank(Xcov[:, :i]) < i:
                     break
 
             # pylint: disable=line-too-long
             raise ValueError(
-                f"Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded)"
+                f"Unable to find a feasible design due to the model: component {i} causes rank collinearity with all prior components (note that these are categorically encoded, and the component may be a covariate term)"
             )
 
     return Y, (Yenc, Xenc)

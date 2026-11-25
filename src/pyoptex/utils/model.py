@@ -472,12 +472,14 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
     # Encode model
     modelenc = encode_model(model, effect_types, [*col_names, mcomp])
 
-    # Define Y2X
-    def Y2X(Y):
-        Y = np.concatenate((Y, np.expand_dims(1 - np.sum(Y[:, me_idx_enc], axis=1), 1)), axis=1)
-        return x2fx(Y, modelenc)
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return partial(_mixture_x2fx, mixture_cols=me_idx_enc, modelenc=modelenc)
 
-    return Y2X
+
+def _mixture_x2fx(Y, *, mixture_cols, modelenc):
+    # Append the omitted mixture component: one minus the others
+    Y = np.concatenate((Y, np.expand_dims(1 - np.sum(Y[:, mixture_cols], axis=1), 1)), axis=1)
+    return x2fx(Y, modelenc)
 
 
 def identityY2X(Y):
@@ -621,6 +623,37 @@ def model2encnames(model, effect_types, col_names=None):
     col_names_model = model2names(model_enc, col_names_enc)
 
     return col_names_model
+
+
+def _model2termcols(model: pd.DataFrame, effect_types: np.ndarray) -> list[tuple[str, np.ndarray]]:
+    """
+    Retrieves the name of every term of the model and its columns in the
+    encoded model matrix. A categorical factor gives (levels - 1) columns
+    per term that it is in.
+
+    Parameters
+    ----------
+    model : pd.DataFrame
+        The model, one row per term, with its columns in the order of the effect types.
+    effect_types : np.array(1d)
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+
+    Returns
+    -------
+    termcols : list(tuple(str, np.array(1d)))
+        The name of each term (as :py:func:`model2names <pyoptex.utils.model.model2names>`)
+        and its columns in the encoded model matrix (as :py:func:`encode_model <pyoptex.utils.model.encode_model>`).
+    """
+    col_names = [str(col) for col in model.columns]
+    terms = model.to_numpy()
+
+    # The number of encoded columns of each term: the rows that encode_model makes from it
+    ncols = [len(encode_model(term[np.newaxis], effect_types, col_names)) for term in terms]
+    starts = np.concatenate(([0], np.cumsum(ncols, dtype=np.int64)))
+
+    names = model2names(model)
+    return [(str(names[i]), np.arange(starts[i], starts[i + 1])) for i in range(len(terms))]
 
 
 ################################################
