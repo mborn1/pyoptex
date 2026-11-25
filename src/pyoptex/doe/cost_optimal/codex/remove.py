@@ -6,7 +6,7 @@ import numpy as np
 
 from ...._profile import profile
 from ....utils.design import force_Zi_asc, obs_var_from_Zs
-from ..utils import obs_var_Zs
+from ..utils import _within_budget, obs_var_Zs
 from .formulas import detect_block_end_from_start, remove_update_vinv
 from .simulation import State
 
@@ -89,7 +89,7 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     insert_loc = params.stats["insert_loc"][params.stats["it"]]
 
     # Find which to drop
-    while np.any(state.cost_Y > state.max_cost):
+    while not _within_budget(state.cost_Y, state.max_cost):
         # Loop initialization
         best_metric = np.inf
         best_state = state
