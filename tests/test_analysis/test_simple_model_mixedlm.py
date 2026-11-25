@@ -1,3 +1,5 @@
+from multiprocessing.reduction import ForkingPickler
+
 import numpy as np
 import pandas as pd
 
@@ -44,3 +46,14 @@ def test_simple_model_mixedlm():
     np.testing.assert_allclose(data["pred"].mean(), ref["pred_mean"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].std(), ref["pred_std"], rtol=1e-10)
     np.testing.assert_allclose(data["pred"].values, ref["predictions"], rtol=1e-10)
+
+    # The r-square of the mixed LM fit is a number; the adjusted r-square is computed only when read
+    assert isinstance(regr.fit_.rsquared, float)
+    assert "rsquared_adj" not in vars(regr.fit_)
+    assert isinstance(regr.fit_.rsquared_adj, float)
+
+    # After that, a fitted regressor can still go to and come back from worker processes:
+    # the copy predicts the same and keeps the adjusted r-square
+    restored = ForkingPickler.loads(ForkingPickler.dumps(regr))
+    np.testing.assert_array_equal(restored.predict(data.drop(columns=["Y", "pred"])), data["pred"].values)
+    assert restored.fit_.rsquared_adj == regr.fit_.rsquared_adj

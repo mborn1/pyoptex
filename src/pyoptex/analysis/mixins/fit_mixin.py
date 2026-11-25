@@ -1,4 +1,4 @@
-from functools import cached_property
+from functools import cached_property, partial
 
 import numpy as np
 import pandas as pd
@@ -9,6 +9,16 @@ from sklearn.utils.validation import check_X_y
 from ...utils.design import encode_design, obs_var_from_Zs
 from ...utils.model import identityY2X, model2encnames
 from ..utils.fit import fit_mixedlm, fit_ols
+
+
+def _fit_ols_terms(X, y, terms):
+    # Fit an OLS on the columns of the terms
+    return fit_ols(X[:, terms], y)
+
+
+def _fit_mixedlm_terms(X, y, terms, *, Zs):
+    # Fit a mixed LM on the columns of the terms, with the groups of the random effects
+    return fit_mixedlm(X[:, terms], y, Zs)
 
 
 class BaseMixin:
@@ -173,10 +183,10 @@ class BaseMixin:
         y = (y - self.y_mean_) / (self.y_std_)
         y = np.asarray(y)
 
-        # Define the fit function
+        # Define the fit function (module-level functions, so that a fitted regressor can be pickled)
         if len(self._re) == 0:
             # Define OLS fit
-            self.fit_fn_ = lambda X, y, terms: fit_ols(X[:, terms], y)
+            self.fit_fn_ = _fit_ols_terms
             self.Zs_ = np.empty((0, len(X)), dtype=np.int64)
 
         else:
@@ -189,7 +199,7 @@ class BaseMixin:
 
             # Extract and create mixedlm fit function
             self.Zs_ = X[re].to_numpy().T
-            self.fit_fn_ = lambda X, y, terms: fit_mixedlm(X[:, terms], y, self.Zs_)
+            self.fit_fn_ = partial(_fit_mixedlm_terms, Zs=self.Zs_)
             X = X.drop(columns=re)
 
         # Preprocess X

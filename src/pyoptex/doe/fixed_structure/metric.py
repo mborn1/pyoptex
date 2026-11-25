@@ -5,6 +5,7 @@ Module for all metrics of fixed structure designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
+from ..utils.space_filling import coverage, distance_map, maximin
 from .cov import no_cov
 from .init import init_random
 
@@ -296,6 +297,181 @@ class Iopt(Metric):
             # Invert for minimization
             return -trace
         return -np.inf
+
+
+class Coverage(Metric):
+    """
+    The coverage criterion: spreads the runs over the region. It does not use the model.
+    Minimizes the generalized mean (with exponent p) of the distance from points of the region
+    to their nearest run (a larger p weighs the worst-covered points more).
+
+    Attributes
+    ----------
+    n : int
+        The number of points of the region.
+    p : float
+        The exponent of the generalized mean.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
+    samples : np.array(2d)
+        The distance coordinates of the points of the region.
+    """
+
+    def __init__(self, n=2000, p=2):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        n : int
+            The number of points of the region.
+        p : float
+            The exponent of the generalized mean.
+        """
+        assert p > 0, "p must be positive"
+        super().__init__()
+        self.n = n
+        self.p = p
+        self.offset = None
+        self.W = None
+        self.samples = None
+
+    def preinit(self, params):
+        """
+        Samples the region, as for the I-optimality criterion, and maps it to the distance coordinates.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+        """
+        self.offset, self.W = distance_map(params.factors, params.coords)
+        samples = init_random(params, self.n, complete=True)
+        self.samples = (samples - self.offset) @ self.W
+
+    def call(self, Y, X, params):
+        """
+        Computes the coverage criterion.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The updated design matrix.
+        X : np.array(2d)
+            The updated model matrix (not used).
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        metric : float
+            The negative of the generalized mean of the distances to the nearest run.
+        """
+        return coverage((Y - self.offset) @ self.W, self.samples, self.p)
+
+
+class Maximin(Metric):
+    """
+    The maximin criterion (Morris-Mitchell φp): spreads the runs apart, mostly towards the edges of the region.
+    It does not use the model. A large p maximizes the smallest distance between runs; a smaller p also weighs
+    the other close pairs. Not for cost-optimal designs, where it would keep the design small.
+    Replicates in the prior are allowed: distances that the optimization cannot change,
+    such as between two prior runs, are left out.
+
+    Attributes
+    ----------
+    p : float
+        The power of φp.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
+    keep : np.array(1d) or None
+        Which pairs of runs to keep, in the order of `scipy.spatial.distance.pdist`: every pair
+        but those whose distance the optimization cannot change. None when every pair counts.
+    """
+
+    def __init__(self, p=50):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        p : float
+            The power of φp.
+        """
+        assert p > 0, "p must be positive"
+        super().__init__()
+        self.p = p
+        self.offset = None
+        self.W = None
+        self.keep = None
+
+    def _run_groups(self, params):
+        """
+        The group of every run among the groups to optimize, per factor: -1 for a run that
+        no group to optimize of that factor contains.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        groups : np.array(2d)
+            The group labels, one row per run and one column per factor.
+        """
+        groups = np.full((params.nruns, len(params.factors)), -1, dtype=np.int64)
+        for i, grp_runs in enumerate(params.grp_runs):
+            for g, runs in enumerate(grp_runs):
+                groups[runs, i] = g
+        return groups
+
+    def preinit(self, params):
+        """
+        Computes the map to the distance coordinates, and which pairs of runs to keep: a pair's
+        distance cannot change when both runs are in the same group (or in none) for every factor.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+        """
+        self.offset, self.W = distance_map(params.factors, params.coords)
+        # One number per run for its labels: a pair is left out when both runs have the same number
+        _, ids = np.unique(self._run_groups(params), axis=0, return_inverse=True)
+        ids = ids.reshape(-1)
+        i, j = np.triu_indices(params.nruns, 1)
+        keep = ids[i] != ids[j]
+        assert params.nruns >= 2 and keep.any(), (
+            "Maximin needs at least two runs whose distance the optimization can change"
+        )
+        self.keep = None if keep.all() else keep
+
+    def call(self, Y, X, params):
+        """
+        Computes the maximin criterion.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The updated design matrix.
+        X : np.array(2d)
+            The updated model matrix (not used).
+        params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+            The optimization parameters.
+
+        Returns
+        -------
+        metric : float
+            The negative of φp.
+        """
+        return maximin((Y - self.offset) @ self.W, self.p, self.keep)
 
 
 class Aliasing(Metric):
