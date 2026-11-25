@@ -10,7 +10,8 @@ from ...utils.factor import FactorMixin
 
 FunctionSet = namedtuple("FunctionSet", "metric Y2X constraints constraintso init")
 Parameters = namedtuple(
-    "Parameters", "fn factors nruns effect_types effect_levels grps grp_runs ratios coords prior colstart Zs Vinv"
+    "Parameters",
+    "fn factors nruns effect_types effect_levels grps grp_runs ratios coords prior colstart Zs Vinv n_prior",
 )
 State = namedtuple("State", "Y X metric")
 

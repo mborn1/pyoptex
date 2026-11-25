@@ -233,7 +233,11 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         )
 
         # Validate prior
-        assert not np.any(fn.constraintso(prior)), "Prior contains constraint violating runs"
+        assert not np.any(fn.constraintso(prior)), (
+            "Prior contains constraint violating runs. This is not supported for split-plot designs yet: "
+            "the initialization would keep trying to correct the prior runs. "
+            "Use the fixed-structure or CODEX route, or remove those runs from the prior."
+        )
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
             if f.re.level != 0:
@@ -277,6 +281,7 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
         colstart,
         Zs,
         Vinv,
+        0,  # n_prior: split-plot requires a valid prior, so check every run
         plot_sizes,
         np.ascontiguousarray(cs),
         alphas,
