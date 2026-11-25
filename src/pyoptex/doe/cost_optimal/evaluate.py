@@ -375,7 +375,7 @@ def power(
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
         a term with several columns get it with alternating signs.
-        A dict or pd.Series gives it per term name (every tested term must be in it), a list per position.
+        A dict or pd.Series is matched by name, a list by position.
     alpha : float
         The significance level.
     ddf : str
@@ -385,8 +385,9 @@ def power(
     -------
     power : pd.DataFrame
         The power, one row per set of a-priori variance ratios and one column per tested term.
-        NaN when the design cannot estimate a variance component the test needs,
-        or when the test's degrees of freedom are below 1 or not defined; a warning names the latter.
+        NaN when the design cannot estimate a variance component the test needs.
+        NaN also, with a warning, when power is not defined for the term: its degrees of freedom are below 1,
+        or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
     """
     X, nmodel, Zs, Vinv = _model_matrices(Y, params)
     tests = _term_columns(params, model, nmodel)

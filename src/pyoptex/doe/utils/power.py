@@ -46,9 +46,10 @@ def _power(
     -------
     power : np.array(1d)
         The power of each term. NaN when the design cannot estimate a variance component the test needs,
-        or when the test's degrees of freedom are below 1 or not defined.
+        or when power is not defined for the test.
     undefined : np.array(1d)
-        Whether the degrees of freedom of each term are below 1 or not defined.
+        Whether power is not defined for each term: its degrees of freedom are below 1,
+        or the Kenward-Roger approximation does not hold in this small design.
     """
     VinvX = Vinv @ X
     Phi = np.linalg.inv(X.T @ VinvX)
@@ -111,7 +112,12 @@ def _power(
                     rho = r**2 * (1 + c1 * B) / (k * (1 - c3 * B))
                     df = 4 + (k + 2) / (k * rho - 1)
                     lam = 1.0 if abs(df - 2) < 0.01 else df * (1 - A2 / k) / (df - 2)
-                noncentrality = lam * b @ np.linalg.solve(PhiA[np.ix_(c, c)], b)
+                # Phi_A must be positive definite, whatever the sizes
+                PhiAc = PhiA[np.ix_(c, c)]
+                if not np.linalg.eigvalsh(PhiAc).min() > 0:
+                    undefined[t] = True
+                    continue
+                noncentrality = lam * b @ np.linalg.solve(PhiAc, b)
             else:
                 # Satterthwaite per direction of L'PhiL (Fai and Cornelius for k > 1, as lmerTest and pbkrtest)
                 D, U = np.linalg.eigh(LPhiL)
@@ -127,8 +133,9 @@ def _power(
                 lam = 1.0
                 noncentrality = b @ np.linalg.solve(LPhiL, b)
 
-            # In very small designs, Kenward-Roger's df can be negative (as in pbkrtest), and its F-scaling
-            # or Phi_A not positive: checked before scipy, which would return NaN or a wrong value
+            # A df below 1 is treated as "the design cannot test the term in practice": scipy is accurate there,
+            # so this is a choice, not a numerical workaround. Kenward-Roger's F-scaling, noncentrality or Phi_A
+            # can be invalid in very small designs (as in pbkrtest)
             if not (np.isfinite(df) and df >= 1 and lam > 0 and np.isfinite(noncentrality) and noncentrality >= 0):
                 undefined[t] = True
                 continue
@@ -212,7 +219,7 @@ def _power_table(
         The inverse of the observation covariance matrix, for each set of variance ratios.
     sizes : float, list(float), dict(str, float) or pd.Series
         The size of the coefficients of each test, or of all tests.
-        A dict or pd.Series gives it per test name (every test must be in it), a list per position.
+        A dict or pd.Series is matched by name, a list by position.
     alpha : float
         The significance level.
     ddf : str
@@ -222,8 +229,9 @@ def _power_table(
     -------
     power : pd.DataFrame
         The power, one row per set of variance ratios and one column per test.
-        NaN when the design cannot estimate a variance component the test needs,
-        or when the test's degrees of freedom are below 1 or not defined; a warning names the latter.
+        NaN when the design cannot estimate a variance component the test needs.
+        NaN also, with a warning, when power is not defined for the test: its degrees of freedom are below 1,
+        or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
     """
     assert ddf in ("kenward-roger", "satterthwaite"), f"ddf must be 'kenward-roger' or 'satterthwaite', but is {ddf}"
     assert 0 < alpha < 1, f"alpha must be between 0 and 1, but is {alpha}"
@@ -232,6 +240,8 @@ def _power_table(
     if isinstance(sizes, Mapping | pd.Series):
         missing = [name for name in names if name not in sizes]
         assert not missing, f"sizes has no value for the tests {', '.join(missing)}"
+        unknown = [str(key) for key in sizes.keys() if key not in names]
+        assert not unknown, f"sizes has values for unknown tests {', '.join(unknown)}; the tests are {', '.join(names)}"
         size = np.array([sizes[name] for name in names], dtype=np.float64)
     elif np.ndim(sizes) == 0:
         size = np.full(len(tests), sizes, dtype=np.float64)
@@ -256,7 +266,7 @@ def _power_table(
             "nor covariate functions that change Vinv without adding their groupings to Zs"
         )
 
-    # The power for each set of variance ratios, and the tests whose df are below 1 or not defined in any
+    # The power for each set of variance ratios, and the tests whose power is not defined in any
     powers = []
     undefined = np.zeros(len(tests), dtype=np.bool_)
     for Vi in Vinv:
@@ -265,8 +275,8 @@ def _power_table(
         undefined |= undefined_i
     if np.any(undefined):
         message = (
-            f"The degrees of freedom of {', '.join(np.array(names)[undefined])} are below 1 or not defined "
-            "in this small design, so their power is NaN."
+            f"Power is not defined for {', '.join(np.array(names)[undefined])}: their degrees of freedom are "
+            "below 1, or the Kenward-Roger approximation does not hold in this small design."
         )
         if ddf == "kenward-roger":
             message += " ddf='satterthwaite' may give a value."
