@@ -37,6 +37,7 @@ EXAMPLE_MAP = {
     "doe/quickstart/example_cost_optimal_codex.py": "doe_quickstart/cost_optimal_codex",
     "doe/quickstart/example_cost_optimal_codex_mp.py": "doe_quickstart/cost_optimal_codex_mp",
     "doe/cost_optimal/codex/example_codex.py": "doe_cost_optimal/codex",
+    "doe/cost_optimal/codex/example_coverage.py": "doe_cost_optimal/coverage",
     "doe/cost_optimal/codex/example_approx_omars.py": "doe_cost_optimal/approx_omars",
     "doe/cost_optimal/codex/example_asymmetric.py": "doe_cost_optimal/asymmetric",
     "doe/cost_optimal/codex/example_micro_pharma.py": "doe_cost_optimal/micro_pharma",
@@ -48,6 +49,7 @@ EXAMPLE_MAP = {
     "doe/fixed_structure/example_strip_plot_augment.py": "doe_fixed_structure/strip_plot_augment",
     "doe/fixed_structure/splitk_plot/example_splitk_augment.py": "doe_fixed_structure/splitk_augment",
     "doe/fixed_structure/splitk_plot/example_splitk_augment_split.py": "doe_fixed_structure/splitk_augment_split",
+    "doe/fixed_structure/splitk_plot/example_splitk_coverage.py": "doe_fixed_structure/splitk_coverage",
     "doe/fixed_structure/splitk_plot/example_splitk_fixed_factor.py": "doe_fixed_structure/splitk_fixed_factor",
     "doe/fixed_structure/splitk_plot/example_splitk_plot.py": "doe_fixed_structure/splitk_plot",
 }

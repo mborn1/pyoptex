@@ -30,7 +30,12 @@ def init_single_unconstrained(colstart, coords, run, effect_types):
     run : np.array(2d)
         The randomly sampled run.
     """
-    return init_single_unconstrained_cython_impl(colstart, coords, np.ascontiguousarray(run), effect_types)
+    return init_single_unconstrained_cython_impl(
+        np.ascontiguousarray(colstart, dtype=np.int64),
+        coords,
+        np.ascontiguousarray(run),
+        np.ascontiguousarray(effect_types, dtype=np.int64),
+    )
 
 
 def full_factorial(colstart, coords, Y=None):

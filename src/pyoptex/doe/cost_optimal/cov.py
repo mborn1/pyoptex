@@ -2,6 +2,8 @@
 Module containing all the covariate functions of the cost optimal designs
 """
 
+from functools import partial, wraps
+
 import numpy as np
 
 
@@ -106,6 +108,21 @@ def _scale_levels(t):
     return np.full_like(t, -1.0, dtype=np.float64)
 
 
+def _time_trend(Y, X, Zs, Vinv, costs, random=False, *, time, cost_index):
+    # Define time array
+    if random:
+        t = np.random.rand(Y.shape[0]) * 2 - 1
+    else:
+        cum_cost = np.cumsum(costs[cost_index][0])
+        t = _scale_levels(np.floor_divide(cum_cost, time))
+
+    # Concatenate time array
+    Y = np.concatenate((Y, t[:, np.newaxis]), axis=1)
+    X = np.concatenate((X, t[:, np.newaxis]), axis=1)
+
+    return Y, X, Zs, Vinv
+
+
 def cov_time_trend(time=1, cost_index=0):
     """
     Covariance function to account for time trends.
@@ -144,22 +161,30 @@ def cov_time_trend(time=1, cost_index=0):
     if not time > 0:
         raise ValueError(f"time must be positive, but is {time}")
 
-    # Define the covariance function
-    def _cov(Y, X, Zs, Vinv, costs, random=False):
-        # Define time array
-        if random:
-            t = np.random.rand(Y.shape[0]) * 2 - 1
-        else:
-            cum_cost = np.cumsum(costs[cost_index][0])
-            t = _scale_levels(np.floor_divide(cum_cost, time))
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return wraps(_time_trend)(partial(_time_trend, time=time, cost_index=cost_index))
 
-        # Concatenate time array
-        Y = np.concatenate((Y, t[:, np.newaxis]), axis=1)
-        X = np.concatenate((X, t[:, np.newaxis]), axis=1)
 
-        return Y, X, Zs, Vinv
+def _double_time_trend(Y, X, Zs, Vinv, costs, random=False, *, time_outer, time_inner, n_inner, cost_index):
+    if random:
+        # Define random outer and inner array
+        t_outer = np.random.rand(Y.shape[0]) * 2 - 1
+        t_inner = np.random.rand(Y.shape[0]) * 2 - 1
+    else:
+        # Define outer time array
+        cum_cost = np.cumsum(costs[cost_index][0])
+        t_outer = _scale_levels(np.floor_divide(cum_cost, time_outer))
 
-    return _cov
+        # Define inner time array
+        t_inner = np.mod(cum_cost, time_outer)
+        t_inner = np.floor_divide(t_inner, time_inner)
+        t_inner = t_inner / (n_inner - 1) * 2 - 1
+
+    # Concatenate time array
+    Y = np.concatenate((Y, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
+    X = np.concatenate((X, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
+
+    return Y, X, Zs, Vinv
 
 
 def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
@@ -217,29 +242,29 @@ def cov_double_time_trend(time_outer=1, time_inner=1, cost_index=0):
             f"holds {n_inner} of time_inner={time_inner}"
         )
 
-    # Define the covariance function
-    def _cov(Y, X, Zs, Vinv, costs, random=False):
-        if random:
-            # Define random outer and inner array
-            t_outer = np.random.rand(Y.shape[0]) * 2 - 1
-            t_inner = np.random.rand(Y.shape[0]) * 2 - 1
-        else:
-            # Define outer time array
-            cum_cost = np.cumsum(costs[cost_index][0])
-            t_outer = _scale_levels(np.floor_divide(cum_cost, time_outer))
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return wraps(_double_time_trend)(
+        partial(
+            _double_time_trend, time_outer=time_outer, time_inner=time_inner, n_inner=n_inner, cost_index=cost_index
+        )
+    )
 
-            # Define inner time array
-            t_inner = np.mod(cum_cost, time_outer)
-            t_inner = np.floor_divide(t_inner, time_inner)
-            t_inner = t_inner / (n_inner - 1) * 2 - 1
 
-        # Concatenate time array
-        Y = np.concatenate((Y, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
-        X = np.concatenate((X, t_outer[:, np.newaxis], t_inner[:, np.newaxis]), axis=1)
+def _block(Y, X, Zs, Vinv, costs, random=False, *, cost, ratios, cost_index):
+    # Define blocking update
+    if random:
+        pass
+    else:
+        # Define blocks and ratios
+        cum_cost = np.cumsum(costs[cost_index][0])
+        blocks = np.floor_divide(cum_cost, cost).astype(np.int64)
 
-        return Y, X, Zs, Vinv
+        # Update Zs, Vinv
+        Zs = list(Zs)
+        Zs.append(blocks)
+        Vinv = _update_woodbury(np.copy(Vinv), [blocks], ratios)
 
-    return _cov
+    return Y, X, Zs, Vinv
 
 
 def cov_block(cost=1, ratios=1.0, cost_index=0):
@@ -275,21 +300,5 @@ def cov_block(cost=1, ratios=1.0, cost_index=0):
     # Expand array dimensions
     ratios = ratios[:, np.newaxis]
 
-    # Define the covariance function
-    def _cov(Y, X, Zs, Vinv, costs, random=False):
-        # Define blocking update
-        if random:
-            pass
-        else:
-            # Define blocks and ratios
-            cum_cost = np.cumsum(costs[cost_index][0])
-            blocks = np.floor_divide(cum_cost, cost).astype(np.int64)
-
-            # Update Zs, Vinv
-            Zs = list(Zs)
-            Zs.append(blocks)
-            Vinv = _update_woodbury(np.copy(Vinv), [blocks], ratios)
-
-        return Y, X, Zs, Vinv
-
-    return _cov
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return wraps(_block)(partial(_block, cost=cost, ratios=ratios, cost_index=cost_index))

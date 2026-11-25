@@ -5,6 +5,7 @@ Module for all metrics of the cost optimal designs.
 import numpy as np
 
 from ...utils.comp import outer_integral
+from ..utils.space_filling import coverage, distance_map
 from .cov import no_cov
 from .init import init
 
@@ -302,6 +303,87 @@ class Iopt(Metric):
             # Invert for minimization
             return -trace
         return -np.inf
+
+
+class Coverage(Metric):
+    """
+    The coverage criterion: spreads the runs over the region. It does not use the model.
+    Minimizes the generalized mean (with exponent p) of the distance from points of the region
+    to their nearest run (a larger p weighs the worst-covered points more).
+
+    Attributes
+    ----------
+    n : int
+        The number of points of the region.
+    p : float
+        The exponent of the generalized mean.
+    offset : np.array(1d)
+        The offset of the map to the distance coordinates, from
+        :py:func:`distance_map <pyoptex.doe.utils.space_filling.distance_map>`.
+    W : np.array(2d)
+        The matrix of the map to the distance coordinates.
+    samples : np.array(2d)
+        The distance coordinates of the points of the region.
+    """
+
+    def __init__(self, n=2000, p=2):
+        """
+        Creates the metric
+
+        Parameters
+        ----------
+        n : int
+            The number of points of the region.
+        p : float
+            The exponent of the generalized mean.
+        """
+        assert p > 0, "p must be positive"
+        super().__init__()
+        self.n = n
+        self.p = p
+        self.offset = None
+        self.W = None
+        self.samples = None
+        self.initialized_ = False
+
+    def init(self, params):
+        """
+        Samples the region once, as for the I-optimality criterion, and maps it to the distance coordinates.
+
+        Parameters
+        ----------
+        params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
+            The simulation parameters
+        """
+        if not self.initialized_:
+            self.offset, self.W = distance_map(params.factors, params.coords)
+            samples = init(params, self.n, complete=True)
+            self.samples = (samples - self.offset) @ self.W
+            self.initialized_ = True
+
+    def call(self, Y, X, Zs, Vinv, costs):
+        """
+        Computes the coverage criterion for a given design.
+
+        Parameters
+        ----------
+        Y : np.array(2d)
+            The design matrix
+        X : np.array(2d)
+            The model matrix (not used)
+        Zs : list(np.array(1d))
+            The grouping matrices (not used)
+        Vinv : np.array(3d)
+            The inverses of the covariance matrices (not used)
+        costs : list(np.array(1d), float, np.array(1d))
+            The list of different costs (not used).
+
+        Returns
+        -------
+        metric : float
+            The negative of the generalized mean of the distances to the nearest run.
+        """
+        return coverage((Y - self.offset) @ self.W, self.samples, self.p)
 
 
 class Aliasing(Metric):

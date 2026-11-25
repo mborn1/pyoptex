@@ -472,12 +472,14 @@ def mixtureY2X(factors, mixture_effects, process_effects=dict(), cross_order=Non
     # Encode model
     modelenc = encode_model(model, effect_types, [*col_names, mcomp])
 
-    # Define Y2X
-    def Y2X(Y):
-        Y = np.concatenate((Y, np.expand_dims(1 - np.sum(Y[:, me_idx_enc], axis=1), 1)), axis=1)
-        return x2fx(Y, modelenc)
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return partial(_mixture_x2fx, mixture_cols=me_idx_enc, modelenc=modelenc)
 
-    return Y2X
+
+def _mixture_x2fx(Y, *, mixture_cols, modelenc):
+    # Append the omitted mixture component: one minus the others
+    Y = np.concatenate((Y, np.expand_dims(1 - np.sum(Y[:, mixture_cols], axis=1), 1)), axis=1)
+    return x2fx(Y, modelenc)
 
 
 def identityY2X(Y):
