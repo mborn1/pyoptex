@@ -1,3 +1,5 @@
+from multiprocessing.reduction import ForkingPickler
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -62,3 +64,11 @@ def test_codex():
     np.testing.assert_allclose(state.metric, ref["metric"], rtol=1e-6)
     assert len(state.Y) == ref["n_experiments"]
     assert_frame_equal(Y, {"shape": ref["Y_shape"], "columns": ref["Y_columns"], "data": ref["Y_values"]})
+
+    # After a design run, the parameters (with the time trend) can still go to worker processes
+    restored = ForkingPickler.loads(ForkingPickler.dumps(params))
+    args = (state.Y, state.X, state.Zs, state.Vinv, state.costs)
+    Yr, Xr, _, _ = restored.fn.metric.cov(*args)
+    Yp, Xp, _, _ = params.fn.metric.cov(*args)
+    np.testing.assert_array_equal(Yr, Yp)
+    np.testing.assert_array_equal(Xr, Xp)

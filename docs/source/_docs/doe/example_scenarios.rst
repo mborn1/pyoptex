@@ -503,9 +503,126 @@ execution cost of five minutes.
 >>>     'F': (1, 1, 0, 0), # Constant transition cost
 >>> }
 >>> execution_cost = 5
->>> 
+>>>
 >>> cost_fn = scaled_parallel_worker_cost(
->>>     transition_costs, factors, 
+>>>     transition_costs, factors,
 >>>     max_transition_cost, execution_cost
 >>> )
 
+.. _cost_levels:
+
+A cost for every change between two levels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Sometimes the cost of a change follows no formula at all: it simply depends on which two levels
+a factor changes between, and the only way to give it is to list it. For example, a production line
+switches between three setups, and each changeover has its own duration because some need more
+cleaning than others. The scaled cost functions of :ref:`cost_scaled` need a cost that grows linearly
+with the size of a change, and they give a categorical factor one cost for every change. Here you
+instead fill in a table with a cost for every combination of from-level and to-level, for continuous
+and categorical factors alike. On top of that, each level can add extra execution costs to the run.
+
+The :py:func:`level_parallel_worker_cost <pyoptex.doe.cost_optimal.cost.level_parallel_worker_cost>` and
+:py:func:`level_single_worker_cost <pyoptex.doe.cost_optimal.cost.level_single_worker_cost>` functions
+take, per factor, a table where row i, column j is the cost of changing from level i to level j, in the
+order of the factor's levels. A single number gives the same cost for every change, and factors that are
+left out cost nothing to change. For a fixed cost per change, see :ref:`qc_codex`.
+
+>>> factors = [
+>>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('T', type='continuous', levels=[20, 40, 60], min=20, max=60),
+>>>     Factor('E', type='continuous', grouped=False),
+>>> ]
+
+All costs are in minutes. Changing the setup `A` takes between 10 and 60 minutes, depending
+on the setups and the direction: from L1 to L3 takes an hour, from L3 back to L1 only 20 minutes.
+Changing the temperature `T` takes an hour, between any two levels, and the easy-to-change
+factor `E` one minute. Every run takes 5 minutes, plus 2 minutes at 40 degrees or 5 minutes at
+60 degrees. Changes happen in parallel, so the transition between two runs takes as long as its
+slowest factor change; the level costs are always added to the run. The budget is three days of
+four hours.
+
+>>> max_transition_cost = 3*4*60
+>>> transition_costs = {
+>>>     'A': np.array([ # From level (row) to level (column)
+>>>         [0, 30, 60],
+>>>         [10, 0, 30],
+>>>         [20, 50, 0],
+>>>     ]),
+>>>     'T': 60, # Every change takes one hour
+>>>     'E': 1,
+>>> }
+>>> level_costs = {'T': np.array([0, 2, 5])} # Extra minutes of a run at 20, 40 and 60 degrees
+>>> execution_cost = 5
+>>>
+>>> cost_fn = level_parallel_worker_cost(
+>>>     transition_costs, factors,
+>>>     max_transition_cost, execution_cost, level_costs
+>>> )
+
+.. _space_filling:
+
+Designs without a model (space-filling)
+---------------------------------------
+
+Some experiments are not analysed with a linear model that is known in advance:
+
+* computer experiments, where a simulation replaces the physical experiment;
+* surrogate models, such as Gaussian processes or machine-learning models;
+* exploring an unknown response surface;
+* test or validation runs, to check a fitted model where it has seen no data.
+
+Such experiments need runs that spread over the region, rather than runs that estimate a model.
+The coverage criterion measures how far the points of the region are from their nearest run,
+and the design makes that distance small. It needs no model: pass None as `Y2X` to `default_fn`.
+
+For a fixed structure design, with
+:py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>`, give the number of runs
+
+>>> from pyoptex.doe.fixed_structure import (
+>>>     Factor, create_fixed_structure_design, create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.fixed_structure.metric import Coverage
+>>>
+>>> factors = [
+>>>     Factor('A', type='categorical', levels=['L1', 'L2', 'L3']),
+>>>     Factor('E', type='continuous', levels=np.linspace(-1, 1, 11)),
+>>>     Factor('F', type='continuous', min=2, max=5, levels=np.linspace(2, 5, 11)),
+>>> ]
+>>> fn = default_fn(factors, Coverage(), None)
+>>> params = create_parameters(factors, fn, nruns=20)
+>>> Y, state = create_fixed_structure_design(params)
+
+For a cost-optimal design, with
+:py:class:`Coverage <pyoptex.doe.cost_optimal.metric.Coverage>`, CODEX uses the budget instead.
+The factors and the cost function are set up as in :ref:`qc_codex`.
+
+>>> from pyoptex.doe.cost_optimal.codex import (
+>>>     create_cost_optimal_codex_design, create_parameters, default_fn
+>>> )
+>>> from pyoptex.doe.cost_optimal.metric import Coverage
+>>>
+>>> fn = default_fn(nsims, factors, cost_fn, Coverage(), None)
+>>> params = create_parameters(factors, fn)
+>>> Y, state = create_cost_optimal_codex_design(params, nsims=nsims)
+
+Give the continuous factors more levels than the default three: a new run at a level
+that is already covered adds little.
+
+With an existing design as the prior, its runs count, so the new runs fill its gaps.
+In a fixed structure design, `nruns` then counts the existing runs too.
+
+>>> params = create_parameters(factors, fn, prior=existing_design)
+>>> Y, state = create_cost_optimal_codex_design(params, nsims=nsims)
+>>> new_runs = Y.iloc[len(existing_design):]
+
+For validating a fitted model, the new runs test it where the existing design has gaps; a few runs
+close to existing ones show how its accuracy changes with distance.
+
+Coverage or maximin?
+
+* :py:class:`Coverage <pyoptex.doe.fixed_structure.metric.Coverage>` spreads runs over the whole region,
+  minimizing the worst-covered spot with a large `p` (minimax). It works in every module and in CODEX
+  (not yet for mixture components), where it uses the budget.
+* :py:class:`Maximin <pyoptex.doe.fixed_structure.metric.Maximin>` pushes runs apart, mostly towards
+  the edges, and is only for a fixed number of runs (not yet for mixture components).

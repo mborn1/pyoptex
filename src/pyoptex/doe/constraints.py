@@ -74,6 +74,16 @@ class ConstraintsFunc:
         self._fn = None
         self.evaluated = False
 
+    def __getstate__(self):
+        """
+        The state for pickling, without the compiled function (a lambda cannot be pickled):
+        the unpickled object compiles its function string again on its first call.
+        """
+        state = self.__dict__.copy()
+        state["_fn"] = None
+        state["evaluated"] = False
+        return state
+
 
 def parse_constraints_script(script, factors, exclude=True, eps=1e-6):
     """

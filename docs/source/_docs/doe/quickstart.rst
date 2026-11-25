@@ -666,14 +666,16 @@ For a fixed structure design
 
 >>> from pyoptex.doe.fixed_structure.evaluate import (
 >>>     evaluate_metrics, plot_fraction_of_design_space, 
->>>     plot_estimation_variance_matrix, estimation_variance
+>>>     plot_estimation_variance_matrix, estimation_variance,
+>>>     plot_prediction_variance
 >>> )
 
 For a cost-optimal design (generalized staggered-level design) 
 
 >>> from pyoptex.doe.cost_optimal.evaluate import (
 >>>     evaluate_metrics, plot_fraction_of_design_space, 
->>>     plot_estimation_variance_matrix, estimation_variance
+>>>     plot_estimation_variance_matrix, estimation_variance,
+>>>     plot_prediction_variance
 >>> )
 
 Once imported, we can evaluate the design. The first command prints the metric value
@@ -707,6 +709,26 @@ which are passed to the design generation functions.
         :align: center
 
         The covariance matrix of the parameter estimates.
+
+Two plots show the design over a pair of factors.
+:py:func:`plot_design_space <pyoptex.doe.utils.evaluate.plot_design_space>`
+draws the levels each factor may take, the region that the constraints in `params`
+exclude and the runs, with the number of runs at each combination.
+`plot_prediction_variance`, imported above, draws the relative prediction variance
+over the two factors, with the runs on top. Without a second factor, both plots
+show one factor. The other factors can be given a value in `fixed`; only the runs
+at those values are then counted. The factors that are not in `fixed` are averaged over.
+If a constraint involves a factor that is averaged over, the plot can show unexpected
+jumps in regions where the constraint starts to exclude some of that factor's settings;
+fixing that factor can be used to show where the jump comes from.
+
+>>> from pyoptex.doe.utils.evaluate import plot_design_space
+>>> # the fixed-structure design (factors A, B, C)
+>>> plot_design_space(Y, params, 'B', 'C').show()
+>>> plot_prediction_variance(Y, params, 'B', 'C', fixed={'A': 'L1'}).show()
+>>> # the cost-optimal design (factors A, E, F, G)
+>>> plot_design_space(Y, params, 'E', 'F').show()
+>>> plot_prediction_variance(Y, params, 'E', 'F', fixed={'A': 'L1'}).show()
 
 .. _qc_parallel:
 

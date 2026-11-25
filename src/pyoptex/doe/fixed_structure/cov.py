@@ -2,6 +2,8 @@
 Module containing all the covariate functions for fixed structures.
 """
 
+from functools import partial, wraps
+
 import numpy as np
 
 
@@ -31,6 +33,16 @@ def no_cov(Y, X, random=False, subset=None):
     return Y, X
 
 
+def _time_trend(Y, X, random=False, subset=slice(None, None), *, time_array):
+    # Extract time
+    t = np.expand_dims(np.random.rand(Y.shape[0]) * 2 - 1, 1) if random else time_array[subset]
+
+    # Augment Y and X
+    Y = np.concatenate((Y, t), axis=1)
+    X = np.concatenate((X, t), axis=1)
+    return Y, X
+
+
 def cov_time_trend(ntime, nruns):
     """
     Covariance function to account for time trends.
@@ -57,16 +69,18 @@ def cov_time_trend(ntime, nruns):
     # Create the time array
     time_array = np.repeat(np.linspace(-1, 1, ntime), nruns // ntime).reshape(-1, 1)
 
-    def _cov(Y, X, random=False, subset=slice(None, None)):
-        # Extract time
-        t = np.expand_dims(np.random.rand(Y.shape[0]) * 2 - 1, 1) if random else time_array[subset]
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return wraps(_time_trend)(partial(_time_trend, time_array=time_array))
 
-        # Augment Y and X
-        Y = np.concatenate((Y, t), axis=1)
-        X = np.concatenate((X, t), axis=1)
-        return Y, X
 
-    return _cov
+def _double_time_trend(Y, X, random=False, subset=slice(None, None), *, time_array):
+    # Extract time
+    t = (np.random.rand(Y.shape[0], 2) * 2 - 1) if random else time_array[subset]
+
+    # Augment Y and X
+    Y = np.concatenate((Y, t), axis=1)
+    X = np.concatenate((X, t), axis=1)
+    return Y, X
 
 
 def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
@@ -103,13 +117,5 @@ def cov_double_time_trend(ntime_outer, ntime_inner, nruns):
     )
     time_array = np.stack((time_array_outer, time_array_inner)).T
 
-    def _cov(Y, X, random=False, subset=slice(None, None)):
-        # Extract time
-        t = (np.random.rand(Y.shape[0], 2) * 2 - 1) if random else time_array[subset]
-
-        # Augment Y and X
-        Y = np.concatenate((Y, t), axis=1)
-        X = np.concatenate((X, t), axis=1)
-        return Y, X
-
-    return _cov
+    # A module-level function with a partial (not a closure) can be sent to worker processes
+    return wraps(_double_time_trend)(partial(_double_time_trend, time_array=time_array))

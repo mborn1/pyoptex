@@ -9,6 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from ....utils.design import decode_design
+from ....utils.model import model2Y2X
 from ...constraints import mixture_constraints, no_constraints
 from ...utils.init import full_factorial
 from ..utils import Factor, FunctionSet, State
@@ -60,9 +61,10 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
         The factors of the experiment.
     metric : :py:class:`SplitkPlotMetricMixin <pyoptex.doe.fixed_structure.splitk_plot.metric.SplitkPlotMetricMixin>`
         The metric object.
-    Y2X : func
+    Y2X : func or None
         The function converting from the design matrix to the
-        model matrix.
+        model matrix. None for no model (the intercept only), for criteria
+        that do not use a model, such as space-filling designs.
     constraints : func
         The constraints function,
         :py:func:`no_constraints <pyoptex.doe.constraints.no_constraints>`
@@ -77,6 +79,10 @@ def default_fn(factors, metric, Y2X, constraints=no_constraints, init=initialize
     fn : :py:class:`FunctionSet <pyoptex.doe.fixed_structure.utils.FunctionSet>`
         The function set.
     """
+
+    # Without a model, the intercept only
+    if Y2X is None:
+        Y2X = model2Y2X(pd.DataFrame([[0] * len(factors)], columns=[str(f.name) for f in factors]), factors)
 
     # Check if factors contain mixtures
     if any(f.is_mixture for f in factors):
@@ -167,12 +173,14 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
 
     # Extract parameter arrays
     col_names = [str(f.name) for f in factors]
-    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors])
-    effect_levels = np.array([f.re.level for f in factors])
+    effect_types = np.array([1 if f.is_continuous else len(f.levels) for f in factors], dtype=np.int64)
+    effect_levels = np.array([f.re.level for f in factors], dtype=np.int64)
     coords = [f.coords_ for f in factors]
 
     # Encode the coordinates
-    colstart = np.concatenate(([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))))
+    colstart = np.concatenate(
+        ([0], np.cumsum(np.where(effect_types == 1, effect_types, effect_types - 1))), dtype=np.int64
+    )
 
     # Alphas and thetas
     alphas = np.cumprod(plot_sizes[::-1])[::-1]
@@ -230,7 +238,6 @@ def create_parameters(factors, fn, prior=None, grps=None, use_formulas=True):
             "the initialization would keep trying to correct the prior runs. "
             "Use the fixed-structure or CODEX route, or remove those runs from the prior."
         )
-        fn.constraintso.clear()  # Clear to permit pickling for multiprocessing
         alphas_old = np.cumprod(old_plot_sizes[::-1])[::-1]
         for i, f in enumerate(factors):
             if f.re.level != 0:
@@ -317,7 +324,6 @@ def create_splitk_plot_design(params, n_tries=10, max_it=10000, validate=False):
     # Check before the random starts that the constraints leave runs (else the initialization retries forever)
     if prod(len(c) for c in params.coords) <= 200_000:
         excluded = params.fn.constraints(full_factorial(params.colstart, params.coords))
-        params.fn.constraints.clear()  # Clear to permit pickling for multiprocessing
         if np.all(excluded):
             raise ValueError("No run satisfies the constraints. Check the constraints and the factor levels.")
 

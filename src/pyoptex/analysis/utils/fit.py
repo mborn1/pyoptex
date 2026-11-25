@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from sklearn.metrics import r2_score
-from statsmodels.regression.mixed_linear_model import VCSpec
+from statsmodels.regression.mixed_linear_model import MixedLMResultsWrapper, VCSpec
 
 from ...utils.design import obs_var_from_Zs
 
@@ -111,6 +111,13 @@ def fit_ols(X, y):
     return fit
 
 
+class _MixedLMResults(MixedLMResultsWrapper):
+    @cached_property
+    def rsquared_adj(self):
+        """The adjusted r-square of :py:func:`r2adj <pyoptex.analysis.utils.fit.r2adj>`, computed only when read."""
+        return r2adj(self)
+
+
 def fit_mixedlm(X, y, groups):
     """
     Wrapper to fit a statsmodels Mixed LM model. It includes
@@ -151,16 +158,15 @@ def fit_mixedlm(X, y, groups):
         [[dummy.to_numpy()] for dummy in dummies],
     )
 
-    # Fit the model
-    fit = sm.MixedLM(y, X, np.ones(len(X)), exog_vc=exog_vc).fit()
+    # Fit the model, in results with a lazy rsquared_adj
+    fit = _MixedLMResults(sm.MixedLM(y, X, np.ones(len(X)), exog_vc=exog_vc).fit()._results)
 
     # If unable to estimate random effect variance, set to zero to avoid instability (similar to lme4)
     nans = np.isnan(fit.bse[fit.k_fe :])
     fit.params[fit.k_fe :][nans] = 0
     fit.vcomp[nans] = 0
 
-    # Add additional values
-    fit.rsquared = cached_property(lambda self: r2_score(self.model.endog, self.predict(self.model.exog)))
-    fit.rsquared_adj = cached_property(lambda self: r2adj(self))
+    # Add the r-square (a number, so that the fit can be pickled; it is cheap)
+    fit.rsquared = r2_score(fit.model.endog, fit.predict(fit.model.exog))
 
     return fit
