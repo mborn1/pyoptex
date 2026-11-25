@@ -8,7 +8,7 @@ from tqdm import tqdm as tqdm_
 from .accept import ExponentialAccept
 
 
-def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01, allow_duplicate=False, tqdm=True):
+def simulate_sams(model, oversized_model_size, accept_fn=None, nb_models=10, minprob=0.01, allow_duplicate=False, tqdm=True):
     """
     Sample models using SAMS algorithm.
 
@@ -16,7 +16,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     ----------
     model : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
         The model to fit such as an OLS or a mixed model.
-    model_size : int
+    oversized_model_size : int
         The total size of each overfitted model.
     accept_fn : func(d)
         The acceptance function. Defaults to the
@@ -34,7 +34,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
+        two arrays of size `oversized_model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
     """
     # Initialize variables
@@ -44,12 +44,12 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     accept_fn.reset()
 
     # Initialize model storage
-    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
+    rdtype = np.dtype([("model", np.int64, oversized_model_size), ("coeff", np.float64, oversized_model_size), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
-    models = np.zeros((nb_models, model_size), dtype=np.int64)
+    models = np.zeros((nb_models, oversized_model_size), dtype=np.int64)
 
     # Create initial model
-    m = np.zeros(model_size, dtype=np.int64)
+    m = np.zeros(oversized_model_size, dtype=np.int64)
     m = model.init(m)
 
     # Compute initial metric
@@ -96,7 +96,7 @@ def simulate_sams(model, model_size, accept_fn=None, nb_models=10, minprob=0.01,
     return results
 
 
-def simulate_all(model, model_size, tqdm=True):
+def simulate_all(model, oversized_model_size, tqdm=True):
     """
     Sample and fits all possible models.
 
@@ -104,7 +104,7 @@ def simulate_all(model, model_size, tqdm=True):
     ----------
     model : :py:class:`Model <pyoptex.analysis.estimators.sams.models.model.Model>`
         The model to fit such as an OLS or a mixed model.
-    model_size : int
+    oversized_model_size : int
         The total size of each overfitted model.
     tqdm : bool
         Whether to use tqdm to track the progress.
@@ -113,15 +113,15 @@ def simulate_all(model, model_size, tqdm=True):
     -------
     results : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
+        two arrays of size `oversized_model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
     """
     # Generate all possible model combinations
-    models = model.all(model_size)
+    models = model.all(oversized_model_size)
     nb_models = len(models)
 
     # Initialize model storage
-    rdtype = np.dtype([("model", np.int64, model_size), ("coeff", np.float64, model_size), ("metric", np.float64)])
+    rdtype = np.dtype([("model", np.int64, oversized_model_size), ("coeff", np.float64, oversized_model_size), ("metric", np.float64)])
     results = np.zeros(nb_models, dtype=rdtype)
 
     # Compute the metrics for all

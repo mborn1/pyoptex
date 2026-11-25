@@ -10,7 +10,7 @@ from ....utils.model import sample_model_dep_onebyone
 
 
 def entropies_approx(
-    submodels, freqs, model_size, dep, mode, forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6
+    submodels, freqs, oversized_model_size, dep, mode, forced=None, N=10000, sampler=sample_model_dep_onebyone, eps=1e-6
 ):
     """
     Compute the approximate entropy by sampling N random models
@@ -33,7 +33,7 @@ def entropies_approx(
         The list of top submodels for each size.
     freqs : np.array(1d)
         The frequencies of these submodels in the raster plot.
-    model_size : int
+    oversized_model_size : int
         The size of the overfitted models.
         The overfitted model includes the forced model,
         and its size must thus be larger than the forced model.
@@ -48,7 +48,7 @@ def entropies_approx(
     N : int
         The number of random samples to draw to compute the
         theoretical frequency of a submodel.
-    sampler : func(dep, model_size, N, forced, mode)
+    sampler : func(dep, oversized_model_size, N, forced, mode)
         The sampler to use when generating random hereditary models.
     eps : float
         A numerical stability parameter in computing the entropy.
@@ -59,7 +59,7 @@ def entropies_approx(
         An array of floats of the same length as the submodels.
     """
     # Generate random samples
-    samples = sampler(dep, model_size, N, forced, mode)
+    samples = sampler(dep, oversized_model_size, N, forced, mode)
 
     # Convert samples to a boolean array
     samples = int2bool(samples, len(dep))
@@ -85,7 +85,7 @@ def entropies_approx(
     return entropies
 
 
-def count_models(max_model, model_size, model=None):
+def count_models(max_model, oversized_model_size, model=None):
     """
     Counts the number of models of a given size in the max model
     assuming weak heredity.
@@ -98,7 +98,7 @@ def count_models(max_model, model_size, model=None):
     max_model : (n_main, n_tfi, n_quad)
         The number of main, tfi and quadratic effects in the main model.
         Each time the total amount.
-    model_size : int
+    oversized_model_size : int
         The size of the overfitted models.
     model : (me_pp, me_pm, me_mm, mtfi, mquad)
         The submodel parameters.
@@ -130,24 +130,24 @@ def count_models(max_model, model_size, model=None):
 
     # Count models
     count = 0
-    for ypp in range(0, model_size + 1 - terms):
+    for ypp in range(0, oversized_model_size + 1 - terms):
         p1 = comb(wpp - me_pp, ypp)
-        for ypm in range(1 if me == 0 and ypp == 0 else 0, model_size + 1 - terms - ypp):
+        for ypm in range(1 if me == 0 and ypp == 0 else 0, oversized_model_size + 1 - terms - ypp):
             p2 = comb(wpm - me_pm, ypm)
-            for ymm in range(0, model_size + 1 - terms - ypp - ypm):
+            for ymm in range(0, oversized_model_size + 1 - terms - ypp - ypm):
                 p3 = comb(wmm - me_mm, ymm)
                 y1 = ypp + ypm + ymm
                 for y2 in range(0, me_pp + ypp - mquad + 1):
                     p4 = comb(me_pp + ypp - mquad, y2)
                     P = (ypp + ypm) * (wpp + wpm - me_pp - me_pm - 1) - comb(ypp + ypm, 2)
                     Q = (me_pp + me_pm) * (wpp + wpm - 1) - comb(me_pp + me_pm, 2) - mtfi
-                    p5 = comb(P + Q, model_size - terms - y1 - y2)
+                    p5 = comb(P + Q, oversized_model_size - terms - y1 - y2)
                     count += p1 * p2 * p3 * p4 * p5
 
     return count
 
 
-def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
+def entropies(submodels, freqs, oversized_model_size, max_model, eps=1e-6):
     """
     Compute the entropies of the submodels given the total set of models.
     Please read the warning in the documentation on customizing SAMS.
@@ -162,7 +162,7 @@ def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
         The submodels to compute the entropy for
     freqs : np.array(1d)
         An array of (observed) frequencies from each submodel
-    model_size : int
+    oversized_model_size : int
         The size of the overfitted models.
         The overfitted model includes the forced model.
     max_model : (nquad, ntwo, nlin)
@@ -185,7 +185,7 @@ def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
     max_model = (nmain + 1, nint, nquad)
 
     # Count total number of models
-    ct = count_models(max_model, model_size)
+    ct = count_models(max_model, oversized_model_size)
 
     # Initialize entropies
     entropies = np.empty(len(submodels), dtype=np.float64)
@@ -203,7 +203,7 @@ def entropies(submodels, freqs, model_size, max_model, eps=1e-6):
         model = (me_pp, me_pm, me_mm, mtfi, mquad)
 
         # Theoretical frequency
-        theoretical_freq = count_models(max_model, model_size, model) / ct
+        theoretical_freq = count_models(max_model, oversized_model_size, model) / ct
 
         # Observed frequency
         obs_freq = freqs[i]

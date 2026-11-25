@@ -53,9 +53,12 @@ class SamsRegressor(MultiRegressionMixin):
         the normalized, encoded model matrix. This model must itself fulfill the
         heredity constraints.
     model_size : int
-        The size of the overfitted models. Defaults to the number of runs
-        divided by three. The overfitted model includes the forced model,
-        and its size must thus be larger than the forced model.
+        The maximum size of the models SAMS aims to identify — the largest
+        plausible size of the true model (s_max in Wolters & Bingham, 2011).
+        A good-model set of slightly larger, overfitted models is collected,
+        and candidate models of size up to model_size are distilled from it.
+        Must exceed the forced-model size, since every model contains the
+        forced terms. Defaults to n_runs // 3.
     nb_models : int or 'all'
         The number of unique models to accept during the sams procedure.
         If 'all' then all possible models are fitted.
@@ -86,11 +89,12 @@ class SamsRegressor(MultiRegressionMixin):
         The number of top submodels for a fixed size to retrieve for entropy
         calculations.
     nterms_bnb : None or int or iterable(int)
-        The fixed sizes of submodels to apply the branch-and-bound algorithm
-        on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-        as recommended by the original paper. If an int, every size from
-        one until the specified number is tested. If an iterable, only the
-        values from the iterable are tested.
+        The submodel sizes at which the branch-and-bound search is run.
+        If None, every size from just above the forced-model size up to
+        `model_size` (inclusive) is searched, following Wolters & Bingham
+        (2011). If an int, every size from above the forced model up to and
+        including the given value is searched. If an iterable, only the
+        listed sizes are searched.
     bnb_timeout : int
         The maximum number of seconds to run the branch-and-bound algorithm for.
         Clear submodels in the raster plot will not require much time in
@@ -98,7 +102,7 @@ class SamsRegressor(MultiRegressionMixin):
         algorithm would require too much time, most likely low entropy models
         are the result and the computation can be halted prematurely. Defaults
         to three minutes.
-    entropy_sampler : func(dep, model_size, N, forced, mode)
+    entropy_sampler : func(dep, oversized_model_size, N, forced, mode)
         The sampler to use when generating random hereditary models. See the
         documentation on customizing SAMS for an indication on which sampler to use.
     entropy_sampling_N : int
@@ -113,7 +117,7 @@ class SamsRegressor(MultiRegressionMixin):
         A SAMS model used in sampling and fitting data during the SAMS procedure.
     results\\_ : np.array(1d)
         A numpy array with a special datatype where each element contains
-        two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
+        two arrays of size `oversized_model_size` ('model', np.int64), ('coeff', np.float64),
         and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         These are the returned models from the SAMS procedure.
     models\\_ : list(np.array(1d))
@@ -141,8 +145,9 @@ class SamsRegressor(MultiRegressionMixin):
         random_effects=(),
         dependencies=None,
         mode=None,
-        forced_model=None,
+        forced_model=np.array([0]),
         model_size=None,
+        oversized_model_size=None,
         nb_models=10000,
         skipn="auto",
         est_ratios=None,
@@ -183,9 +188,12 @@ class SamsRegressor(MultiRegressionMixin):
             the normalized, encoded model matrix. This model must itself fulfill the
             heredity constraints.
         model_size : int
-            The size of the overfitted models. Defaults to the number of runs
-            divided by three. The overfitted model includes the forced model,
-            and its size must thus be larger than the forced model.
+            The maximum size of the models SAMS aims to identify — the largest
+            plausible size of the true model (s_max in Wolters & Bingham, 2011).
+            A good-model set of slightly larger, overfitted models is collected,
+            and candidate models of size up to model_size are distilled from it.
+            Must exceed the forced-model size, since every model contains the
+            forced terms. Defaults to n_runs // 3.
         nb_models : int or 'all'
             Th number of unique models to accept during the sams procedure.
             If 'all', then all possible models will be fitted.
@@ -216,11 +224,12 @@ class SamsRegressor(MultiRegressionMixin):
             The number of top submodels for a fixed size to retrieve for entropy
             calculations.
         nterms_bnb : None or int or iterable(int)
-            The fixed sizes of submodels to apply the branch-and-bound algorithm
-            on. If None, every size from one to the `model_size` - 2 (inclusive) is tested
-            as recommended by the original paper. If an int, every size from
-            one until the specified number is tested. If an iterable, only the
-            values from the iterable are tested.
+            The submodel sizes at which the branch-and-bound search is run.
+            If None, every size from just above the forced-model size up to
+            `model_size` (inclusive) is searched, following Wolters & Bingham
+            (2011). If an int, every size from above the forced model up to and
+            including the given value is searched. If an iterable, only the
+            listed sizes are searched.
         bnb_timeout : int
             The maximum number of seconds to run the branch-and-bound algorithm for.
             Clear submodels in the raster plot will not require much time in
@@ -228,7 +237,7 @@ class SamsRegressor(MultiRegressionMixin):
             algorithm would require too much time, most likely low entropy models
             are the result and the computation can be halted prematurely. Defaults
             to three minutes.
-        entropy_sampler : func(dep, model_size, N, forced, mode)
+        entropy_sampler : func(dep, oversized_model_size, N, forced, mode)
             The sampler to use when generating random hereditary models. See the
             documentation on customizing SAMS for an indication on which sampler to use.
         entropy_sampling_N : int
@@ -246,6 +255,7 @@ class SamsRegressor(MultiRegressionMixin):
         self.dependencies = dependencies
         self.mode = mode
         self.model_size = model_size
+        self.oversized_model_size = oversized_model_size
         self.nb_models = nb_models
         self.skipn = skipn
         self.est_ratios = est_ratios
@@ -274,14 +284,27 @@ class SamsRegressor(MultiRegressionMixin):
             The output variable.
         """
         super()._regr_params(X, y)
-        self._model_size = self.model_size if self.model_size is not None else int(len(X) / 3)
 
-        # Set some default values
-        self._nterms_bnb = self._model_size - 1 if self.nterms_bnb is None else self.nterms_bnb
-        self._nterms_bnb = (
-            range(len(self.forced_model) + 1, self._nterms_bnb)
-            if isinstance(self._nterms_bnb, int)
-            else self._nterms_bnb
+        if self.model_size is not None and self.oversized_model_size is not None:
+            self._s_max = self.model_size
+            self._oversized_model_size = self.oversized_model_size
+        elif self.model_size is not None:
+            self._s_max = self.model_size
+            self._oversized_model_size = self.model_size + 2
+        elif self.oversized_model_size is not None:
+            self._oversized_model_size = self.oversized_model_size
+            self._s_max = self.oversized_model_size - 2
+        else:
+            self._s_max = len(X) // 3
+            self._oversized_model_size = self._s_max + 2
+
+        forced_len = len(self.forced_model) if self.forced_model is not None else 0
+        self._nterms_bnb = list(
+            range(forced_len + 1, self._s_max + 1)
+            if self.nterms_bnb is None
+            else (range(forced_len + 1, self.nterms_bnb + 1)
+                  if isinstance(self.nterms_bnb, int)
+                  else self.nterms_bnb)
         )
         self._est_ratios = np.ones(len(self._re)) if len(self._re) > 0 and self.est_ratios is None else self.est_ratios
 
@@ -309,12 +332,33 @@ class SamsRegressor(MultiRegressionMixin):
 
         # Validate SAMS inputs
         if self.model_size is not None:
+            assert isinstance(self.model_size, (int, np.integer)), (
+                "model_size must be an integer"
+            )
+        if self.oversized_model_size is not None:
+            assert isinstance(self.oversized_model_size, (int, np.integer)), (
+                "oversized_model_size must be an integer"
+            )
+
+        if self._s_max is not None:
             if self.forced_model is None:
-                assert self.model_size > 0, "The overfitted model size must be a positive number"
+                assert self._s_max > 0, "The model size (s_max) must be a positive number"
             else:
-                assert self.model_size > len(self.forced_model), (
-                    "The overfitted model size must be at least one larger than the forced model"
+                assert self._s_max > len(self.forced_model), (
+                    "model size (s_max) must be at least one larger than the forced model"
                 )
+        assert self._oversized_model_size > self._s_max, (
+            "oversized_model_size must be strictly larger than model_size "
+            "(s_max): the search cannot distil a model larger than the "
+            "oversized models it explores."
+        )
+        forced_len = len(self.forced_model) if self.forced_model is not None else 0
+        for size in self._nterms_bnb:
+            assert forced_len < size <= self._oversized_model_size, (
+                f"BnB submodel size {size} must be greater than the forced-model "
+                f"size ({forced_len}) and at most oversized_model_size "
+                f"({self._oversized_model_size})."
+            )
         assert self.nb_models == "all" or self.nb_models > 0, (
             'Must have at least one model to simulate, nb_models must be larger than zero or "all"'
         )
@@ -376,7 +420,7 @@ class SamsRegressor(MultiRegressionMixin):
         ----------
         results : np.array(1d)
             A numpy array with a special datatype where each element contains
-            two arrays of size `model_size` ('model', np.int64), ('coeff', np.float64),
+            two arrays of size `oversized_model_size` ('model', np.int64), ('coeff', np.float64),
             and one scalar ('metric', np.float64). Results contains `nb_models` elements.
         sizes : iterable(int)
             An iterable of ints with the fixed sizes of the submodels.
@@ -495,7 +539,7 @@ class SamsRegressor(MultiRegressionMixin):
             entropy = entropies_approx(
                 submodels,
                 freqs,
-                self._model_size,
+                self._oversized_model_size,
                 self.dependencies,
                 self.mode,
                 self.forced_model,
@@ -511,7 +555,7 @@ class SamsRegressor(MultiRegressionMixin):
             model_counts = [model_counts.get(e, 0) for e in ("quad", "tfi", "lin")]
 
             # Compute entropy (based on model order)
-            entropy = entropies(submodels, freqs, self._model_size, model_counts)
+            entropy = entropies(submodels, freqs, self._oversized_model_size, model_counts)
 
         return entropy
 
@@ -530,6 +574,17 @@ class SamsRegressor(MultiRegressionMixin):
         assert np.all(self.forced_model < self.n_encoded_features_), (
             "The forced model must have integers smaller than the number of parameters in X"
         )
+        assert self._oversized_model_size <= self.n_encoded_features_, (
+            f"oversized_model_size ({self._oversized_model_size}) cannot exceed "
+            f"the number of candidate features ({self.n_encoded_features_})."
+        )
+        capacity_bound = min(self.n_encoded_features_, len(X))
+        assert self._oversized_model_size <= capacity_bound, (
+            f"oversized_model_size ({self._oversized_model_size}) cannot exceed "
+            f"min(candidate features {self.n_encoded_features_}, runs {len(X)}) "
+            f"= {capacity_bound}. This is a coarse bound; estimable capacity may "
+            f"be lower still in split-plot designs."
+        )
         if self.mode is not None:
             assert self.dependencies.shape[0] == X.shape[1], "Must specify a dependency for each term"
 
@@ -541,11 +596,11 @@ class SamsRegressor(MultiRegressionMixin):
             self.sams_model_ = MixedLMModel(X, y, forced=self.forced_model, mode=self.mode, dep=self.dependencies, V=V)
         accept = ExponentialAccept(T0=(X.shape[0]) * np.var(y) / 10, rho=0.95, kappa=4)
         if self.nb_models == "all":
-            self.results_ = simulate_all(self.sams_model_, self._model_size, tqdm=self.tqdm)
+            self.results_ = simulate_all(self.sams_model_, self._oversized_model_size, tqdm=self.tqdm)
         else:
             self.results_ = simulate_sams(
                 self.sams_model_,
-                self._model_size,
+                self._oversized_model_size,
                 accept_fn=accept,
                 nb_models=self.nb_models,
                 allow_duplicate=self.allow_duplicate_sample,

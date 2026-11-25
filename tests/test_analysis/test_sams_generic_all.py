@@ -36,7 +36,7 @@ def test_sams_generic_all():
         dependencies=dependencies,
         mode="weak",
         forced_model=np.array([0], np.int64),
-        model_size=6,
+        model_size=4,
         nb_models="all",
         skipn=0.7,
     )
