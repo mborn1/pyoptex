@@ -3,7 +3,6 @@ from itertools import product
 import numpy as np
 import pandas as pd
 import pytest
-from scipy import stats
 
 from pyoptex._seed import set_seed
 from pyoptex.doe import fixed_structure
@@ -30,6 +29,7 @@ from pyoptex.doe.classical.evaluate import (
     variance_inflation,
 )
 from pyoptex.doe.fixed_structure.evaluate import evaluate_metrics
+from pyoptex.doe.fixed_structure.evaluate import power as fixed_structure_power
 from pyoptex.doe.fixed_structure.metric import Dopt, Iopt
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
@@ -208,36 +208,52 @@ class TestVarianceInflation:
         assert np.all(np.isinf(variance_inflation(Y, factors, Y2X)[1:]))
 
 
+_POWER_DESIGNS = {
+    # A face-centered CCD with the quadratic model
+    "face-centered CCD": (
+        [{"name": n} for n in "ABC"],
+        {n: "quad" for n in "ABC"},
+        lambda factors: central_composite(factors, alpha="face-centered"),
+    ),
+    # A full factorial with a 3-level categorical factor: one F-test on its 2 columns, and on the 2 of A * C
+    "categorical factorial": (
+        [{"name": "A"}, {"name": "B"}, {"name": "C", "type": "categorical", "levels": ["L1", "L2", "L3"]}],
+        {"A": "tfi", "B": "lin", "C": "tfi"},
+        full_factorial,
+    ),
+}
+
+
 class TestPower:
-    def test_matches_noncentral_f(self):
-        """For one parameter, the two-sided t-test power equals the noncentral F(1, n - p) power."""
-        Y, factors, Y2X = _make_simple_design()
-        pw = power(Y, factors, Y2X, effect_size=1.0, alpha=0.05)
-        lam = 1.0 / (1 / 8)  # effect^2 / var, var = 1/8
-        expected = stats.ncf.sf(stats.f.ppf(0.95, 1, 4), 1, 4, lam)
-        np.testing.assert_allclose(pw, expected, rtol=1e-8)
+    @pytest.mark.parametrize("design", _POWER_DESIGNS.values(), ids=_POWER_DESIGNS.keys())
+    def test_matches_fixed_structure_power(self, design):
+        """
+        The classical power equals the fixed-structure power of the same design and model without random effects:
+        the terms rebuilt from Y2X are those of the model, with the same columns.
+        """
+        specs, effects, make_design = design
+        factors = [Factor(**spec) for spec in specs]
+        fs_factors = [fixed_structure.Factor(**spec) for spec in specs]
+        model = partial_rsm_names(effects)
+        Y = make_design(factors)
 
-    def test_zero_effect_gives_alpha(self):
-        Y, factors, Y2X = _make_simple_design()
-        np.testing.assert_allclose(power(Y, factors, Y2X, effect_size=0.0, alpha=0.1), 0.1, rtol=1e-8)
-
-    def test_increases_with_effect_size(self):
-        Y, factors, Y2X = _make_simple_design()
-        small = power(Y, factors, Y2X, effect_size=0.5)
-        large = power(Y, factors, Y2X, effect_size=2.0)
-        assert np.all(large > small)
-
-    def test_per_parameter_effect_size(self):
-        Y, factors, Y2X = _make_simple_design()
-        pw = power(Y, factors, Y2X, effect_size=np.array([0.0, 1.0, 1.0, 2.0]))
-        assert pw[0] < pw[1] == pw[2] < pw[3]
+        pw = power(Y, factors, model2Y2X(model, factors))
+        fs_params = fixed_structure.create_parameters(
+            fs_factors, fixed_structure.default_fn(fs_factors, Dopt(), model2Y2X(model, fs_factors)), len(Y)
+        )
+        expected = fixed_structure_power(Y, fs_params, model)
+        assert list(pw.columns) == list(expected.columns)
+        assert np.all(np.isfinite(pw.to_numpy()))
+        np.testing.assert_allclose(pw.to_numpy(), expected.to_numpy(), rtol=1e-12)
 
     def test_saturated_design_is_nan(self):
-        """Without degrees of freedom for the error there is no test."""
+        """Without degrees of freedom for the residual (n = p), there is no test."""
         factors = [Factor("A"), Factor("B")]
         Y = full_factorial(factors)
-        Y2X = model2Y2X(partial_rsm_names({"A": "tfi", "B": "tfi"}), factors)  # 4 parameters, 4 runs
-        assert np.all(np.isnan(power(Y, factors, Y2X)))
+        model = partial_rsm_names({"A": "tfi", "B": "tfi"})  # 4 parameters, 4 runs
+        pw = power(Y, factors, model2Y2X(model, factors))
+        assert list(pw.columns) == ["A", "B", "A * B"]
+        assert np.all(np.isnan(pw.to_numpy()))
 
 
 def _fixed_structure_metrics(Y, names, model, n_samples):

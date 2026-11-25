@@ -80,7 +80,9 @@ for name, Y in designs.items():
     info = design_info(Y, factors, Y2X, n_samples=10000)
     vif = variance_inflation(Y, factors, Y2X)
     aliases = alias_matrix(Y, factors, Y2X, Y2X_third)[term_type != "intercept"]
-    pw = power(Y, factors, Y2X, effect_size=1.0, alpha=0.05)
+    # One column per tested term: every model row except the intercept, in the order of the model
+    pw = power(Y, factors, Y2X, sizes=1.0).iloc[0].to_numpy()
+    tested = term_type[term_type != "intercept"]
     results[name] = {
         "D-efficiency (%)": info["d_efficiency"],
         "G-efficiency (%)": info["g_efficiency"],
@@ -88,17 +90,18 @@ for name, Y in designs.items():
         "Max VIF": np.nanmax(vif),
         "Max |alias| with 3rd order": np.max(np.abs(aliases)),
         "Sum of squared aliases": np.sum(aliases**2),
-        "Power, main effects": pw[term_type == "main effect"].mean(),
-        "Power, interactions": pw[term_type == "interaction"].mean(),
-        "Power, quadratic": pw[term_type == "quadratic"].mean(),
+        "Power, main effects": pw[tested == "main effect"].mean(),
+        "Power, interactions": pw[tested == "interaction"].mean(),
+        "Power, quadratic": pw[tested == "quadratic"].mean(),
     }
 
 print(f"=== Classical vs optimal: {nruns} runs, full quadratic model in 3 factors ===")
 print(pd.DataFrame(results).round(3))
 print(
     "\nLower is better for the prediction variance, VIF and aliases; higher for the rest.\n"
-    "Power: two-sided t-test at alpha = 0.05 for a coefficient equal to the error standard\n"
-    "deviation (a main effect of 2 standard deviations from min to max), averaged per term type."
+    "Power: test of each term at alpha = 0.05 (n - p residual df) for a coefficient equal to the\n"
+    "error standard deviation (a main effect of 2 standard deviations from min to max),\n"
+    "averaged per term type."
 )
 
 log_checkpoint("classical_vs_optimal_runs", nruns)

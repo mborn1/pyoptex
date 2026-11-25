@@ -15,13 +15,17 @@ directly:
 * ``average_prediction_variance = -Iopt``
 """
 
+from collections.abc import Callable, Mapping, Sequence
+
 import numpy as np
 import pandas as pd
 from scipy.linalg.lapack import dpstrf
 
 from ...utils.design import encode_design
+from ...utils.factor import Factor
+from ...utils.model import _modelenc2terms
 from ..utils.init import init_single_unconstrained
-from ..utils.power import t_test_power
+from ..utils.power import _power_table
 from .utils import _factor_encoding_params
 
 
@@ -253,22 +257,45 @@ def variance_inflation(Y, factors, Y2X):
     return vif
 
 
-def power(Y, factors, Y2X, effect_size=1.0, alpha=0.05):
+def _tests(factors, Y2X, nmodel):
     """
-    Compute the power of the t-test of each model parameter.
+    The tests of the model of Y2X: one per term except the intercept, with its columns of the model matrix.
+    A Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` gives its terms; a custom Y2X
+    one test per column, named by its index.
+    """
+    assert not any(f.is_mixture for f in factors), "Power for mixture designs is not supported yet"
+    modelenc = getattr(Y2X, "keywords", {}).get("modelenc")
+    if modelenc is None:
+        return [(str(i), np.array([i])) for i in range(nmodel)]
+    _, _, colstart = _factor_encoding_params(factors)
+    return [(name, cols) for name, cols in _modelenc2terms(modelenc, colstart, factors) if np.any(modelenc[cols] != 0)]
 
-    The probability that the two-sided t-test at level *alpha* finds
-    parameter *j* significant when its true coefficient is *effect_size*
-    times the error standard deviation (all other coefficients
-    arbitrary).  The test statistic follows a noncentral t distribution
-    with ``n - p`` degrees of freedom and noncentrality
-    ``effect_size / sqrt((X'X)^{-1}_jj)``.
+
+def power(
+    Y: pd.DataFrame,
+    factors: Sequence[Factor],
+    Y2X: Callable[[np.ndarray], np.ndarray],
+    sizes: float | Sequence[float] | Mapping[str, float] | pd.Series = 1,
+    alpha: float = 0.05,
+) -> pd.DataFrame:
+    """
+    Compute the power of the test of each term of the model (except the intercept).
+
+    Every term is tested against the residual, with ``n - p`` degrees of freedom
+    (*n* runs, *p* model parameters). A term with several columns, such as a
+    categorical factor or its interactions, is tested with one F-test on all its columns.
+
+    The terms come from Y2X, as made by :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+    With a custom Y2X, every column of the model matrix is tested on its own (the
+    intercept column too), and the result's columns are the column indices, which can be renamed.
 
     The coefficients refer to the normalized factors (continuous factors
-    from -1 at ``min`` to +1 at ``max``), so for a main effect an
-    *effect_size* of 1 means the response changes by 2 standard
-    deviations from ``min`` to ``max``.  This is the convention of e.g.
-    JMP's design evaluation (anticipated coefficient 1, RMSE 1).
+    from -1 at ``min`` to +1 at ``max``), so for a main effect a size
+    of 1 means the response changes by 2 standard deviations from
+    ``min`` to ``max``.  This is the convention of e.g. JMP's design
+    evaluation (anticipated coefficient 1, RMSE 1).
+
+    Mixture factors are not supported yet.
 
     Parameters
     ----------
@@ -278,24 +305,28 @@ def power(Y, factors, Y2X, effect_size=1.0, alpha=0.05):
         The factor definitions.
     Y2X : callable
         Function converting the encoded design matrix to the model matrix.
-    effect_size : float or np.ndarray
-        Anticipated coefficient divided by the error standard deviation,
-        one value for all parameters or one per model column.
+    sizes : float, list(float), dict(str, float) or pd.Series
+        The size of the effect of each tested term, or of all of them: the coefficient
+        on the coded scale, in units of the residual standard deviation. The columns of
+        a term with several columns get it with alternating signs.
+        A dict or pd.Series is matched by name, a list by position.
     alpha : float
-        Significance level of the test.
+        The significance level.
 
     Returns
     -------
-    power : np.ndarray
-        1-D array with the power for every model column. ``np.nan`` when
-        there are no degrees of freedom left for the error (``n <= p``),
-        zero for parameters that are not estimable.
+    power : pd.DataFrame
+        The power, one row and one column per tested term.
+        NaN when no degrees of freedom are left for the residual (``n = p``).
+
+    Raises
+    ------
+    AssertionError
+        If the model cannot be estimated from the design (its model matrix does not have full column rank).
     """
     X = _prepare_X(Y, factors, Y2X)
-    n, p = X.shape
-    if n <= p:
-        return np.full(p, np.nan)
-    return t_test_power(_estimation_variance(X), n - p, effect_size, alpha)
+    tests = _tests(factors, Y2X, X.shape[1])
+    return _power_table(tests, X, [], np.eye(len(X))[np.newaxis], sizes, alpha, "satterthwaite")
 
 
 def g_efficiency(Y, factors, Y2X, n_samples=10000):
