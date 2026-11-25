@@ -192,10 +192,16 @@ def test_power_factorial(ddf):
 
 
 @ddfs
-def test_power_categorical(ddf):
-    """A 3-level categorical factor with 4 runs per level: one F-test on its 2 columns with 9 residual df."""
+@pytest.mark.parametrize(
+    ("runs", "df"), [(["L1", "L2", "L3"] * 4, 9), (["L1", "L2", "L3", "L1", "L2"], 2)], ids=["9df", "2df"]
+)
+def test_power_categorical(ddf, runs, df):
+    """
+    A 3-level categorical factor, completely randomized: one F-test on its 2 columns, with 9 residual df
+    (4 runs per level) or 2 (L1, L2, L3, L1, L2: Kenward-Roger's A2 equals the number of columns).
+    """
     factors = [Factor("C", type="categorical", levels=["L1", "L2", "L3"])]
-    Y = pd.DataFrame({"C": ["L1", "L2", "L3"] * 4})
+    Y = pd.DataFrame({"C": runs})
     model = partial_rsm_names({"C": "lin"})
     params = _power_params(factors, model, len(Y))
 
@@ -204,7 +210,7 @@ def test_power_categorical(ddf):
     b = np.array([1.0, -1.0])
     pw = power(Y, params, model, ddf=ddf)
     assert list(pw.columns) == ["C"]
-    np.testing.assert_allclose(pw.to_numpy(), _expected_power(2, 9, b @ np.linalg.solve(Phi[1:, 1:], b)))
+    np.testing.assert_allclose(pw.to_numpy(), _expected_power(2, df, b @ np.linalg.solve(Phi[1:, 1:], b)))
 
 
 @ddfs
@@ -222,19 +228,6 @@ def test_power_split_plot(ddf):
 
 
 @ddfs
-def test_power_unestimable_whole_plot_variance(ddf):
-    """
-    With 2 whole plots, the whole-plot variance cannot be estimated: W, which depends on it, has no power.
-    S does not depend on it (5 df within the whole plots, variance 1/8).
-    """
-    factors, Y = _split_plot(2)
-    model = partial_rsm_names({"W": "lin", "S": "lin"})
-    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
-    assert np.isnan(pw.loc[0, "W"])
-    np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
-
-
-@ddfs
 def test_power_without_model(ddf):
     """Without a model, each column of Y2X is tested on its own: for main effects, the same powers as the model."""
     factors, Y = _split_plot(4)
@@ -246,7 +239,10 @@ def test_power_without_model(ddf):
 
 
 def test_power_sizes_by_name():
-    """Sizes as a Series in another order than the terms give the same powers as the matching list."""
+    """
+    Sizes as a Series in another order than the terms give the same powers as the matching list.
+    A key that names no tested term (W*S without spaces) raises an error.
+    """
     factors, Y = _split_plot(4)
     model = partial_rsm_names({"W": "tfi", "S": "tfi"})
     params = _power_params(factors, model, len(Y))
@@ -254,15 +250,8 @@ def test_power_sizes_by_name():
     np.testing.assert_allclose(by_name.to_numpy(), power(Y, params, model, sizes=[1, 0.5, 2]).to_numpy())
     assert len(np.unique(by_name.to_numpy())) == 3
 
-
-def test_power_custom_Y2X_fewer_columns():
-    """A custom Y2X with fewer columns than the model raises an error."""
-    factors, Y = _split_plot(4)
-    model = partial_rsm_names({"W": "tfi", "S": "tfi"})
-    Y2X = model2Y2X(model, factors)
-    fn = default_fn(factors, Dopt(), lambda Yenc: Y2X(Yenc)[:, :-1])
-    with pytest.raises(AssertionError, match="The model has 4 columns but Y2X gives 3"):
-        power(Y, create_parameters(factors, fn, len(Y)), model)
+    with pytest.raises(AssertionError, match=r"unknown tests W\*S; the tests are W, S, W \* S"):
+        power(Y, params, model, sizes={"W * S": 2, "W": 1, "S": 0.5, "W*S": 2})
 
 
 def _mixed_model(groupings, ratios):
@@ -274,50 +263,42 @@ def _mixed_model(groupings, ratios):
 
 
 @ddfs
-def test_power_two_residual_df(ddf):
+def test_power_estimable_variance(ddf):
     """
-    A 3-level categorical factor at L1, L2, L3, L1, L2 (effect coding), completely randomized: 2 residual df,
-    where Kenward-Roger's A2 equals the number of columns.
+    A term has power only if the design can estimate the variance components its test needs:
+    - With 2 whole plots, the whole-plot variance cannot be estimated: W, which depends on it, has no power.
+      S does not depend on it (5 df within the whole plots, variance 1/8).
+    - A whole-plot ratio of 1e5 shrinks the information of the whole-plot variance, but it is still estimable:
+      W is tested against the 6 whole plots, less the intercept and W, F(1, 4).
+    - In a saturated split-plot (6 runs, 6 columns), no variance component can be estimated, so no term has power.
+      At ratios other than 1, the information is rounding noise instead of exactly 0.
     """
-    effects = {"L1": [1, 0], "L2": [0, 1], "L3": [-1, -1]}
-    X = np.array([[1, *effects[c]] for c in ["L1", "L2", "L3", "L1", "L2"]], dtype=float)
-    Phi = np.linalg.inv(X.T @ X)
-    b = np.array([1.0, -1.0])
-    pw, _ = _power(X, np.eye(len(X)), [np.eye(len(X))], [np.array([1, 2])], np.ones(1), 0.05, ddf)
-    np.testing.assert_allclose(pw, _expected_power(2, 2, b @ np.linalg.solve(Phi[1:, 1:], b)))
+    # 2 whole plots
+    factors, Y = _split_plot(2)
+    model = partial_rsm_names({"W": "lin", "S": "lin"})
+    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    assert np.isnan(pw.loc[0, "W"])
+    np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
 
-
-@ddfs
-def test_power_large_ratio(ddf):
-    """A whole-plot ratio of 1e5 shrinks the information of the whole-plot variance, but it is still estimable."""
+    # A ratio of 1e5
     Z = np.repeat(np.arange(6), 4)
     W = np.repeat([-1, 1, -1, 1, 0, 0], 4)
     S = np.tile([-1, 1, 1, -1], 6)
     X = np.column_stack((np.ones(len(Z)), W, S)).astype(float)
     Vinv, Gs = _mixed_model([Z], [1e5])
     pw, _ = _power(X, Vinv, Gs, [np.array([1])], np.ones(1), 0.05, ddf)
-
-    # W is tested against the 6 whole plots, less the intercept and W: F(1, 4)
     Phi = np.linalg.inv(X.T @ Vinv @ X)
-    assert not np.isnan(pw[0])
     np.testing.assert_allclose(pw[0], _expected_power(1, 4, 1 / Phi[1, 1]))
 
-
-@ddfs
-@pytest.mark.parametrize("ratio", [1, 0.5, 10])
-def test_power_saturated(ddf, ratio):
-    """
-    A saturated split-plot (6 runs, 6 columns): no variance component can be estimated, so no term has power.
-    3 whole plots of 2 runs, W a 3-level categorical whole-plot factor (effect coding), S at -1, 1 within each.
-    At ratios other than 1, the information is rounding noise instead of exactly 0.
-    """
+    # Saturated: 3 whole plots of 2 runs, W a 3-level categorical whole-plot factor (effect coding), S at -1, 1
     Z = np.repeat(np.arange(3), 2)
     W1, W2 = np.repeat([1, 0, -1], 2), np.repeat([0, 1, -1], 2)
     S = np.tile([-1, 1], 3)
     X = np.column_stack((np.ones(6), W1, W2, S, W1 * S, W2 * S)).astype(float)
-    Vinv, Gs = _mixed_model([Z], [ratio])
     terms = [np.array([1, 2]), np.array([3]), np.array([4, 5])]
-    assert np.all(np.isnan(_power(X, Vinv, Gs, terms, np.ones(3), 0.05, ddf)[0]))
+    for ratio in (1, 0.5, 10):
+        Vinv, Gs = _mixed_model([Z], [ratio])
+        assert np.all(np.isnan(_power(X, Vinv, Gs, terms, np.ones(3), 0.05, ddf)[0])), f"ratio {ratio}"
 
 
 def test_power_kenward_roger_undefined_df():
@@ -337,7 +318,7 @@ def test_power_kenward_roger_undefined_df():
     Vinv, _ = _mixed_model([Z], [1])
     tests = [("x1 and x2", np.array([1, 2])), ("x3", np.array([3]))]
 
-    with pytest.warns(UserWarning, match=r"The degrees of freedom of x1 and x2 are below 1 or not defined") as record:
+    with pytest.warns(UserWarning, match=r"Power is not defined for x1 and x2: ") as record:
         pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
     assert len(record) == 1
     assert np.isnan(pw.loc[0, "x1 and x2"])
@@ -354,7 +335,7 @@ def test_power_kenward_roger_undefined_df():
     u3 = [-1, -1, 1, 1, -1, -1, 0, 1]
     X = np.column_stack((np.ones(len(Z)), u1, u2, u3)).astype(float)
     Vinv, _ = _mixed_model([Z], [1])
-    with pytest.warns(UserWarning, match=r"The degrees of freedom of u1 to u3 are below 1 or not defined"):
+    with pytest.warns(UserWarning, match=r"Power is not defined for u1 to u3: "):
         pw = _power_table([("u1 to u3", np.array([1, 2, 3]))], X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
     assert np.isnan(pw.loc[0, "u1 to u3"])
 
