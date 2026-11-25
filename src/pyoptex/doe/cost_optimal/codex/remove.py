@@ -66,6 +66,15 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
     are selected and removed one-by-one for minimal metric loss and
     maximal cost reduction.
 
+    Assumes that for any over-budget design, at least one run's removal
+    reduces the total normalized cost. This holds when adding runs never
+    makes a design cheaper overall, even if individual removals may
+    increase cost through redistribution across shared resources. If no
+    such removal exists, the function tries removing the insert if was
+    not already able to due prevent_insert being set to True. If still
+    no removal would lead to a valid design, a RuntimeError is raised,
+    warning the user of the infinite loop.
+
     Parameters
     ----------
     state : :py:class:`State <pyoptex.doe.cost_optimal.utils.State>`
@@ -138,6 +147,11 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             mt = np.sum(state.cost_Y / state.max_cost * np.array([c.size for c, _, _ in state.costs])) / len(
                 state.Y
             ) - np.sum(staten.cost_Y / staten.max_cost * np.array([c.size for c, _, _ in staten.costs])) / len(staten.Y)
+
+            if mt <= 0:
+                keep[k] = True
+                continue
+            
             metric_temp = (state.metric - staten.metric) / (mt / len(state.costs))
 
             # Minimize
@@ -152,6 +166,18 @@ def remove_optimal_onebyone(state, params, prevent_insert=False):
             keep[k] = True
 
         # Drop the run
+        if best_k < 0:
+            if prevent_insert and insert_loc >= 0:
+                # Nothing else reduces cost: the insert caused this, so allow
+                # removing it (undoing the move) before giving up.
+                prevent_insert = False
+                continue
+            raise RuntimeError(
+                "No run removal reduces the total normalized cost, so the design "
+                "cannot be brought back within budget. This indicates a cost "
+                "function where removing runs can make a design more expensive "
+                "overall, which this removal function does not support."
+            )
         state = best_state
         if best_k == insert_loc:
             params.stats["removed_insert"][params.stats["it"]] = True
