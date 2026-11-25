@@ -245,6 +245,16 @@ def test_power_without_model(ddf):
     np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), power(Y, params, model, ddf=ddf).to_numpy())
 
 
+def test_power_sizes_by_name():
+    """Sizes as a Series in another order than the terms give the same powers as the matching list."""
+    factors, Y = _split_plot(4)
+    model = partial_rsm_names({"W": "tfi", "S": "tfi"})
+    params = _power_params(factors, model, len(Y))
+    by_name = power(Y, params, model, sizes=pd.Series({"W * S": 2, "W": 1, "S": 0.5}))
+    np.testing.assert_allclose(by_name.to_numpy(), power(Y, params, model, sizes=[1, 0.5, 2]).to_numpy())
+    assert len(np.unique(by_name.to_numpy())) == 3
+
+
 def test_power_custom_Y2X_fewer_columns():
     """A custom Y2X with fewer columns than the model raises an error."""
     factors, Y = _split_plot(4)
@@ -314,6 +324,8 @@ def test_power_kenward_roger_undefined_df():
     """
     In a very small design, Kenward-Roger's df is negative (pbkrtest: -0.12) for the test of x1 and x2:
     NaN with a warning that names it. x3 has a defined df. Satterthwaite gives a value (df 2), without a warning.
+    In another one, Kenward-Roger's df of a 3-column term is 1.85, but its F-scaling is negative, and with it
+    the noncentrality: NaN with the warning.
     """
     Z = np.array([0, 1, 2, 2, 2, 3, 3, 3])
     x1 = [1, 0, 1, 1, 1, -1, -1, -1]
@@ -325,7 +337,7 @@ def test_power_kenward_roger_undefined_df():
     Vinv, _ = _mixed_model([Z], [1])
     tests = [("x1 and x2", np.array([1, 2])), ("x3", np.array([3]))]
 
-    with pytest.warns(UserWarning, match=r"not defined for x1 and x2 in this small design") as record:
+    with pytest.warns(UserWarning, match=r"The degrees of freedom of x1 and x2 are below 1 or not defined") as record:
         pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
     assert len(record) == 1
     assert np.isnan(pw.loc[0, "x1 and x2"])
@@ -334,6 +346,17 @@ def test_power_kenward_roger_undefined_df():
         warnings.simplefilter("error")
         pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "satterthwaite")
     np.testing.assert_allclose(pw.loc[0, "x1 and x2"], 0.100441, atol=1e-5)
+
+    # A negative noncentrality
+    Z = np.array([0, 1, 1, 1, 1, 2, 3, 3])
+    u1 = [1, 1, 0, 0, 1, 1, -1, 1]
+    u2 = [1, -1, 1, 1, -1, 1, 1, 1]
+    u3 = [-1, -1, 1, 1, -1, -1, 0, 1]
+    X = np.column_stack((np.ones(len(Z)), u1, u2, u3)).astype(float)
+    Vinv, _ = _mixed_model([Z], [1])
+    with pytest.warns(UserWarning, match=r"The degrees of freedom of u1 to u3 are below 1 or not defined"):
+        pw = _power_table([("u1 to u3", np.array([1, 2, 3]))], X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
+    assert np.isnan(pw.loc[0, "u1 to u3"])
 
 
 def test_power_kenward_roger_pbkrtest():

@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 from ...utils.design import encode_design, obs_var_from_Zs
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
-from ..utils.power import _model_tests, _power_table
+from ..utils.power import _power_table, _term_columns
 from .metric import Iopt
 from .utils import Parameters, obs_var_Zs
 
@@ -352,7 +352,7 @@ def power(
     Y: pd.DataFrame,
     params: Parameters,
     model: pd.DataFrame | None = None,
-    sizes: float | Sequence[float] = 1,
+    sizes: float | Sequence[float] | Mapping[str, float] | pd.Series = 1,
     alpha: float = 0.05,
     ddf: str = "kenward-roger",
 ) -> pd.DataFrame:
@@ -371,10 +371,11 @@ def power(
         The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
         Without a model (None), each column of Y2X is tested on its own (also an intercept column),
         for a custom Y2X; the result is a DataFrame whose columns (the column indices) can be renamed.
-    sizes : float or list(float)
+    sizes : float, list(float), dict(str, float) or pd.Series
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
         a term with several columns get it with alternating signs.
+        A dict or pd.Series gives it per term name (every tested term must be in it), a list per position.
     alpha : float
         The significance level.
     ddf : str
@@ -384,12 +385,11 @@ def power(
     -------
     power : pd.DataFrame
         The power, one row per set of a-priori variance ratios and one column per tested term.
-        NaN when the design cannot estimate a variance component that the test depends on.
-        NaN also with Kenward-Roger when its degrees of freedom are not defined, as can happen
-        in very small designs; a warning is issued, and ddf="satterthwaite" gives a value.
+        NaN when the design cannot estimate a variance component the test needs,
+        or when the test's degrees of freedom are below 1 or not defined; a warning names the latter.
     """
     X, nmodel, Zs, Vinv = _model_matrices(Y, params)
-    tests = _model_tests(params, model, nmodel)
+    tests = _term_columns(params, model, nmodel)
     return _power_table(tests, X, list(Zs), Vinv, sizes, alpha, ddf)
 
 
