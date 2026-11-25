@@ -238,9 +238,11 @@ def _power_table(
     names = [name for name, _ in tests]
     columns = [cols for _, cols in tests]
     if isinstance(sizes, Mapping | pd.Series):
+        # Iterating a Series gives its values, not its names
+        sizes = dict(sizes)
         missing = [name for name in names if name not in sizes]
         assert not missing, f"sizes has no value for the tests {', '.join(missing)}"
-        unknown = [str(key) for key in sizes.keys() if key not in names]
+        unknown = [str(key) for key in sizes if key not in names]
         assert not unknown, f"sizes has values for unknown tests {', '.join(unknown)}; the tests are {', '.join(names)}"
         size = np.array([sizes[name] for name in names], dtype=np.float64)
     elif np.ndim(sizes) == 0:
