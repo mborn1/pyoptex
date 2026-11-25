@@ -665,30 +665,34 @@ Depending on the type, the imports are different.
 For a fixed structure design
 
 >>> from pyoptex.doe.fixed_structure.evaluate import (
->>>     evaluate_metrics, plot_fraction_of_design_space, 
+>>>     evaluate_metrics, plot_fraction_of_design_space,
 >>>     plot_estimation_variance_matrix, estimation_variance,
->>>     plot_prediction_variance
+>>>     power, plot_prediction_variance
 >>> )
 
 For a cost-optimal design (generalized staggered-level design) 
 
 >>> from pyoptex.doe.cost_optimal.evaluate import (
->>>     evaluate_metrics, plot_fraction_of_design_space, 
+>>>     evaluate_metrics, plot_fraction_of_design_space,
 >>>     plot_estimation_variance_matrix, estimation_variance,
->>>     plot_prediction_variance
+>>>     power, plot_prediction_variance
 >>> )
 
 Once imported, we can evaluate the design. The first command prints the metric value
 for the different provided metrics to the console. The second command
 plots a fraction of design space plot. The third command plots the covariance
-matrix of the parameter estimates. Finally, the last commands prints the variances
-of the parameter estimates to the console.  The `params` are the simulation parameters 
+matrix of the parameter estimates. The fourth command prints the variances
+of the parameter estimates to the console. The last command prints the power of each effect's test,
+for an effect size on the coded scale in units of the residual standard deviation.
+The degrees of freedom are Kenward-Roger by default, as in JMP; `ddf="satterthwaite"` uses
+Satterthwaite's, the default of R's lmerTest. The `params` are the simulation parameters
 which are passed to the design generation functions.
 
 >>> print(evaluate_metrics(Y, params, [metric, Dopt(), Iopt(), Aopt()]))
 >>> plot_fraction_of_design_space(Y, params).show()
 >>> plot_estimation_variance_matrix(Y, params, model).show()
 >>> print(estimation_variance(Y, params))
+>>> print(power(Y, params, model))
 
 .. list-table::
   :align: center

@@ -625,6 +625,37 @@ def model2encnames(model, effect_types, col_names=None):
     return col_names_model
 
 
+def _model2termcols(model: pd.DataFrame, effect_types: np.ndarray) -> list[tuple[str, np.ndarray]]:
+    """
+    Retrieves the name of every term of the model and its columns in the
+    encoded model matrix. A categorical factor gives (levels - 1) columns
+    per term that it is in.
+
+    Parameters
+    ----------
+    model : pd.DataFrame
+        The model, one row per term, with its columns in the order of the effect types.
+    effect_types : np.array(1d)
+        An array indicating whether the effect is continuous (=1)
+        or categorical (with >1 levels).
+
+    Returns
+    -------
+    termcols : list(tuple(str, np.array(1d)))
+        The name of each term (as :py:func:`model2names <pyoptex.utils.model.model2names>`)
+        and its columns in the encoded model matrix (as :py:func:`encode_model <pyoptex.utils.model.encode_model>`).
+    """
+    col_names = [str(col) for col in model.columns]
+    terms = model.to_numpy()
+
+    # The number of encoded columns of each term: the rows that encode_model makes from it
+    ncols = [len(encode_model(term[np.newaxis], effect_types, col_names)) for term in terms]
+    starts = np.concatenate(([0], np.cumsum(ncols, dtype=np.int64)))
+
+    names = model2names(model)
+    return [(str(names[i]), np.arange(starts[i], starts[i + 1])) for i in range(len(terms))]
+
+
 ################################################
 
 

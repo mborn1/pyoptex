@@ -2,7 +2,7 @@
 Module containing all the evaluation functions for fixed structure designs.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 from ...utils.design import encode_design
 from ...utils.model import model2encnames
 from ..utils.evaluate import _plot_prediction_variance, _prediction_variance
+from ..utils.power import _power_table, _term_columns
 from .metric import Iopt
 from .utils import Parameters
 
@@ -168,9 +169,9 @@ def plot_fraction_of_design_space(Y, params, N=10000):
     return fig
 
 
-def estimation_variance_matrix(Y, params):
+def _model_matrix(Y, params):
     """
-    Computes the parameter estimation covariance matrix.
+    The model matrix of the design, with the covariate columns after the model's columns.
 
     Parameters
     ----------
@@ -181,9 +182,10 @@ def estimation_variance_matrix(Y, params):
 
     Returns
     -------
-    est_var : np.array(3d)
-        The mutiple parameter estimation covariance matrices for each of the
-        a-priori variance ratio sets.
+    X : np.array(2d)
+        The model matrix, with the covariates.
+    nmodel : int
+        The number of columns of Y2X, where the covariate columns begin.
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a denormalized and decoded dataframe"
     Y = Y.copy()
@@ -201,10 +203,38 @@ def estimation_variance_matrix(Y, params):
 
     # Define the metric inputs
     X = params.fn.Y2X(Y)
+    nmodel = X.shape[1]
 
-    # Compute information matrix
+    # Add the covariates
     if params.fn.metric.cov is not None:
+        Xmodel = np.copy(X)
         _, X = params.fn.metric.cov(Y, X)
+        assert X.shape[1] >= nmodel and np.array_equal(X[:, :nmodel], Xmodel), (
+            "The covariate function must append its columns after the model's"
+        )
+
+    return X, nmodel
+
+
+def estimation_variance_matrix(Y, params):
+    """
+    Computes the parameter estimation covariance matrix.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>`
+        The simulation parameters.
+
+    Returns
+    -------
+    est_var : np.array(3d)
+        The mutiple parameter estimation covariance matrices for each of the
+        a-priori variance ratio sets.
+    """
+    # Compute information matrix
+    X, _ = _model_matrix(Y, params)
     M = X.T @ params.Vinv @ X
 
     # Compute inverse of information matrix
@@ -307,6 +337,59 @@ def estimation_variance(Y, params):
     # Compute estimation variance matrix
     Minv = estimation_variance_matrix(Y, params)
     return np.stack([np.diag(Minv[i]) for i in range(len(Minv))])
+
+
+def power(
+    Y: pd.DataFrame,
+    params: Parameters,
+    model: pd.DataFrame | None = None,
+    sizes: float | Sequence[float] | Mapping[str, float] | pd.Series = 1,
+    alpha: float = 0.05,
+    ddf: str = "kenward-roger",
+) -> pd.DataFrame:
+    """
+    Computes the power of the test of each term of the model (except the intercept),
+    with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
+    such as a categorical factor, is tested with one F-test on all its columns.
+    A covariate function (the metric's `cov`) must append its columns after the model's; they are not tested.
+    Designs with block effects (`block_effects`) are not supported yet.
+
+    Parameters
+    ----------
+    Y : pd.DataFrame
+        The denormalized, decoded design.
+    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.fixed_structure.splitk_plot.utils.Parameters>`
+        The simulation parameters, of a fixed structure or a split-plot design.
+    model : pd.DataFrame or None
+        The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
+        Without a model (None), each column of Y2X is tested on its own (also an intercept column),
+        for a custom Y2X; the result is a DataFrame whose columns (the column indices) can be renamed.
+    sizes : float, list(float), dict(str, float) or pd.Series
+        The size of the effect of each tested term, or of all of them: the coefficient
+        on the coded scale, in units of the residual standard deviation. The columns of
+        a term with several columns get it with alternating signs.
+        A dict or pd.Series is matched by name, a list by position.
+    alpha : float
+        The significance level.
+    ddf : str
+        The denominator degrees of freedom, "kenward-roger" or "satterthwaite".
+
+    Returns
+    -------
+    power : pd.DataFrame
+        The power, one row per set of a-priori variance ratios and one column per tested term.
+        NaN when the design cannot estimate a variance component the test needs.
+        NaN also, with a warning, when power is not defined for the term: its degrees of freedom are below 1,
+        or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
+    """
+    X, nmodel = _model_matrix(Y, params)
+    tests = _term_columns(params, model, nmodel)
+
+    # A grouping with ratio 0 in every set only constrains the levels (as the quickstart's level constraints
+    # without a random effect): it is not a variance component. params.ratios has one column per grouping of Zs.
+    ratios = np.asarray(params.ratios, dtype=np.float64)
+    Zs = [None if np.all(ratios[:, i] == 0) else Z for i, Z in enumerate(params.Zs)]
+    return _power_table(tests, X, Zs, params.Vinv, sizes, alpha, ddf)
 
 
 def prediction_variance(
