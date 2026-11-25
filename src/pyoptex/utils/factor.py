@@ -24,11 +24,9 @@ class FactorMixin:
         The type of the factor, can be 'continuous', 'cont', 'categorical',
         'cat', 'mixture', 'mixt', 'quantitative', 'quant', 'qualitative', 'qual'
     min : float
-        The minimum of the factor. Used for continuous factors.
-        Defaults to the lowest level when levels are given, otherwise -1.
+        The minimum of the region of interest, coded to -1. Defaults to the lowest level, or -1 without levels.
     max : float
-        The maximum of the factor. Used for continuous factors.
-        Defaults to the highest level when levels are given, otherwise 1.
+        The maximum of the region of interest, coded to 1. Defaults to the highest level, or 1 without levels.
     levels : list(float) or list(str)
         For continuous factors, this is the list of possible numerical values.
         For categorical factors, this is a list of strings for the possible
@@ -98,10 +96,6 @@ class FactorMixin:
             assert self.levels is None or len(self.levels) >= 2, (
                 f"A continuous factor must have at least two levels when specified, but factor {self.name} has {len(self.levels)}"
             )
-            if self.levels is not None:
-                assert min(self.levels) >= self.min and max(self.levels) <= self.max, (
-                    f"The levels of factor {self.name} must lie between its minimum {self.min} and maximum {self.max}"
-                )
         else:
             assert len(self.levels) >= 2, (
                 f"A categorical factor must have at least 2 levels, but factor {self.name} has {len(self.levels)}"
