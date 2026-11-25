@@ -692,7 +692,7 @@ which are passed to the design generation functions.
 >>> plot_fraction_of_design_space(Y, params).show()
 >>> plot_estimation_variance_matrix(Y, params, model).show()
 >>> print(estimation_variance(Y, params))
->>> print(power(Y, params, model))
+>>> print(power(Y, params))
 
 .. list-table::
   :align: center

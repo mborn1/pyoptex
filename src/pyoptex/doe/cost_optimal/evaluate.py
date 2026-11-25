@@ -355,7 +355,6 @@ def estimation_variance(Y, params):
 def power(
     Y: pd.DataFrame,
     params: Parameters,
-    model: pd.DataFrame | None = None,
     sizes: float | Sequence[float] | Mapping[str, float] | pd.Series = 1,
     alpha: float = 0.05,
     ddf: str = "kenward-roger",
@@ -363,8 +362,12 @@ def power(
     """
     Computes the power of the test of each term of the model (except the intercept),
     with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
-    such as a categorical factor, is tested with one F-test on all its columns.
+    such as a categorical factor or its interactions, is tested with one F-test on all its columns.
     A covariate function (the metric's `cov`) must append its columns after the model's; they are not tested.
+
+    The terms come from the Y2X function, as made by :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`.
+    With a custom Y2X, every column of the model matrix is tested on its own (the intercept column too),
+    and the result's columns are the column indices, which can be renamed.
 
     Parameters
     ----------
@@ -372,10 +375,6 @@ def power(
         The denormalized, decoded design.
     params : :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
         The simulation parameters.
-    model : pd.DataFrame or None
-        The model given to model2Y2X; with a custom Y2X, its columns must follow the order of encode_model.
-        Without a model (None), each column of Y2X is tested on its own (also an intercept column),
-        for a custom Y2X; the result is a DataFrame whose columns (the column indices) can be renamed.
     sizes : float, list(float), dict(str, float) or pd.Series
         The size of the effect of each tested term, or of all of them: the coefficient
         on the coded scale, in units of the residual standard deviation. The columns of
@@ -395,7 +394,7 @@ def power(
         or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
     """
     X, nmodel, Zs, Vinv = _model_matrices(Y, params)
-    tests = _term_columns(params, model, nmodel)
+    tests = _term_columns(params, nmodel)
 
     # A grouping with ratio 0 in every set only constrains the levels (as the quickstart's level constraints
     # without a random effect): it is not a variance component. params.ratios has one column per factor, as the

@@ -183,34 +183,43 @@ def test_power_factorial(ddf):
     model = partial_rsm_names({name: "lin" for name in "ABC"})
     params = _power_params(factors, model, len(Y))
 
-    pw = power(Y, params, model, ddf=ddf)
+    pw = power(Y, params, ddf=ddf)
     assert list(pw.columns) == ["A", "B", "C"]
     np.testing.assert_allclose(pw.to_numpy(), _expected_power(1, 4, 8))
 
     # Without an effect, the power is the significance level
-    np.testing.assert_allclose(power(Y, params, model, sizes=0, ddf=ddf).to_numpy(), 0.05, rtol=1e-12)
+    np.testing.assert_allclose(power(Y, params, sizes=0, ddf=ddf).to_numpy(), 0.05, rtol=1e-12)
 
 
 @ddfs
 @pytest.mark.parametrize(
-    ("runs", "df"), [(["L1", "L2", "L3"] * 4, 9), (["L1", "L2", "L3", "L1", "L2"], 2)], ids=["9df", "2df"]
+    ("C", "X", "df"),
+    [
+        (["L1", "L2", "L3"] * 5, np.resize([-1, -1, -1, 1, 1, 1], 15), 9),
+        (["L1", "L2", "L3", "L1", "L2", "L3", "L1", "L2"], [-1, -1, -1, 1, 1, 1, 1, -1], 2),
+    ],
+    ids=["9df", "2df"],
 )
-def test_power_categorical(ddf, runs, df):
+def test_power_categorical(ddf, C, X, df):
     """
-    A 3-level categorical factor, completely randomized: one F-test on its 2 columns, with 9 residual df
-    (4 runs per level) or 2 (L1, L2, L3, L1, L2: Kenward-Roger's A2 equals the number of columns).
+    A 3-level categorical factor C and its interaction with a continuous X, completely randomized: one F-test
+    per term on its columns (C and C * X 2 each), with 9 residual df or 2 (where Kenward-Roger's A2 equals
+    the number of columns).
     """
-    factors = [Factor("C", type="categorical", levels=["L1", "L2", "L3"])]
-    Y = pd.DataFrame({"C": runs})
-    model = partial_rsm_names({"C": "lin"})
+    factors = [Factor("C", type="categorical", levels=["L1", "L2", "L3"]), Factor("X")]
+    Y = pd.DataFrame({"C": C, "X": X})
+    model = partial_rsm_names({"C": "tfi", "X": "tfi"})
     params = _power_params(factors, model, len(Y))
 
-    # The coefficients (1, -1) of the two columns
+    # The columns of each term in the model matrix, and the coefficients 1, -1, ... of those columns
+    columns = {"C": [1, 2], "X": [3], "C * X": [4, 5]}
     Phi = estimation_variance_matrix(Y, params)[0]
-    b = np.array([1.0, -1.0])
-    pw = power(Y, params, model, ddf=ddf)
-    assert list(pw.columns) == ["C"]
-    np.testing.assert_allclose(pw.to_numpy(), _expected_power(2, df, b @ np.linalg.solve(Phi[1:, 1:], b)))
+    pw = power(Y, params, ddf=ddf)
+    assert list(pw.columns) == list(columns)
+    for term, cols in columns.items():
+        b = (-1.0) ** np.arange(len(cols))
+        expected = _expected_power(len(cols), df, b @ np.linalg.solve(Phi[np.ix_(cols, cols)], b))
+        np.testing.assert_allclose(pw[term], expected, err_msg=term)
 
 
 @ddfs
@@ -221,7 +230,7 @@ def test_power_split_plot(ddf):
     """
     factors, Y = _split_plot(4)
     model = partial_rsm_names({"W": "tfi", "S": "tfi"})
-    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    pw = power(Y, _power_params(factors, model, len(Y)), ddf=ddf)
     assert list(pw.columns) == ["W", "S", "W * S"]
     np.testing.assert_allclose(pw["W"], _expected_power(1, 2, 3.2))
     np.testing.assert_allclose(pw[["S", "W * S"]].to_numpy(), _expected_power(1, 10, 16))
@@ -235,19 +244,28 @@ def test_power_whole_plot_ratio_zero(ddf):
     """
     factors, Y = _split_plot(4, ratio=0)
     model = partial_rsm_names({"W": "lin", "S": "lin"})
-    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    pw = power(Y, _power_params(factors, model, len(Y)), ddf=ddf)
     np.testing.assert_allclose(pw.to_numpy(), _expected_power(1, 13, 16))
 
 
 @ddfs
-def test_power_without_model(ddf):
-    """Without a model, each column of Y2X is tested on its own: for main effects, the same powers as the model."""
+def test_power_custom_Y2X(ddf):
+    """
+    A custom Y2X (not made by model2Y2X) has no terms: each of its columns is tested on its own.
+    For main effects, the same powers as the model from model2Y2X.
+    """
     factors, Y = _split_plot(4)
     model = partial_rsm_names({"W": "lin", "S": "lin"})
-    params = _power_params(factors, model, len(Y))
-    by_column = power(Y, params, ddf=ddf)
+    model_Y2X = model2Y2X(model, factors)
+
+    def custom_Y2X(Yenc):
+        return model_Y2X(Yenc)
+
+    by_column = power(Y, create_parameters(factors, default_fn(factors, Dopt(), custom_Y2X), len(Y)), ddf=ddf)
+    by_term = power(Y, _power_params(factors, model, len(Y)), ddf=ddf)
     assert list(by_column.columns) == ["0", "1", "2"]  # the intercept, W and S
-    np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), power(Y, params, model, ddf=ddf).to_numpy())
+    assert list(by_term.columns) == ["W", "S"]
+    np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), by_term.to_numpy())
 
 
 def test_power_sizes_by_name():
@@ -258,12 +276,12 @@ def test_power_sizes_by_name():
     factors, Y = _split_plot(4)
     model = partial_rsm_names({"W": "tfi", "S": "tfi"})
     params = _power_params(factors, model, len(Y))
-    by_name = power(Y, params, model, sizes=pd.Series({"W * S": 2, "W": 1, "S": 0.5}))
-    np.testing.assert_allclose(by_name.to_numpy(), power(Y, params, model, sizes=[1, 0.5, 2]).to_numpy())
+    by_name = power(Y, params, sizes=pd.Series({"W * S": 2, "W": 1, "S": 0.5}))
+    np.testing.assert_allclose(by_name.to_numpy(), power(Y, params, sizes=[1, 0.5, 2]).to_numpy())
     assert len(np.unique(by_name.to_numpy())) == 3
 
     with pytest.raises(AssertionError, match=r"unknown tests W\*S; the tests are W, S, W \* S"):
-        power(Y, params, model, sizes={"W * S": 2, "W": 1, "S": 0.5, "W*S": 2})
+        power(Y, params, sizes={"W * S": 2, "W": 1, "S": 0.5, "W*S": 2})
 
 
 def _mixed_model(groupings, ratios):
@@ -288,7 +306,7 @@ def test_power_estimable_variance(ddf):
     # 2 whole plots
     factors, Y = _split_plot(2)
     model = partial_rsm_names({"W": "lin", "S": "lin"})
-    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    pw = power(Y, _power_params(factors, model, len(Y)), ddf=ddf)
     assert np.isnan(pw.loc[0, "W"])
     np.testing.assert_allclose(pw.loc[0, "S"], _expected_power(1, 5, 8))
 
