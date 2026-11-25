@@ -384,7 +384,12 @@ def power(
     """
     X, nmodel = _model_matrix(Y, params)
     tests = _term_columns(params, model, nmodel)
-    return _power_table(tests, X, list(params.Zs), params.Vinv, sizes, alpha, ddf)
+
+    # A grouping with ratio 0 in every set only constrains the levels (as the quickstart's level constraints
+    # without a random effect): it is not a variance component. params.ratios has one column per grouping of Zs.
+    ratios = np.asarray(params.ratios, dtype=np.float64)
+    Zs = [None if np.all(ratios[:, i] == 0) else Z for i, Z in enumerate(params.Zs)]
+    return _power_table(tests, X, Zs, params.Vinv, sizes, alpha, ddf)
 
 
 def prediction_variance(

@@ -77,17 +77,24 @@ def test_codex():
 
 
 @pytest.mark.parametrize("ddf", ["kenward-roger", "satterthwaite"])
-def test_power_split_plot(ddf):
+@pytest.mark.parametrize("ratio", [1, 0])
+def test_power_split_plot(ddf, ratio):
     """
-    The balanced split-plot design (4 whole plots of 4 runs, W grouped, S within) as a CODEX design: W is tested
-    against the whole plots (2 df, noncentrality 3.2), S and W * S within them (10 df, noncentrality 16).
+    The balanced split-plot design (4 whole plots of 4 runs, W grouped, S within) as a CODEX design. With ratio 1,
+    W is tested against the whole plots (2 df, noncentrality 3.2), S and W * S within them (10 df, noncentrality 16).
+    With ratio 0, the grouping only constrains the levels: every term is tested against the residual, as in
+    a completely randomized design (12 df, noncentrality 16). This checks that the columns of params.ratios
+    are matched to the groupings, with S ungrouped.
     """
-    factors = [Factor("W", grouped=True, ratio=1), Factor("S", grouped=False)]
+    factors = [Factor("W", grouped=True, ratio=ratio), Factor("S", grouped=False)]
     model = partial_rsm_names({"W": "tfi", "S": "tfi"})
     Y = pd.DataFrame({"W": np.repeat([-1, 1, -1, 1], 4), "S": np.tile([-1, 1, -1, 1], 4)})
     fn = default_fn(1, factors, fixed_runs_cost(len(Y)), Dopt(), model2Y2X(model, factors))
 
     pw = power(Y, create_parameters(factors, fn), model, ddf=ddf)
     assert list(pw.columns) == ["W", "S", "W * S"]
-    np.testing.assert_allclose(pw["W"], stats.ncf.sf(stats.f.ppf(0.95, 1, 2), 1, 2, 3.2))
-    np.testing.assert_allclose(pw[["S", "W * S"]].to_numpy(), stats.ncf.sf(stats.f.ppf(0.95, 1, 10), 1, 10, 16))
+    if ratio == 1:
+        np.testing.assert_allclose(pw["W"], stats.ncf.sf(stats.f.ppf(0.95, 1, 2), 1, 2, 3.2))
+        np.testing.assert_allclose(pw[["S", "W * S"]].to_numpy(), stats.ncf.sf(stats.f.ppf(0.95, 1, 10), 1, 10, 16))
+    else:
+        np.testing.assert_allclose(pw.to_numpy(), stats.ncf.sf(stats.f.ppf(0.95, 1, 12), 1, 12, 16))

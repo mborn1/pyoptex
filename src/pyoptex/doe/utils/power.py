@@ -221,7 +221,8 @@ def _power_table(
     X : np.array(2d)
         The model matrix, with the covariate columns.
     Zs : list(np.array(1d) or None)
-        The groupings of the random effects, None for a factor without one.
+        The groupings of the random effects, None for a factor without one
+        and for a grouping that only constrains the levels (ratio 0 in every set).
     Vinv : np.array(3d)
         The inverse of the observation covariance matrix, for each set of variance ratios.
     sizes : float, list(float), dict(str, float) or pd.Series
@@ -270,7 +271,6 @@ def _power_table(
     # V is linear in the variance components: its derivatives are I and the ZZ' of each grouping
     n = len(X)
     Gs = [np.eye(n), *((Z[:, np.newaxis] == Z[np.newaxis, :]).astype(np.float64) for Z in Zs if Z is not None)]
-    coefs = []
     for Vi in Vinv:
         V = np.linalg.inv(Vi)
         coef = np.linalg.lstsq(np.array([G.ravel() for G in Gs]).T, V.ravel(), rcond=None)[0]
@@ -278,13 +278,6 @@ def _power_table(
             "Power does not support the block effects of fixed-structure designs (block_effects) yet, "
             "nor covariate functions that change Vinv without adding their groupings to Zs"
         )
-        coefs.append(coef)
-
-    # A grouping with ratio 0 in every set of ratios is not a variance component
-    # (as the quickstart's level constraints without a random effect); a 0 in only some sets keeps it
-    component = ~np.all(np.isclose(np.array(coefs), 0, atol=1e-10), axis=0)
-    component[0] = True
-    Gs = [G for G, keep in zip(Gs, component, strict=True) if keep]
 
     # The power for each set of variance ratios, and the tests whose power is not defined in any
     powers = []
