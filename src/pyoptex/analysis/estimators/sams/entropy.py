@@ -30,21 +30,20 @@ def entropies_approx(
     Parameters
     ----------
     submodels : list(np.array(1d))
-        The list of top submodels for each size.
+        The list of top submodels for each size, as term group indices.
     freqs : np.array(1d)
         The frequencies of these submodels in the raster plot.
     model_size : int
-        The size of the overfitted models.
+        The size of the overfitted models, in term groups.
         The overfitted model includes the forced model,
         and its size must thus be larger than the forced model.
     dep : np.array(2d)
-        The dependency matrix of size (N, N) with N the number
-        of terms in the encoded model (output from Y2X). Term i depends on term j
-        if dep(i, j) = true.
+        The dependency matrix of size (G, G) with G the number of
+        term groups. Group i depends on group j if dep(i, j) = true.
     mode : None or 'weak' or 'strong'
          The heredity mode during sampling.
     forced : None or np.array(1d)
-        Any terms that must be included in the model.
+        Any term groups that must be included in the model.
     N : int
         The number of random samples to draw to compute the
         theoretical frequency of a submodel.

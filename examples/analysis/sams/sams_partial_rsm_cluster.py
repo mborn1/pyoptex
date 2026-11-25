@@ -67,6 +67,7 @@ regr.fit(data.drop(columns="Y"), data["Y"])
 log_checkpoint("nb_models", len(regr.models_))
 log_checkpoint("model_formulas", [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))])
 log_checkpoint("selected_models", [m.tolist() for m in regr.models_])
+log_checkpoint("entropies", regr.entropies_.tolist())
 
 # Plot the raster plot
 regr.plot_selection(model=model).show()

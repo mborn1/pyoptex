@@ -24,7 +24,7 @@ factors = [
     Factor("C"),
     Factor("D"),
     Factor("E"),
-    Factor("F"),
+    Factor("F", type="categorical", levels=["L1", "L2", "L3"]),
 ]
 log_checkpoint("factor_names", [str(f.name) for f in factors])
 
@@ -32,13 +32,22 @@ log_checkpoint("factor_names", [str(f.name) for f in factors])
 N = 200
 
 # Define the data
-data = pd.DataFrame(np.random.rand(N, len(factors)) * 2 - 1, columns=[str(f.name) for f in factors])
-data["Y"] = 2 * data["A"] + 3 * data["C"] - 4 * data["A"] * data["B"] + 5 + np.random.normal(0, 1, N)
+data = pd.DataFrame(np.random.rand(N, len(factors) - 1) * 2 - 1, columns=[str(f.name) for f in factors[:-1]])
+data["F"] = np.random.choice(["L1", "L2", "L3"], N)
+data["Y"] = (
+    2 * data["A"]
+    + 3 * data["C"]
+    - 4 * data["A"] * data["B"]
+    + 3 * (data["F"] == "L2")
+    - 2 * (data["F"] == "L3")
+    + 5
+    + np.random.normal(0, 1, N)
+)
 log_checkpoint("data_shape", list(data.shape))
 log_checkpoint("data_Y_mean", float(data["Y"].mean()))
 
-# Define the model orders
-model_order = {str(f.name): "quad" for f in factors}
+# Define the model orders (quad factors first; the categorical factor has no quadratic term)
+model_order = {str(f.name): "quad" if f.is_continuous else "tfi" for f in factors}
 
 # Create the model
 model = partial_rsm_names(model_order)
@@ -66,6 +75,7 @@ regr.fit(data.drop(columns="Y"), data["Y"])
 log_checkpoint("nb_models", len(regr.models_))
 log_checkpoint("model_formulas", [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))])
 log_checkpoint("selected_models", [m.tolist() for m in regr.models_])
+log_checkpoint("entropies", regr.entropies_.tolist())
 
 # Plot the raster plot
 regr.plot_selection(model=model).show()

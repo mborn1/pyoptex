@@ -46,6 +46,7 @@ def test_sams_partial_rsm_cluster():
     assert len(regr.models_) == ref["nb_models"]
     assert [regr.model_formula(model=model, idx=i) for i in range(len(regr.models_))] == ref["model_formulas"]
     assert [m.tolist() for m in regr.models_] == ref["selected_models"]
+    np.testing.assert_allclose(regr.entropies_, ref["entropies"], rtol=1e-10)
 
     for i in range(len(regr.models_)):
         np.testing.assert_allclose(regr.model_coef_[i], ref[f"model_coef_{i}"], rtol=1e-10)
