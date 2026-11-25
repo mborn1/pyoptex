@@ -349,9 +349,7 @@ def single_worker_cost(transition_costs, factors, max_cost, execution_cost=1):
     cost_fn : func(Y, params)
         The cost function.
     """
-    return additive_cost(
-        {k: v + execution_cost for k, v in transition_costs.items()}, factors, max_cost, execution_cost
-    )
+    return additive_cost(transition_costs, factors, max_cost, execution_cost)
 
 
 def scaled_parallel_worker_cost(transition_costs, factors, max_cost, execution_cost=1):

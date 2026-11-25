@@ -14,6 +14,7 @@ from pyoptex.doe.cost_optimal.cost import (
     level_single_worker_cost,
     max_changes_cost,
     parallel_worker_cost,
+    single_worker_cost,
 )
 from pyoptex.utils.design import encode_design
 
@@ -131,3 +132,15 @@ def test_level_worker_costs():
     Yenc = encode_design(Y, params.effect_types, coords=params.coords)
     with pytest.raises(ValueError, match="not one of its levels"):
         parallel(Yenc, params)
+
+
+def test_single_worker_cost():
+    """Per-run costs: execution cost plus the change cost of every factor that changes from the previous run."""
+    params = create_parameters(FACTORS, None)
+
+    # Run 1 is the first, then A changes, A and B change, and nothing changes
+    Y = np.array([[0.0, -1.0], [1.0, -1.0], [0.0, 1.0], [0.0, 1.0]])
+    Yenc = encode_design(Y, params.effect_types, coords=params.coords)
+
+    cost = single_worker_cost({"A": 30, "B": 5}, FACTORS, 100, execution_cost=10)
+    np.testing.assert_allclose(cost(Yenc, params)[0][0], [10, 40, 45, 10])
