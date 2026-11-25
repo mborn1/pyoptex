@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...utils.model import _model2termcols, encode_model
+from ...utils.model import _model2termcols, encode_model, model2names
 
 
 def _power(
@@ -55,9 +55,7 @@ def _power(
     Phi = np.linalg.inv(X.T @ VinvX)
     Ptilde = Vinv - VinvX @ Phi @ VinvX.T
     GVinvX = [G @ VinvX for G in Gs]
-    VinvGVinvX = [Vinv @ g for g in GVinvX]
     P = np.array([VinvX.T @ g for g in GVinvX])
-    Q = np.array([[gi.T @ vgj for vgj in VinvGVinvX] for gi in GVinvX])
     PhiPPhi = Phi @ P @ Phi
 
     # The information of the variance components, inverted on the directions the design can estimate
@@ -77,6 +75,8 @@ def _power(
     unestimable = eigvec[:, ~keep]
 
     if ddf == "kenward-roger":
+        VinvGVinvX = [Vinv @ g for g in GVinvX]
+        Q = np.array([[gi.T @ vgj for vgj in VinvGVinvX] for gi in GVinvX])
         Lambda = np.einsum("ij,ijab->ab", W, Q) - np.einsum("ij,iab,bc,jcd->ad", W, P, Phi, P)
         PhiA = Phi + 2 * Phi @ Lambda @ Phi
 
@@ -176,6 +176,9 @@ def _term_columns(params: Any, model: pd.DataFrame | None, nmodel: int) -> list[
     if model is None:
         return [(str(i), np.array([i])) for i in range(nmodel)]
 
+    # The names from the model as given (a model with columns [B, A] keeps "B * A"),
+    # the encoded columns from the model in the order of the factors (same rows)
+    names = model2names(model)
     effect_types = params.effect_types
     model = model[[str(fac.name) for fac in params.factors]]
     termcols = _model2termcols(model, effect_types)
@@ -192,7 +195,11 @@ def _term_columns(params: Any, model: pd.DataFrame | None, nmodel: int) -> list[
     )
 
     # Every term except the intercept
-    return [termcol for termcol, term in zip(termcols, model.to_numpy(), strict=True) if np.any(term != 0)]
+    return [
+        (str(name), cols)
+        for name, (_, cols), term in zip(names, termcols, model.to_numpy(), strict=True)
+        if np.any(term != 0)
+    ]
 
 
 def _power_table(
@@ -238,6 +245,9 @@ def _power_table(
     names = [name for name, _ in tests]
     columns = [cols for _, cols in tests]
     if isinstance(sizes, Mapping | pd.Series):
+        if isinstance(sizes, pd.Series):
+            duplicated = sizes.index[sizes.index.duplicated()].unique()
+            assert sizes.index.is_unique, f"sizes has several values for {', '.join(map(str, duplicated))}"
         # Iterating a Series gives its values, not its names
         sizes = dict(sizes)
         missing = [name for name in names if name not in sizes]
@@ -260,6 +270,7 @@ def _power_table(
     # V is linear in the variance components: its derivatives are I and the ZZ' of each grouping
     n = len(X)
     Gs = [np.eye(n), *((Z[:, np.newaxis] == Z[np.newaxis, :]).astype(np.float64) for Z in Zs if Z is not None)]
+    coefs = []
     for Vi in Vinv:
         V = np.linalg.inv(Vi)
         coef = np.linalg.lstsq(np.array([G.ravel() for G in Gs]).T, V.ravel(), rcond=None)[0]
@@ -267,6 +278,13 @@ def _power_table(
             "Power does not support the block effects of fixed-structure designs (block_effects) yet, "
             "nor covariate functions that change Vinv without adding their groupings to Zs"
         )
+        coefs.append(coef)
+
+    # A grouping with ratio 0 in every set of ratios is not a variance component
+    # (as the quickstart's level constraints without a random effect); a 0 in only some sets keeps it
+    component = ~np.all(np.isclose(np.array(coefs), 0, atol=1e-10), axis=0)
+    component[0] = True
+    Gs = [G for G, keep in zip(Gs, component, strict=True) if keep]
 
     # The power for each set of variance ratios, and the tests whose power is not defined in any
     powers = []

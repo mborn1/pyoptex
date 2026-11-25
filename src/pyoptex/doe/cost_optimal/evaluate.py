@@ -221,7 +221,11 @@ def _model_matrices(Y, params):
 
     # Add the covariates
     if params.fn.metric.cov is not None:
+        Xmodel = np.copy(X)
         _, X, Zs, Vinv = params.fn.metric.cov(Y, X, Zs, Vinv, costs)
+        assert X.shape[1] >= nmodel and np.array_equal(X[:, :nmodel], Xmodel), (
+            "The covariate function must append its columns after the model's"
+        )
 
     return X, nmodel, Zs, Vinv
 
@@ -360,6 +364,7 @@ def power(
     Computes the power of the test of each term of the model (except the intercept),
     with Kenward-Roger or Satterthwaite degrees of freedom. A term with several columns,
     such as a categorical factor, is tested with one F-test on all its columns.
+    A covariate function (the metric's `cov`) must append its columns after the model's; they are not tested.
 
     Parameters
     ----------

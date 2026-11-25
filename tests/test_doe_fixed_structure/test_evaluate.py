@@ -168,9 +168,9 @@ def _power_params(factors, model, nruns):
     return create_parameters(factors, default_fn(factors, Dopt(), model2Y2X(model, factors)), nruns)
 
 
-def _split_plot(nplots):
-    """W per whole plot of 4 runs (-1, 1, -1, 1, ...) with ratio 1, S at -1, 1, -1, 1 within each whole plot."""
-    factors = [Factor("W", RandomEffect(np.repeat(np.arange(nplots), 4), ratio=1)), Factor("S")]
+def _split_plot(nplots, ratio=1):
+    """W per whole plot of 4 runs (-1, 1, -1, 1, ...) with this ratio, S at -1, 1, -1, 1 within each whole plot."""
+    factors = [Factor("W", RandomEffect(np.repeat(np.arange(nplots), 4), ratio=ratio)), Factor("S")]
     Y = pd.DataFrame({"W": np.repeat(np.resize([-1, 1], nplots), 4), "S": np.tile([-1, 1, -1, 1], nplots)})
     return factors, Y
 
@@ -225,6 +225,18 @@ def test_power_split_plot(ddf):
     assert list(pw.columns) == ["W", "S", "W * S"]
     np.testing.assert_allclose(pw["W"], _expected_power(1, 2, 3.2))
     np.testing.assert_allclose(pw[["S", "W * S"]].to_numpy(), _expected_power(1, 10, 16))
+
+
+@ddfs
+def test_power_whole_plot_ratio_zero(ddf):
+    """
+    A whole-plot grouping with ratio 0 (level constraints without a random effect) is not a variance component:
+    W is tested against the residual, as in a completely randomized design (13 df, variance 1/16).
+    """
+    factors, Y = _split_plot(4, ratio=0)
+    model = partial_rsm_names({"W": "lin", "S": "lin"})
+    pw = power(Y, _power_params(factors, model, len(Y)), model, ddf=ddf)
+    np.testing.assert_allclose(pw.to_numpy(), _expected_power(1, 13, 16))
 
 
 @ddfs
@@ -322,6 +334,7 @@ def test_power_kenward_roger_undefined_df():
         pw = _power_table(tests, X, [Z], Vinv[np.newaxis], 1, 0.05, "kenward-roger")
     assert len(record) == 1
     assert np.isnan(pw.loc[0, "x1 and x2"])
+    assert np.isfinite(pw.loc[0, "x3"])
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
