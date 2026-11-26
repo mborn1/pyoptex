@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ...utils.factor import Factor
-from .utils import BLOCK_COLUMN, _levels, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_mixture, _levels, _to_dataframe, _validate_factors
 
 # fmt: off
 _L12 = [
@@ -302,6 +302,7 @@ def taguchi(name: str, factors: Sequence[Factor], columns: Sequence[int] | None 
     """
     assert name in _ARRAYS, f"Unknown array '{name}'. Use one of {list(_ARRAYS)}."
     _validate_factors(factors)
+    _assert_no_mixture(factors, "Taguchi array")
     array = _ARRAYS[name]()
     n_cols = array.shape[1]
 

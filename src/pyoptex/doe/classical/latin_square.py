@@ -13,7 +13,7 @@ import pandas as pd
 
 from ...utils.factor import Factor
 from ._paley import _galois_field, _prime_power
-from .utils import _to_dataframe, _validate_factors
+from .utils import _assert_no_mixture, _to_dataframe, _validate_factors
 
 
 def latin_square(factors: Sequence[Factor]) -> pd.DataFrame:
@@ -61,6 +61,7 @@ def latin_square(factors: Sequence[Factor]) -> pd.DataFrame:
         The design (denormalized), with t^2 runs.
     """
     _validate_factors(factors)
+    _assert_no_mixture(factors, "Latin square")
     k = len(factors)
     assert k >= 3, f"A Latin square needs a row, a column and at least one symbol factor (got {k} factors)"
     for f in factors:

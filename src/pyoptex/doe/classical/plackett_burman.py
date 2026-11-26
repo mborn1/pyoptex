@@ -17,6 +17,7 @@ from ._min_aberration import _MA_GENERATORS
 from ._paley import _paley_hadamard
 from .utils import (
     _assert_no_categorical_center,
+    _assert_no_mixture,
     _center_points,
     _levels,
     _to_dataframe,
@@ -265,6 +266,7 @@ def plackett_burman(factors: Sequence[Factor], n_runs: int | None = None, n_cent
         The Plackett-Burman design (denormalized).
     """
     _validate_factors(factors)
+    _assert_no_mixture(factors, "Plackett-Burman design")
     _assert_no_categorical_center(factors, n_center, "Plackett-Burman design")
     k = len(factors)
 

@@ -11,7 +11,7 @@ import pandas as pd
 
 from ...utils.factor import Factor
 from .plackett_burman import _pb_matrix
-from .utils import _levels, _to_dataframe, _two_level_normalized, _validate_factors
+from .utils import _assert_no_mixture, _levels, _to_dataframe, _two_level_normalized, _validate_factors
 
 # Plackett-Burman sizes whose half fractions give valid supersaturated designs.
 # The Sylvester (powers of 2) and doubled (N=40) matrices are excluded: there the
@@ -60,6 +60,7 @@ def supersaturated(factors: Sequence[Factor]) -> pd.DataFrame:
         The supersaturated design (denormalized).
     """
     _validate_factors(factors)
+    _assert_no_mixture(factors, "supersaturated design")
     k = len(factors)
 
     for f in factors:
