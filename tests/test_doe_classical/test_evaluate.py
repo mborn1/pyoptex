@@ -214,12 +214,16 @@ _POWER_DESIGNS = {
         [{"name": n} for n in "ABC"],
         {n: "quad" for n in "ABC"},
         lambda factors: central_composite(factors, alpha="face-centered"),
+        ["A", "B", "C", "A * B", "A * C", "B * C", "A^2", "B^2", "C^2"],
     ),
-    # A full factorial with a 3-level categorical factor: one F-test on its 2 columns, and on the 2 of A * C
+    # A full factorial with a 3-level categorical factor: one F-test on its 2 columns, and on the 2 of A * C.
+    # The effects are in another order than the factors: the terms keep the model's order,
+    # and a term's name follows the order of the factors (A * C).
     "categorical factorial": (
         [{"name": "A"}, {"name": "B"}, {"name": "C", "type": "categorical", "levels": ["L1", "L2", "L3"]}],
-        {"A": "tfi", "B": "lin", "C": "tfi"},
+        {"C": "tfi", "A": "tfi", "B": "lin"},
         full_factorial,
+        ["C", "A", "B", "A * C"],
     ),
 }
 
@@ -231,7 +235,7 @@ class TestPower:
         The classical power equals the fixed-structure power of the same design and model without random effects:
         the terms rebuilt from Y2X are those of the model, with the same columns.
         """
-        specs, effects, make_design = design
+        specs, effects, make_design, names = design
         factors = [Factor(**spec) for spec in specs]
         fs_factors = [fixed_structure.Factor(**spec) for spec in specs]
         model = partial_rsm_names(effects)
@@ -241,8 +245,8 @@ class TestPower:
         fs_params = fixed_structure.create_parameters(
             fs_factors, fixed_structure.default_fn(fs_factors, Dopt(), model2Y2X(model, fs_factors)), len(Y)
         )
-        expected = fixed_structure_power(Y, fs_params, model)
-        assert list(pw.columns) == list(expected.columns)
+        expected = fixed_structure_power(Y, fs_params)
+        assert list(pw.columns) == list(expected.columns) == names
         assert np.all(np.isfinite(pw.to_numpy()))
         np.testing.assert_allclose(pw.to_numpy(), expected.to_numpy(), rtol=1e-12)
 
