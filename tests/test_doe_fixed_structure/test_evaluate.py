@@ -1,3 +1,4 @@
+import functools
 import itertools
 import warnings
 
@@ -13,6 +14,7 @@ from pyoptex.doe.fixed_structure.evaluate import estimation_variance_matrix, pow
 from pyoptex.doe.fixed_structure.metric import Dopt
 from pyoptex.doe.utils.evaluate import plot_design_space
 from pyoptex.doe.utils.power import _power, _power_table
+from pyoptex.utils.design import x2fx
 from pyoptex.utils.model import model2Y2X, partial_rsm_names
 
 FACTORS = [
@@ -248,11 +250,17 @@ def test_power_whole_plot_ratio_zero(ddf):
     np.testing.assert_allclose(pw.to_numpy(), _expected_power(1, 13, 16))
 
 
+def _model_matrix_with_modelenc(Yenc, modelenc):
+    """Not x2fx, but a function with the same modelenc keyword (as mixtureY2X's partial of _mixture_x2fx)."""
+    return x2fx(Yenc, modelenc)
+
+
 @ddfs
 def test_power_custom_Y2X(ddf):
     """
     A custom Y2X (not made by model2Y2X) has no terms: each of its columns is tested on its own.
-    For main effects, the same powers as the model from model2Y2X.
+    For main effects, the same powers as the model from model2Y2X. This holds for a plain function,
+    and for a partial of a function other than x2fx, even with a modelenc keyword.
     """
     factors, Y = _split_plot(4)
     model = partial_rsm_names({"W": "lin", "S": "lin"})
@@ -261,11 +269,13 @@ def test_power_custom_Y2X(ddf):
     def custom_Y2X(Yenc):
         return model_Y2X(Yenc)
 
-    by_column = power(Y, create_parameters(factors, default_fn(factors, Dopt(), custom_Y2X), len(Y)), ddf=ddf)
+    other_partial = functools.partial(_model_matrix_with_modelenc, modelenc=model_Y2X.keywords["modelenc"])
     by_term = power(Y, _power_params(factors, model, len(Y)), ddf=ddf)
-    assert list(by_column.columns) == ["0", "1", "2"]  # the intercept, W and S
     assert list(by_term.columns) == ["W", "S"]
-    np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), by_term.to_numpy())
+    for Y2X in (custom_Y2X, other_partial):
+        by_column = power(Y, create_parameters(factors, default_fn(factors, Dopt(), Y2X), len(Y)), ddf=ddf)
+        assert list(by_column.columns) == ["0", "1", "2"]  # the intercept, W and S
+        np.testing.assert_allclose(by_column.iloc[:, 1:].to_numpy(), by_term.to_numpy())
 
 
 def test_power_sizes_by_name():

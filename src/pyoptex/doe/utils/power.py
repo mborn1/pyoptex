@@ -4,13 +4,14 @@ Module with the power of the tests of the effects, shared by the fixed structure
 
 import warnings
 from collections.abc import Mapping, Sequence
+from functools import partial
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...utils.model import _modelenc2terms
+from ...utils.model import _modelenc2terms, x2fx
 
 
 def _power(
@@ -171,12 +172,13 @@ def _term_columns(params: Any, nmodel: int) -> list[tuple[str, np.ndarray]]:
     """
     assert not any(fac.is_mixture for fac in params.factors), "Power for mixture designs is not supported yet"
 
-    # A custom Y2X: each of its columns on its own
-    modelenc = getattr(params.fn.Y2X, "keywords", {}).get("modelenc")
-    if modelenc is None:
+    # A custom Y2X (anything but the partial of x2fx that model2Y2X makes): each of its columns on its own
+    Y2X = params.fn.Y2X
+    if not (isinstance(Y2X, partial) and Y2X.func is x2fx):
         return [(str(i), np.array([i])) for i in range(nmodel)]
 
     # A Y2X from model2Y2X: its terms, except the intercept
+    modelenc = Y2X.keywords["modelenc"]
     terms = _modelenc2terms(modelenc, params.colstart, params.factors)
     return [(name, cols) for name, cols in terms if np.any(modelenc[cols] != 0)]
 
