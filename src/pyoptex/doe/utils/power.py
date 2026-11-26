@@ -4,13 +4,14 @@ Module with the power of the tests of the effects, shared by the fixed structure
 
 import warnings
 from collections.abc import Mapping, Sequence
+from functools import partial
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...utils.model import _model2termcols, encode_model, model2names
+from ...utils.model import _modelenc2terms, x2fx
 
 
 def _power(
@@ -151,17 +152,16 @@ def _power(
     return power, undefined
 
 
-def _term_columns(params: Any, model: pd.DataFrame | None, nmodel: int) -> list[tuple[str, np.ndarray]]:
+def _term_columns(params: Any, nmodel: int) -> list[tuple[str, np.ndarray]]:
     """
-    The tests of a model: one per term of the model (except the intercept), with its encoded columns,
-    or without a model one per column of Y2X. The covariate columns (from `nmodel` on) are not tested.
+    The tests of the model of Y2X: one per term (except the intercept), with its columns of the model matrix.
+    A Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` gives its terms; a custom Y2X
+    one test per column, named by its index. The covariate columns (from `nmodel` on) are not tested.
 
     Parameters
     ----------
     params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
-        The simulation parameters, for the factors, their effect types and the Y2X function.
-    model : pd.DataFrame or None
-        The model, one row per term, or None to test each column of Y2X on its own.
+        The simulation parameters, for the factors, their encoding and the Y2X function.
     nmodel : int
         The number of columns of Y2X, where the covariate columns begin.
 
@@ -172,34 +172,15 @@ def _term_columns(params: Any, model: pd.DataFrame | None, nmodel: int) -> list[
     """
     assert not any(fac.is_mixture for fac in params.factors), "Power for mixture designs is not supported yet"
 
-    # Without a model, each column of Y2X on its own
-    if model is None:
+    # A custom Y2X (anything but the partial of x2fx that model2Y2X makes): each of its columns on its own
+    Y2X = params.fn.Y2X
+    if not (isinstance(Y2X, partial) and Y2X.func is x2fx):
         return [(str(i), np.array([i])) for i in range(nmodel)]
 
-    # The names from the model as given (a model with columns [B, A] keeps "B * A"),
-    # the encoded columns from the model in the order of the factors (same rows)
-    names = model2names(model)
-    effect_types = params.effect_types
-    model = model[[str(fac.name) for fac in params.factors]]
-    termcols = _model2termcols(model, effect_types)
-    modelenc = getattr(params.fn.Y2X, "keywords", {}).get("modelenc")
-    if modelenc is not None:
-        # A Y2X function from model2Y2X
-        assert np.array_equal(modelenc, encode_model(model.to_numpy(), effect_types)), (
-            "The model must be the one given to model2Y2X, with its rows in the same order"
-        )
-    ncols = sum(len(cols) for _, cols in termcols)
-    assert ncols == nmodel, (
-        f"The model has {ncols} columns but Y2X gives {nmodel}; "
-        "with a custom Y2X, its columns must follow the order of encode_model"
-    )
-
-    # Every term except the intercept
-    return [
-        (str(name), cols)
-        for name, (_, cols), term in zip(names, termcols, model.to_numpy(), strict=True)
-        if np.any(term != 0)
-    ]
+    # A Y2X from model2Y2X: its terms, except the intercept
+    modelenc = Y2X.keywords["modelenc"]
+    terms = _modelenc2terms(modelenc, params.colstart, params.factors)
+    return [(name, cols) for name, cols in terms if np.any(modelenc[cols] != 0)]
 
 
 def _power_table(

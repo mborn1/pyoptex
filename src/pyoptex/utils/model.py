@@ -3,7 +3,9 @@ Module containing all the generic model functions
 """
 
 from collections import Counter
+from collections.abc import Sequence
 from functools import partial
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -625,35 +627,46 @@ def model2encnames(model, effect_types, col_names=None):
     return col_names_model
 
 
-def _model2termcols(model: pd.DataFrame, effect_types: np.ndarray) -> list[tuple[str, np.ndarray]]:
+def _modelenc2terms(modelenc: np.ndarray, colstart: np.ndarray, factors: Sequence[Any]) -> list[tuple[str, np.ndarray]]:
     """
-    Retrieves the name of every term of the model and its columns in the
-    encoded model matrix. A categorical factor gives (levels - 1) columns
-    per term that it is in.
+    Rebuilds the terms of a model from its encoded form (the `modelenc` of
+    :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>`): every term's name and its
+    columns in the model matrix. The intercept is the term without any factor (named 'cst').
+
+    Each row of `modelenc` is one column of the model matrix. Per row, the encoded columns
+    of each factor collapse into one entry: the factor's power for a continuous factor,
+    1 for a categorical factor whose columns are not all 0. Consecutive rows with the same
+    collapsed entries form one term, as :py:func:`encode_model <pyoptex.utils.model.encode_model>`
+    gives a term with a categorical factor one row per level but the last.
 
     Parameters
     ----------
-    model : pd.DataFrame
-        The model, one row per term, with its columns in the order of the effect types.
-    effect_types : np.array(1d)
-        An array indicating whether the effect is continuous (=1)
-        or categorical (with >1 levels).
+    modelenc : np.array(2d)
+        The encoded model, one row per column of the model matrix and one column per encoded factor column.
+    colstart : np.array(1d)
+        The start column of each factor in the encoded design, with the total number of columns at the end.
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.FactorMixin>`)
+        The factors, in the order of the encoded design.
 
     Returns
     -------
-    termcols : list(tuple(str, np.array(1d)))
+    terms : list(tuple(str, np.array(1d)))
         The name of each term (as :py:func:`model2names <pyoptex.utils.model.model2names>`)
-        and its columns in the encoded model matrix (as :py:func:`encode_model <pyoptex.utils.model.encode_model>`).
+        and its columns in the model matrix.
     """
-    col_names = [str(col) for col in model.columns]
-    terms = model.to_numpy()
+    # Collapse the encoded columns of every factor into one entry per row
+    collapsed = np.zeros((len(modelenc), len(factors)), dtype=modelenc.dtype)
+    for i, f in enumerate(factors):
+        cols = modelenc[:, colstart[i] : colstart[i + 1]]
+        collapsed[:, i] = cols[:, 0] if f.is_continuous else np.any(cols != 0, axis=1)
 
-    # The number of encoded columns of each term: the rows that encode_model makes from it
-    ncols = [len(encode_model(term[np.newaxis], effect_types, col_names)) for term in terms]
-    starts = np.concatenate(([0], np.cumsum(ncols, dtype=np.int64)))
+    # Consecutive rows with the same entries form one term
+    new_term = np.concatenate(([True], np.any(collapsed[1:] != collapsed[:-1], axis=1)))
+    starts = np.concatenate((np.flatnonzero(new_term), [len(modelenc)]))
 
+    model = pd.DataFrame(collapsed[starts[:-1]], columns=[str(f.name) for f in factors])
     names = model2names(model)
-    return [(str(names[i]), np.arange(starts[i], starts[i + 1])) for i in range(len(terms))]
+    return [(str(names[i]), np.arange(starts[i], starts[i + 1])) for i in range(len(names))]
 
 
 ################################################
