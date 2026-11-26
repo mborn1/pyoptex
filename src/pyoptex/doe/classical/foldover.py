@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ...utils.factor import Factor
-from .utils import BLOCK_COLUMN, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_block_name, _validate_factors
 
 
 def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | None = None) -> pd.DataFrame:
@@ -64,6 +64,7 @@ def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | N
     """
     assert isinstance(Y, pd.DataFrame), "Y must be a DataFrame"
     _validate_factors(factors)
+    _assert_no_block_name(factors)  # the foldover adds a Block column
     names = [str(f.name) for f in factors]
     for name in names:
         assert name in Y.columns, f"Factor {name} is not a column of the design"

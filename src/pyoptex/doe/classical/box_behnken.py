@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ...utils.factor import Factor
-from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_block_name, _assert_no_mixture, _to_dataframe, _validate_factors
 
 # Blocks of the tabulated designs, in the row order of the paper: each tuple
 # lists the factors (1-based) that run a full two-level factorial at +/-1 while
@@ -135,6 +135,8 @@ def box_behnken(factors: Sequence[Factor], n_center: int | None = None, n_blocks
         + (" or ".join(str(nb) for nb in [1, *options]) + " blocks" if options else "1 block")
         + f" (got {n_blocks})"
     )
+    if n_blocks > 1:
+        _assert_no_block_name(factors)
 
     if n_center is None:
         assert k in _BBD_CENTER, (

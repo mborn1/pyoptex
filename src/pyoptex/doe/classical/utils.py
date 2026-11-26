@@ -197,6 +197,13 @@ def _assert_no_mixture(factors, design_name):
         )
 
 
+def _assert_no_block_name(factors):
+    """A blocked design adds the column 'Block', so no factor can have that name."""
+    assert all(str(f.name) != BLOCK_COLUMN for f in factors), (
+        f"A factor cannot be named '{BLOCK_COLUMN}' in a blocked design"
+    )
+
+
 def _validate_space_filling_factors(factors, design_name):
     """Space-filling designs require continuous, non-mixture factors."""
     _validate_factors(factors)
@@ -334,9 +341,7 @@ def _blocked_dataframe(design, labels, center, factors, confounded=None):
     *center* runs. The effects confounded with blocks, if given, are stored
     as lists of factor names in ``Y.attrs['confounded_with_blocks']``.
     """
-    assert all(str(f.name) != BLOCK_COLUMN for f in factors), (
-        f"A factor cannot be named '{BLOCK_COLUMN}' in a blocked design"
-    )
+    _assert_no_block_name(factors)
     parts, blocks = [], []
     for b in range(int(labels.max()) + 1):
         runs = np.vstack([design[labels == b], center])

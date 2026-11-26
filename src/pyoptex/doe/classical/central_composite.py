@@ -9,7 +9,7 @@ import pandas as pd
 
 from ...utils.factor import Factor
 from .fractional_factorial import fractional_factorial
-from .utils import BLOCK_COLUMN, _assert_no_mixture, _to_dataframe, _validate_factors
+from .utils import BLOCK_COLUMN, _assert_no_block_name, _assert_no_mixture, _to_dataframe, _validate_factors
 
 # Number of center points for uniform precision of a rotatable CCD, keyed by
 # (number of factors, number of cube runs). Box, G. E. P. and Hunter, J. S. (1957),
@@ -69,6 +69,32 @@ def _cube_generators(factors, cube):
         names = [str(f.name) for f in factors]
         return {names[-1]: names[:-1]}
     raise ValueError(f"Unknown cube type '{cube}'. Use 'full', 'half', or a dict of generators.")
+
+
+def _second_order_blocking(coded, generators, n_cube_blocks):
+    """
+    The cube in *n_cube_blocks* blocks, or the reason it cannot be blocked for the
+    second-order model: blocks may not be confounded with a main effect or a two-factor
+    interaction. Returns ``(cube, None)`` or ``(None, reason)``.
+    """
+    try:
+        cube = fractional_factorial(coded, generators, n_blocks=n_cube_blocks)
+    except AssertionError:
+        # The blocks would confound a main effect, or are too small for the factors (which confounds them all)
+        return None, "they would confound a main effect with blocks"
+    short = [e for e in cube.attrs["confounded_with_blocks"] if len(e) <= 2]
+    if short:
+        kind = "main effect" if len(short[0]) == 1 else "two-factor interaction"
+        return None, f"they would confound the {kind} {' * '.join(short[0])} with blocks"
+    return cube, None
+
+
+def _max_second_order_blocks(coded, generators):
+    """The largest number of blocks of a CCD (cube blocks and the axial block) for the second-order model."""
+    n_cube_blocks = 1
+    while _second_order_blocking(coded, generators, 2 * n_cube_blocks)[0] is not None:
+        n_cube_blocks *= 2
+    return n_cube_blocks + 1
 
 
 def central_composite(
@@ -159,10 +185,27 @@ def central_composite(
     for f in factors:
         assert f.is_continuous, f"Factor {f.name} must be continuous for a CCD"
 
+    if n_blocks > 1:
+        _assert_no_block_name(factors)
+
     # Cube portion, in n_blocks - 1 blocks when blocked
     coded = [Factor(str(f.name)) for f in factors]
+    generators = _cube_generators(factors, cube)
     n_cube_blocks = max(n_blocks - 1, 1)
-    cube_df = fractional_factorial(coded, _cube_generators(factors, cube), n_blocks=n_cube_blocks)
+    if n_cube_blocks == 1:
+        cube_df = fractional_factorial(coded, generators)
+    else:
+        assert n_cube_blocks & (n_cube_blocks - 1) == 0, (
+            f"A blocked CCD has a power of 2 cube blocks and one axial block, so n_blocks - 1 must be "
+            f"a power of 2 (got n_blocks={n_blocks})"
+        )
+        # The second-order model needs every main effect and two-factor interaction, in any alpha mode
+        fractional_factorial(coded, generators)  # the cube itself is valid
+        cube_df, reason = _second_order_blocking(coded, generators, n_cube_blocks)
+        assert cube_df is not None, (
+            f"A CCD with {k} factors cannot have {n_blocks} blocks: {reason}, which the second-order model "
+            f"needs; this cube allows at most {_max_second_order_blocks(coded, generators)} blocks"
+        )
     names = [str(f.name) for f in factors]
     factorial = cube_df[names].to_numpy(dtype=np.float64)
     cube_labels = cube_df[BLOCK_COLUMN].to_numpy() - 1 if n_cube_blocks > 1 else np.zeros(len(factorial), dtype=int)
