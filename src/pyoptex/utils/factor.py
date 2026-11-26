@@ -72,6 +72,11 @@ class FactorMixin:
             if self.is_mixture:
                 # Mixture components are not rescaled: min -1 and max 1 give
                 # mean 0 and scale 1, so the encoded value is the fraction itself.
+                # Explicit -1 and 1 are allowed: the conversion from "mixture" and unpickling pass them.
+                assert (self.min is None or self.min == -1) and (self.max is None or self.max == 1), (
+                    "A mixture component's min and max are fixed at -1 and 1 internally, "
+                    "so that its encoded value is the fraction; give its range by its levels"
+                )
                 default_min, default_max = -1, 1
             elif self.levels is not None:
                 default_min, default_max = float(min(self.levels)), float(max(self.levels))
