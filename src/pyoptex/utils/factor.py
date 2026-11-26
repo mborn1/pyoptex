@@ -5,7 +5,9 @@ import pandas as pd
 
 from .design import create_default_coords, encode_design
 
-__Factor__ = namedtuple("__Factor__", "name type min max levels coords", defaults=(None, "cont", -1, 1, None, None))
+__Factor__ = namedtuple(
+    "__Factor__", "name type min max levels coords", defaults=(None, "cont", None, None, None, None)
+)
 
 
 class FactorMixin:
@@ -22,9 +24,9 @@ class FactorMixin:
         The type of the factor, can be 'continuous', 'cont', 'categorical',
         'cat', 'mixture', 'mixt', 'quantitative', 'quant', 'qualitative', 'qual'
     min : float
-        The minimum of the factor. Used for continuous factors.
+        The minimum of the region of interest, coded to -1. Defaults to the lowest level, or -1 without levels.
     max : float
-        The maximum of the factor. Used for continuous factors.
+        The maximum of the region of interest, coded to 1. Defaults to the highest level, or 1 without levels.
     levels : list(float) or list(str)
         For continuous factors, this is the list of possible numerical values.
         For categorical factors, this is a list of strings for the possible
@@ -40,7 +42,7 @@ class FactorMixin:
         # Check for a mixture component
         if self.type in ("mixt", "mixture"):
             # Alter default minimum and maximum
-            assert self.min == -1 and self.max == 1, (
+            assert self.min is None and self.max is None, (
                 "Cannot specify a minimum and maximum for mixture components. Use levels parameters to specify minimum and maximum consumption per run"
             )
 
@@ -66,6 +68,24 @@ class FactorMixin:
             "quantitative",
         ], f"The type of factor {self.name} must be either continuous, categorical or mixture, but is {self.type}"
         if self.is_continuous:
+            # Without a minimum or maximum, the range is that of the levels (or -1 to 1 without levels)
+            if self.is_mixture:
+                # Mixture components are not rescaled: min -1 and max 1 give
+                # mean 0 and scale 1, so the encoded value is the fraction itself.
+                # Explicit -1 and 1 are allowed: the conversion from "mixture" and unpickling pass them.
+                assert (self.min is None or self.min == -1) and (self.max is None or self.max == 1), (
+                    "A mixture component's min and max are fixed at -1 and 1 internally, "
+                    "so that its encoded value is the fraction; give its range by its levels"
+                )
+                default_min, default_max = -1, 1
+            elif self.levels is not None:
+                default_min, default_max = float(min(self.levels)), float(max(self.levels))
+            else:
+                default_min, default_max = -1, 1
+            if self.min is None:
+                self = self._replace(min=default_min)
+            if self.max is None:
+                self = self._replace(max=default_max)
             assert isinstance(self.min, (float, int)), (
                 f"Factor {self.name} must have an integer or float minimum, but is {self.min}"
             )
