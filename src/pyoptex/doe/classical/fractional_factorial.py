@@ -35,7 +35,7 @@ def _parse_generator(gen_name, defining):
     leading ``"-"`` gives coefficient -1: ``["-A", "B"]`` is ``{"A": -1, "B": 1}``.
     """
     assert len(defining) > 0, f"Generator for '{gen_name}' must reference at least one base factor"
-    if isinstance(defining, dict):
+    if isinstance(defining, Mapping):
         coefs = {}
         for name, c in defining.items():
             assert isinstance(c, (int, np.integer)), (
@@ -182,6 +182,15 @@ def fractional_factorial(
     Continuous factors use their explicit ``levels`` when specified,
     otherwise *n_levels* equally spaced levels (default 2).
     Categorical factors use ``len(levels)`` levels.
+
+    For two-level factors with explicit levels, the levels are taken in
+    the order given: the first is coded -1 and the second +1.  Listing a
+    factor's levels high-first (e.g. ``levels=[20, 10]``) therefore flips
+    the sign of its column.  For a generator such as ``D = ABC``, count
+    the factors listed high-first among A, B, C and D: an odd count gives
+    the other half of the fraction (``D = -ABC`` in terms of the levels in
+    increasing order), an even count gives the same half.  Either way the
+    design has the same resolution and aliasing.
 
     Parameters
     ----------
