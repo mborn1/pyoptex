@@ -382,7 +382,7 @@ def power(
         or the Kenward-Roger approximation does not hold in this small design (ddf="satterthwaite" may give a value).
     """
     X, nmodel = _model_matrix(Y, params)
-    tests = _term_columns(params, nmodel)
+    tests = _term_columns(params.factors, params.colstart, params.fn.Y2X, nmodel)
 
     # A grouping with ratio 0 in every set only constrains the levels (as the quickstart's level constraints
     # without a random effect): it is not a variance component. params.ratios has one column per grouping of Zs.

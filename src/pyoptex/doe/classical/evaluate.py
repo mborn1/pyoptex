@@ -19,13 +19,13 @@ from collections.abc import Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 from scipy.linalg.lapack import dpstrf
 
 from ...utils.design import encode_design
 from ...utils.factor import Factor
-from ...utils.model import _modelenc2terms
 from ..utils.init import init_single_unconstrained
-from ..utils.power import _power_table
+from ..utils.power import _parse_sizes, _term_columns
 from .utils import _factor_encoding_params
 
 
@@ -250,25 +250,11 @@ def variance_inflation(Y, factors, Y2X):
     """
     X = _prepare_X(Y, factors, Y2X)
     ss = np.sum((X - X.mean(axis=0)) ** 2, axis=0)
-    constant = ss <= 1e-12 * X.shape[0]
+    constant = np.ptp(X, axis=0) == 0
     with np.errstate(invalid="ignore"):  # inf * 0 for constant columns of a rank-deficient model
         vif = _estimation_variance(X) * ss
     vif[constant] = np.nan
     return vif
-
-
-def _tests(factors, Y2X, nmodel):
-    """
-    The tests of the model of Y2X: one per term except the intercept, with its columns of the model matrix.
-    A Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` gives its terms; a custom Y2X
-    one test per column, named by its index.
-    """
-    assert not any(f.is_mixture for f in factors), "Power for mixture designs is not supported yet"
-    modelenc = getattr(Y2X, "keywords", {}).get("modelenc")
-    if modelenc is None:
-        return [(str(i), np.array([i])) for i in range(nmodel)]
-    _, _, colstart = _factor_encoding_params(factors)
-    return [(name, cols) for name, cols in _modelenc2terms(modelenc, colstart, factors) if np.any(modelenc[cols] != 0)]
 
 
 def power(
@@ -317,16 +303,33 @@ def power(
     -------
     power : pd.DataFrame
         The power, one row and one column per tested term.
-        NaN when no degrees of freedom are left for the residual (``n = p``).
-
-    Raises
-    ------
-    AssertionError
-        If the model cannot be estimated from the design (its model matrix does not have full column rank).
+        NaN when no degrees of freedom are left for the residual (``n = p``),
+        and for every term when the model is not estimable (as the other metrics).
     """
+    assert 0 < alpha < 1, f"alpha must be between 0 and 1, but is {alpha}"
     X = _prepare_X(Y, factors, Y2X)
-    tests = _tests(factors, Y2X, X.shape[1])
-    return _power_table(tests, X, [], np.eye(len(X))[np.newaxis], sizes, alpha, "satterthwaite")
+    _, _, colstart = _factor_encoding_params(factors)
+    tests = _term_columns(factors, colstart, Y2X, X.shape[1])
+    names = [name for name, _ in tests]
+    size = _parse_sizes(sizes, names)
+    power = np.full(len(tests), np.nan)
+    if not _is_estimable(X):
+        return pd.DataFrame([power], columns=names)
+
+    # The F-test of each term against the residual, with n - p degrees of freedom
+    n, p = X.shape
+    df = n - p
+    if df == 0:
+        return pd.DataFrame([power], columns=names)
+    Phi = np.linalg.inv(X.T @ X)
+    for t, ((_, c), s) in enumerate(zip(tests, size, strict=True)):
+        k = len(c)
+        b = s * (-1.0) ** np.arange(k)
+        lam = b @ np.linalg.solve(Phi[np.ix_(c, c)], b)
+        critical = stats.f.ppf(1 - alpha, k, df)
+        # scipy's ncf.sf returns sf - 1 for a noncentrality of 0, so the central F is used there
+        power[t] = stats.f.sf(critical, k, df) if lam == 0 else stats.ncf.sf(critical, k, df, lam)
+    return pd.DataFrame([power], columns=names)
 
 
 def g_efficiency(Y, factors, Y2X, n_samples=10000):
