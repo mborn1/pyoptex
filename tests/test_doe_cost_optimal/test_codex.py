@@ -91,7 +91,7 @@ def test_power_split_plot(ddf, ratio):
     Y = pd.DataFrame({"W": np.repeat([-1, 1, -1, 1], 4), "S": np.tile([-1, 1, -1, 1], 4)})
     fn = default_fn(1, factors, fixed_runs_cost(len(Y)), Dopt(), model2Y2X(model, factors))
 
-    pw = power(Y, create_parameters(factors, fn), model, ddf=ddf)
+    pw = power(Y, create_parameters(factors, fn), ddf=ddf)
     assert list(pw.columns) == ["W", "S", "W * S"]
     if ratio == 1:
         np.testing.assert_allclose(pw["W"], stats.ncf.sf(stats.f.ppf(0.95, 1, 2), 1, 2, 3.2))
