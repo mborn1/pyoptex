@@ -36,9 +36,11 @@ def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | N
     Factors that are not switched are copied unchanged.
 
     The runs of the two stages form blocks: a ``'Block'`` column is added
-    with 1 for the original runs and 2 for the mirror image, or, if the
-    design already has blocks, the mirror runs get new block numbers
-    after the existing ones.  Other columns that are not factors (e.g. a
+    with 1 for the original runs and 2 for the mirror image.  If the
+    design already has *b* blocks, they are renumbered 1 to *b* for the
+    original runs (in sorted order of their labels) and *b* + 1 to 2 *b*
+    for the mirror image; labels 1 to *b* stay unchanged for the original
+    runs.  Other columns that are not factors (e.g. a
     measured response) are kept for the original runs and left empty
     for the mirror runs.
 
@@ -93,10 +95,12 @@ def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | N
     mirror[other] = np.nan
 
     if BLOCK_COLUMN in Y.columns:
-        original_blocks = Y[BLOCK_COLUMN].to_numpy().astype(np.int64)
-        # Shift by the span of the labels, so the mirror blocks never overlap the original ones
-        mirror[BLOCK_COLUMN] = original_blocks + (original_blocks.max() - original_blocks.min() + 1)
-        result = pd.concat([Y, mirror], ignore_index=True)
+        # Renumber the b blocks: 1..b for the original runs, b+1..2b for the mirror image
+        codes, uniques = pd.factorize(Y[BLOCK_COLUMN], sort=True)
+        original = Y.copy()
+        original[BLOCK_COLUMN] = (codes + 1).astype(np.int64)
+        mirror[BLOCK_COLUMN] = (codes + 1 + len(uniques)).astype(np.int64)
+        result = pd.concat([original, mirror], ignore_index=True)
     else:
         result = pd.concat([Y, mirror], ignore_index=True)
         result[BLOCK_COLUMN] = np.repeat(np.array([1, 2], dtype=np.int64), len(Y))
