@@ -94,7 +94,8 @@ def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | N
 
     if BLOCK_COLUMN in Y.columns:
         original_blocks = Y[BLOCK_COLUMN].to_numpy()
-        mirror[BLOCK_COLUMN] = original_blocks + original_blocks.max()
+        # Shift by the span of the labels, so the mirror blocks never overlap the original ones
+        mirror[BLOCK_COLUMN] = original_blocks + (original_blocks.max() - original_blocks.min() + 1)
         result = pd.concat([Y, mirror], ignore_index=True)
     else:
         result = pd.concat([Y, mirror], ignore_index=True)
