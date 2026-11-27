@@ -231,6 +231,11 @@ def fractional_factorial(
     """
     _validate_factors(factors)
     _assert_no_mixture(factors, "fractional factorial design")
+    for f in factors:
+        assert not str(f.name).startswith("-"), (
+            f"Factor name '{f.name}' starts with '-', which is ambiguous in the list form of generators, "
+            f"where a leading '-' gives a negative sign"
+        )
     name2idx = {str(f.name): i for i, f in enumerate(factors)}
     k = len(factors)
 
