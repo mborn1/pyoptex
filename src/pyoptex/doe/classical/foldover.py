@@ -96,6 +96,7 @@ def foldover(Y: pd.DataFrame, factors: Sequence[Factor], fold: Sequence[str] | N
 
     if BLOCK_COLUMN in Y.columns:
         # Renumber the b blocks: 1..b for the original runs, b+1..2b for the mirror image
+        assert not Y[BLOCK_COLUMN].isna().any(), "The Block column has missing labels; every run must belong to a block"
         codes, uniques = pd.factorize(Y[BLOCK_COLUMN], sort=True)
         original = Y.copy()
         original[BLOCK_COLUMN] = (codes + 1).astype(np.int64)
