@@ -3,8 +3,6 @@ import multiprocessing
 import os
 import signal
 
-import numpy as np
-
 
 def set_nb_cores(n=1):
     """
@@ -175,7 +173,7 @@ def parallel_generation(fn, *args, ncores=None, parallel_arg_name=None, **kwargs
             results = mapresults.get()
 
     # Select the best result
-    best_idx = np.argmax([state.metric for _, state in results])
+    best_idx = max(range(len(results)), key=lambda i: results[i][1].metric)
     Y, state = results[best_idx]
 
     return Y, state

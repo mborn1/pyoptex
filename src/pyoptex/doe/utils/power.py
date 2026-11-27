@@ -1,9 +1,10 @@
 """
-Module with the power of the tests of the effects, shared by the fixed structure and the cost optimal designs.
+Module with the power of the tests of the effects, shared by the fixed structure, the cost optimal
+and the classical designs.
 """
 
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import Any
 
@@ -152,7 +153,9 @@ def _power(
     return power, undefined
 
 
-def _term_columns(params: Any, nmodel: int) -> list[tuple[str, np.ndarray]]:
+def _term_columns(
+    factors: Sequence[Any], colstart: np.ndarray, Y2X: Callable[[np.ndarray], np.ndarray], nmodel: int
+) -> list[tuple[str, np.ndarray]]:
     """
     The tests of the model of Y2X: one per term (except the intercept), with its columns of the model matrix.
     A Y2X from :py:func:`model2Y2X <pyoptex.utils.model.model2Y2X>` gives its terms; a custom Y2X
@@ -160,8 +163,12 @@ def _term_columns(params: Any, nmodel: int) -> list[tuple[str, np.ndarray]]:
 
     Parameters
     ----------
-    params : :py:class:`Parameters <pyoptex.doe.fixed_structure.utils.Parameters>` or :py:class:`Parameters <pyoptex.doe.cost_optimal.utils.Parameters>`
-        The simulation parameters, for the factors, their encoding and the Y2X function.
+    factors : list(:py:class:`Factor <pyoptex.utils.factor.FactorMixin>`)
+        The factors of the design.
+    colstart : np.array(1d)
+        The start column of each factor in the encoded design, with the total number of columns at the end.
+    Y2X : func(Y)
+        The function from the encoded design to the model matrix.
     nmodel : int
         The number of columns of Y2X, where the covariate columns begin.
 
@@ -170,17 +177,51 @@ def _term_columns(params: Any, nmodel: int) -> list[tuple[str, np.ndarray]]:
     tests : list(tuple(str, np.array(1d)))
         The name and the columns of the model matrix of each test.
     """
-    assert not any(fac.is_mixture for fac in params.factors), "Power for mixture designs is not supported yet"
+    assert not any(fac.is_mixture for fac in factors), "Power for mixture designs is not supported yet"
 
     # A custom Y2X (anything but the partial of x2fx that model2Y2X makes): each of its columns on its own
-    Y2X = params.fn.Y2X
     if not (isinstance(Y2X, partial) and Y2X.func is x2fx):
         return [(str(i), np.array([i])) for i in range(nmodel)]
 
     # A Y2X from model2Y2X: its terms, except the intercept
     modelenc = Y2X.keywords["modelenc"]
-    terms = _modelenc2terms(modelenc, params.colstart, params.factors)
+    terms = _modelenc2terms(modelenc, colstart, factors)
     return [(name, cols) for name, cols in terms if np.any(modelenc[cols] != 0)]
+
+
+def _parse_sizes(sizes: float | Sequence[float] | Mapping[str, float] | pd.Series, names: Sequence[str]) -> np.ndarray:
+    """
+    The size of the coefficients of each test.
+
+    Parameters
+    ----------
+    sizes : float, list(float), dict(str, float) or pd.Series
+        The size of the coefficients of each test, or of all tests.
+        A dict or pd.Series is matched by name, a list by position.
+    names : list(str)
+        The name of each test.
+
+    Returns
+    -------
+    size : np.array(1d)
+        The size of each test, in the order of `names`.
+    """
+    if isinstance(sizes, Mapping | pd.Series):
+        if isinstance(sizes, pd.Series):
+            duplicated = sizes.index[sizes.index.duplicated()].unique()
+            assert sizes.index.is_unique, f"sizes has several values for {', '.join(map(str, duplicated))}"
+        # Iterating a Series gives its values, not its names
+        sizes = dict(sizes)
+        missing = [name for name in names if name not in sizes]
+        assert not missing, f"sizes has no value for the tests {', '.join(missing)}"
+        unknown = [str(key) for key in sizes if key not in names]
+        assert not unknown, f"sizes has values for unknown tests {', '.join(unknown)}; the tests are {', '.join(names)}"
+        return np.array([sizes[name] for name in names], dtype=np.float64)
+    if np.ndim(sizes) == 0:
+        return np.full(len(names), sizes, dtype=np.float64)
+    size = np.asarray(sizes, np.float64)
+    assert len(size) == len(names), f"sizes must have one value per test ({len(names)}), but has {len(size)}"
+    return size
 
 
 def _power_table(
@@ -226,22 +267,7 @@ def _power_table(
     assert 0 < alpha < 1, f"alpha must be between 0 and 1, but is {alpha}"
     names = [name for name, _ in tests]
     columns = [cols for _, cols in tests]
-    if isinstance(sizes, Mapping | pd.Series):
-        if isinstance(sizes, pd.Series):
-            duplicated = sizes.index[sizes.index.duplicated()].unique()
-            assert sizes.index.is_unique, f"sizes has several values for {', '.join(map(str, duplicated))}"
-        # Iterating a Series gives its values, not its names
-        sizes = dict(sizes)
-        missing = [name for name in names if name not in sizes]
-        assert not missing, f"sizes has no value for the tests {', '.join(missing)}"
-        unknown = [str(key) for key in sizes if key not in names]
-        assert not unknown, f"sizes has values for unknown tests {', '.join(unknown)}; the tests are {', '.join(names)}"
-        size = np.array([sizes[name] for name in names], dtype=np.float64)
-    elif np.ndim(sizes) == 0:
-        size = np.full(len(tests), sizes, dtype=np.float64)
-    else:
-        size = np.asarray(sizes, np.float64)
-        assert len(size) == len(tests), f"sizes must have one value per test ({len(tests)}), but has {len(size)}"
+    size = _parse_sizes(sizes, names)
 
     # Every coefficient must be estimable
     rank = np.linalg.matrix_rank(X)

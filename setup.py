@@ -60,5 +60,6 @@ setuptools.setup(
     version=version,
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
+    package_data={"pyoptex": ["py.typed"]},
     ext_modules=cythonize(extensions, compiler_directives={"language_level": "3"}),
 )
